@@ -1,4 +1,4 @@
-import {Prompt, prompt, promptTitle, promptBody, roleMessage} from "./types/types";
+import {Prompt, prompt, promptTitle, promptBody, roleMessage} from "./types/types_old";
 
 const p: Prompt = prompt({
   title: promptTitle({
@@ -7,8 +7,8 @@ const p: Prompt = prompt({
   }),
   body: promptBody({
     body: [
-      roleMessage({ role: "system", body: "this is your propmpt" }),
-      roleMessage({ role: "user", body: "another prompt" }),
+      roleMessage({ role: "system", body: ["this is your propmpt"] }),
+      roleMessage({ role: "user", body: ["another prompt"] }),
     ]
   })
 });

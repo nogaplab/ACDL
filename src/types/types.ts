@@ -1,3 +1,7 @@
+import { ContextItem } from "./context_types";
+import { ElseBranch, ElseIfBranch, IfBranch } from "./types_old";
+
+
 export type Prompt = {
   kind: "prompt";
   title: PromptTitle;
@@ -11,15 +15,14 @@ export type PromptTitle = {
   indices: Array<Index>;
 }
 
-/* option 1 for indices. see option 2 below. */
+type Role = "user" | "assistant" | "system";
 
-export type Index = {
-  kind: "index";
-  name: string;
-  isTime: boolean;
-}
+export type MyString = { 
+    value: string 
+};
 
-/* option 2 for indices:
+// Index types:
+// I currently prefer this option because I sometimes need to only allow a time index (in funcitons)
  
 export type Index = TimeIndex | OtherIndex;
 
@@ -33,122 +36,92 @@ export type OtherIndex = {
   name: string;
 }
 
-*/
+// Template text and function types
+
+export type TextArgs = ContextItem | TimeIndex | func; // what about mystring?
+
+export type func = {
+    kind: "function";
+    name: string;
+    arguments: Array<func|ContextItem|TimeIndex>; // fill this later
+}
+
+export type Template = {
+  name: string;
+  arguments: Array<func|ContextItem|TimeIndex>;
+  comment?: string;
+}
+
+// Prompt Body and Building Blocks, Outside Role Blocks
 
 export type PromptBody = {
   kind: "prompt-body";
-  body: Array<RoleMessage|ConditionalBlock>; 
+  body: Array<PromptBlock>; 
 }
+
+
+export type PromptBlock = RoleMessage|ConditionalBlockOutsideRole|LoopBlockOutsideRole|SwitchBlockOutsideRole;
+
+
+export type LoopBlockOutsideRole = {
+  kind: "loop-block-outside-role";
+  variable: string;
+  iterable: Expression; // what type is this?
+  body: Array<PromptBlock>;
+};
 
 export type RoleMessage = {
   kind: "role-message";
   role: Role;
-  body: string; // TODO!! this is incorrect / incomplete.
+  body: Array<RoleBuildingBlock>; 
 }
 
-
-// conditionals - includes if, else-if, else, switch, case
-
-export type ComparisonOperator =
-  | "=="
-  | "!="
-  | "<"
-  | "<="
-  | ">"
-  | ">=";
-
-
-export type ConditionVariable = {
-  kind: "variable";
-  name: string;
+export type ConditionalBlockOutsideRole = {
+  kind: "conditional-block-outside-role";
+  Ifcondition: Condition;
+  IfBody: Array<PromptBlock>;
+  elseif: Array<Condition>;
+  elseifBody: Array<Array<PromptBlock>>;
+  elseBody?: Array<PromptBlock>;
 };
 
+// Inside Role Building Blocks
 
-export interface ConditionComparison {
-  kind: "comparison";
-  operator: ComparisonOperator;
-  left: Condition;
-  right: Condition;
-}
+export type RoleBuildingBlock = ConditionalBlockInsideRole|LoopBlockInsideRole|SwitchBlockInsideRole|Template;
 
-export type ConditionLogical = {
-  kind: "logical";
-  operator: "and" | "or";
-  left: Condition;
-  right: Condition;
+export type LoopBlockInsideRole = {
+  kind: "loop-block-inside-role";
+  variable: string;
+  iterable: Expression; // what type is this?
+  body: Array<RoleBuildingBlock>;
 };
 
-export type ConditionNot = {
-  kind: "not";
-  operand: Condition;
+export type ConditionalBlockInsideRole = {
+  kind: "conditional-block-outside-role";
+  Ifcondition: Condition;
+  IfBody: Array<RoleBuildingBlock>;
+  elseif: Array<Condition>;
+  elseifBody: Array<Array<RoleBuildingBlock>>;
+  elseBody?: Array<RoleBuildingBlock>;
 };
 
-export type ConditionBoolean = {
-  kind: "boolean";
-  value: boolean;
-};
-
-
-export type Condition =
-  | ConditionBoolean
-  | ConditionVariable
-  | ConditionComparison
-  | ConditionLogical
-  | ConditionNot;
-
-
-
-// Conditional Blocks
-
-export type ConditionalBlock = {
-  kind: "conditional-block";
-  if: IfBranch;
-  elseIfs: ElseIfBranch[];
-  else?: ElseBranch;
-};
-
-
-export type IfBranch = {
-  kind: "if";
-  condition: Condition;
-  body: BuildingBlock[];
-};
-
-export type ElseIfBranch = {
-  kind: "else-if";
-  condition: Condition;
-  body: BuildingBlock[];
-};
-
-export type ElseBranch = {
-  kind: "else";
-  body: BuildingBlock[];
-};
-
-// switch/case types
-
-export type SwitchBlock = {
+export type SwitchBlockInsideRole = {
   kind: "switch-block";
-  expression: Expression;
-  cases: CaseBlock[];
-  defaultCase?: DefaultCaseBlock;
+  expression: Expression; // what type is this? some variable whose value needs to match one of the cases
+  cases: Array<CaseBlockInsideRole>;
+  defaultCase?: DefaultCaseBlockInsideRole;
 };
 
-export type CaseBlock = {
+export type CaseBlockInsideRole = {
   kind: "case";
-  match: Condition | Expression;
-  body: BuildingBlock[];
+  match: Expression;
+  body: Array<RoleBuildingBlock>;
 };
 
-export type DefaultCaseBlock = {
+export type DefaultCaseBlockInsideRole = {
   kind: "default";
-  body: BuildingBlock[];
+  body: Array<RoleBuildingBlock>;
 };
-
-
-type Role = "user" | "assistant" | "system";
-
-
 // "Constructors"
 
 // This is very boiler-platy, but is convenient when we want to
