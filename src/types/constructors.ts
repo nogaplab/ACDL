@@ -1,4 +1,4 @@
-import { Prompt, PromptTitle, TimeIndex, OtherIndex, PromptBody, RoleMessage, ContextVar, PathDesc, Func, Template, LoopBlockOutsideRole, ConditionalBlockOutsideRole, SwitchBlockOutsideRole, CaseBlockOutsideRole, DefaultCaseBlockOutsideRole, LoopBlockInsideRole, ConditionalBlockInsideRole, SwitchBlockInsideRole, CaseBlockInsideRole, DefaultCaseBlockInsideRole } from "./types";
+import { Prompt, PromptTitle, Index, TimeIndex, OtherIndex, PromptBody, RoleMessage, ContextVar, PathDesc, Func, Template, LoopBlockOutsideRole, ConditionalBlockOutsideRole, SwitchBlockOutsideRole, CaseBlockOutsideRole, DefaultCaseBlockOutsideRole, LoopBlockInsideRole, ConditionalBlockInsideRole, SwitchBlockInsideRole, CaseBlockInsideRole, DefaultCaseBlockInsideRole } from "./types";
 
 
 
@@ -14,6 +14,13 @@ export function prompt(params: Omit<Prompt, "kind">): Prompt {
 
 export function promptTitle(params: Omit<PromptTitle, "kind">): PromptTitle {
   return { ...params, kind: "title" };
+}
+
+export function index(kind: "time-index", name: string): TimeIndex;
+export function index(kind: "non-time-index", name: string): OtherIndex;
+
+export function index(kind: any, name: string): Index {
+  return { kind, name };
 }
 
 export function timeIndex(params: Omit<TimeIndex, "kind">): TimeIndex {
