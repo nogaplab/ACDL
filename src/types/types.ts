@@ -1,7 +1,3 @@
-import { ContextItem } from "./context_types";
-import { ElseBranch, ElseIfBranch, IfBranch } from "./types_old";
-
-
 export type Prompt = {
   kind: "prompt";
   title: PromptTitle;
@@ -11,19 +7,12 @@ export type Prompt = {
 export type PromptTitle = {
   kind: "title";
   name: string;
-  // could be also Array<string> if we didn't want to include the time-vs-other distinction in the types.
   indices: Array<Index>;
 }
 
 type Role = "user" | "assistant" | "system";
 
-export type MyString = { 
-    value: string 
-};
-
 // Index types:
-// I currently prefer this option because I sometimes need to only allow a time index (in funcitons)
- 
 export type Index = TimeIndex | OtherIndex;
 
 export type TimeIndex = {
@@ -37,18 +26,37 @@ export type OtherIndex = {
 }
 
 // Template text and function types
+// might want to add types for all context bases later, if we need tham to behave differently
 
-export type TextArgs = ContextItem | TimeIndex | func; // what about mystring?
+export type ContextBase = "obs" | "resp" | "act" | "mem" | "prompt";
 
-export type func = {
-    kind: "function";
-    name: string;
-    arguments: Array<func|ContextItem|TimeIndex>; // fill this later
+export type ContextVar = {
+    kind: "context-var";
+    base: ContextBase
+    path: PathDesc; 
+    indices: Array<Index>; // do we want that?
 }
+
+export type PathDesc = {
+    kind: "path-desc";
+    base: string;
+    next?: PathDesc;
+    indices: Array<Index>;
+}
+
+export type TextArgs = ContextVar | TimeIndex | Func;
+
+export type Func = {
+    kind: "function";
+    name: FuncName;
+    arguments: Array<Func|ContextVar|TimeIndex>; 
+}
+
+export type FuncName = string; // Must be CamelCase.
 
 export type Template = {
   name: string;
-  arguments: Array<func|ContextItem|TimeIndex>;
+  arguments: Array<Func|ContextVar|TimeIndex>;
   comment?: string;
 }
 
@@ -65,8 +73,8 @@ export type PromptBlock = RoleMessage|ConditionalBlockOutsideRole|LoopBlockOutsi
 
 export type LoopBlockOutsideRole = {
   kind: "loop-block-outside-role";
-  variable: string;
-  iterable: Expression; // what type is this?
+  index: OtherIndex;
+  iterable: Iterable; 
   body: Array<PromptBlock>;
 };
 
@@ -78,12 +86,31 @@ export type RoleMessage = {
 
 export type ConditionalBlockOutsideRole = {
   kind: "conditional-block-outside-role";
-  Ifcondition: Condition;
+  Ifcondition: string;
   IfBody: Array<PromptBlock>;
-  elseif: Array<Condition>;
+  elseif: Array<string>;
   elseifBody: Array<Array<PromptBlock>>;
   elseBody?: Array<PromptBlock>;
 };
+
+export type SwitchBlockOutsideRole = {
+  kind: "switch-block";
+  expression: string; 
+  cases: Array<CaseBlockOutsideRole>;
+  defaultCase?: DefaultCaseBlockOutsideRole;
+};
+
+export type CaseBlockOutsideRole = {
+  kind: "case";
+  match: string;
+  body: Array<PromptBlock>;
+};
+
+export type DefaultCaseBlockOutsideRole = {
+  kind: "default";
+  body: Array<PromptBlock>;
+};
+
 
 // Inside Role Building Blocks
 
@@ -91,30 +118,35 @@ export type RoleBuildingBlock = ConditionalBlockInsideRole|LoopBlockInsideRole|S
 
 export type LoopBlockInsideRole = {
   kind: "loop-block-inside-role";
-  variable: string;
-  iterable: Expression; // what type is this?
+  index: OtherIndex;
+  iterable: Iterable; 
   body: Array<RoleBuildingBlock>;
 };
 
+export type Iterable = {
+  kind: "iterable";
+  value: string; // common objects are sets and ranges. constraint: no spaces
+}
+
 export type ConditionalBlockInsideRole = {
   kind: "conditional-block-outside-role";
-  Ifcondition: Condition;
+  Ifcondition: string;
   IfBody: Array<RoleBuildingBlock>;
-  elseif: Array<Condition>;
+  elseif: Array<string>;
   elseifBody: Array<Array<RoleBuildingBlock>>;
   elseBody?: Array<RoleBuildingBlock>;
 };
 
 export type SwitchBlockInsideRole = {
   kind: "switch-block";
-  expression: Expression; // what type is this? some variable whose value needs to match one of the cases
+  expression: string; // what type is this? some variable whose value needs to match one of the cases
   cases: Array<CaseBlockInsideRole>;
   defaultCase?: DefaultCaseBlockInsideRole;
 };
 
 export type CaseBlockInsideRole = {
   kind: "case";
-  match: Expression;
+  match: string;
   body: Array<RoleBuildingBlock>;
 };
 
@@ -122,27 +154,3 @@ export type DefaultCaseBlockInsideRole = {
   kind: "default";
   body: Array<RoleBuildingBlock>;
 };
-// "Constructors"
-
-// This is very boiler-platy, but is convenient when we want to
-// construct prompts in code. Can probably be done by an LLM or even with a deterministic script.
-
-export function prompt(params: Omit<Prompt, "kind">): Prompt {
-  return { ...params, kind: "prompt" };
-}
-
-export function promptTitle(params: Omit<PromptTitle, "kind">): PromptTitle {
-  return { ...params, kind: "title" };
-}
-
-export function index(params: Omit<Index, "kind">): Index {
-  return { ...params, kind: "index" };
-}
-
-export function promptBody(params: Omit<PromptBody, "kind">): PromptBody {
-  return { ...params, kind: "prompt-body" };
-}
-
-export function roleMessage(params: Omit<RoleMessage, "kind">): RoleMessage {
-  return { ...params, kind: "role-message" };
-}
