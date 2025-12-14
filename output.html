@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Rendered Prompts</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    
+<div class="prompt-container prompt-style-default">
+  
+<div class="prompt-title">
+  <h1>MyPrompt[@t][agent]</h1>
+</div>
+  
+<div class="role-message system">
+  <div class="role-message-header">Role: system</div>
+  <div class="role-body-block"><span class="template-block">
+    INTRO()
+  </span></div>
+<div class="role-body-block">
+<span class="context-var">
+  <span class="segment base">obs</span>.<span class="segment">user_question[@t]</span>
+</span></div>
+<div class="role-body-block">
+<div class="conditional-block-inside-role">
+  <div class="conditional-header">If (obs.user_question[@t] == &#39;hello&#39;):</div>
+  <div class="block-children">
+    <div class="role-condition-child"><span class="func-block">
+    reply_hi()
+  </span></div>
+  </div>
+
+  <div class="conditional-header">ElseIf (obs.user_question[@t] == &#39;bye&#39;):</div>
+  <div class="block-children">
+    <div class="role-condition-child"><span class="func-block">
+    reply_bye()
+  </span></div>
+  </div>
+
+  <div class="conditional-header">Else:</div>
+  <div class="block-children">
+    <div class="role-condition-child"><span class="template-block">
+    UNKNOWN_INPUT()
+  </span></div>
+  </div>
+</div></div>
+<div class="role-body-block">
+<div class="loop-block-inside-role">
+  <div class="loop-header">ForEach(i: 1...3):</div>
+  <div class="block-children">
+    <div class="role-loop-child"><span class="template-block">
+    STEP(
+<span class="context-var">
+  <span class="segment base">obs</span>.<span class="segment">index_value[i]</span>
+</span>)
+  </span></div>
+  </div>
+</div></div>
+</div>
+
+<div class="loop-block-outside-role">
+  <div class="loop-header">ForEach(u: agents):</div>
+  <div class="loop-children">
+    <div class="loop-child">
+<div class="role-message assistant">
+  <div class="role-message-header">Role: assistant</div>
+  <div class="role-body-block"><span class="template-block">
+    GREET_AGENT(
+<span class="context-var">
+  <span class="segment base">obs</span>.<span class="segment">current_agent[u]</span>
+</span>)
+  </span></div>
+</div></div>
+  </div>
+</div>
+
+<div class="switch-block-outside-role">
+  <div class="switch-header">Switch(mode):</div>
+  
+<div class="switch-case">
+  <div class="switch-case-header">Case "train":</div>
+  <div class="block-children">
+    <div class="switch-child">
+<div class="role-message assistant">
+  <div class="role-message-header">Role: assistant</div>
+  <div class="role-body-block"><span class="template-block">
+    TRAINING_MODE()
+  </span><span class="comment"> // Explain training mode</span></div>
+</div></div>
+  </div>
+</div>
+
+<div class="switch-case">
+  <div class="switch-case-header">Case "eval":</div>
+  <div class="block-children">
+    <div class="switch-child">
+<div class="role-message assistant">
+  <div class="role-message-header">Role: assistant</div>
+  <div class="role-body-block"><span class="template-block">
+    EVAL_MODE_EXPLANATION()
+  </span><span class="comment"> // Explain evaluation mode</span></div>
+</div></div>
+  </div>
+</div>
+  
+<div class="switch-default">
+  <div class="switch-default-header">Default:</div>
+  <div class="block-children">
+    <div class="switch-child">
+<div class="role-message assistant">
+  <div class="role-message-header">Role: assistant</div>
+  <div class="role-body-block"><span class="template-block">
+    DEFAULT_MODE()
+  </span><span class="comment"> // Explain default mode</span></div>
+</div></div>
+  </div>
+</div>
+</div>
+</div>
+<div class="prompt-container prompt-style-default">
+  
+<div class="prompt-title">
+  <h1>AgentPlanner[@t]</h1>
+</div>
+  
+<div class="role-message assistant">
+  <div class="role-message-header">Role: assistant</div>
+  <div class="role-body-block">
+<span class="context-var">
+  <span class="segment base">obs[@t]</span>.<span class="segment">agents[a]</span>.<span class="segment">state</span>.<span class="segment">tasks[k]</span>.<span class="segment">priority</span>
+</span></div>
+<div class="role-body-block">
+<div class="switch-block-inside-role">
+  <div class="switch-header">Switch(agent_status):</div>
+  
+<div class="switch-case">
+  <div class="switch-case-header">Case "idle":</div>
+  <div class="block-children">
+    <div class="role-switch-child"><span class="template-block">
+    PLAN_IDLE()
+  </span></div>
+  </div>
+</div>
+
+<div class="switch-case">
+  <div class="switch-case-header">Case "busy":</div>
+  <div class="block-children">
+    <div class="role-switch-child">
+<div class="loop-block-inside-role">
+  <div class="loop-header">ForEach(task_i: tasks_for_agent):</div>
+  <div class="block-children">
+    <div class="role-loop-child"><span class="template-block">
+    PROCESS_TASK(
+<span class="context-var">
+  <span class="segment base">obs</span>.<span class="segment">agents[a]</span>.<span class="segment">in_progress[task_i]</span>
+</span>)
+  </span></div>
+  </div>
+</div></div>
+  </div>
+</div>
+  
+<div class="switch-default">
+  <div class="switch-default-header">Default:</div>
+  <div class="block-children">
+    <div class="role-switch-child"><span class="template-block">
+    UNKNOWN_STATUS()
+  </span></div>
+  </div>
+</div>
+</div></div>
+</div>
+
+<div class="loop-block-outside-role">
+  <div class="loop-header">ForEach(idx: all_agents):</div>
+  <div class="loop-children">
+    <div class="loop-child">
+<div class="role-message system">
+  <div class="role-message-header">Role: system</div>
+  <div class="role-body-block">
+<div class="conditional-block-inside-role">
+  <div class="conditional-header">If (agent_ready[idx] == true):</div>
+  <div class="block-children">
+    <div class="role-condition-child"><span class="func-block">
+    prepare_agent()
+  </span></div>
+  </div>
+
+  <div class="conditional-header">ElseIf (agent_ready[idx] == false):</div>
+  <div class="block-children">
+    <div class="role-condition-child"><span class="template-block">
+    SKIP_AGENT()
+  </span></div>
+  </div>
+
+  <div class="conditional-header">Else:</div>
+  <div class="block-children">
+    <div class="role-condition-child"><span class="template-block">
+    UNKNOWN_AGENT_STATE()
+  </span></div>
+  </div>
+</div></div>
+</div></div>
+  </div>
+</div>
+
+<div class="switch-block-outside-role">
+  <div class="switch-header">Switch(run_mode):</div>
+  
+<div class="switch-case">
+  <div class="switch-case-header">Case "simulate":</div>
+  <div class="block-children">
+    <div class="switch-child">
+<div class="role-message assistant">
+  <div class="role-message-header">Role: assistant</div>
+  <div class="role-body-block"><span class="func-block">
+    simulate_run()
+  </span></div>
+</div></div>
+  </div>
+</div>
+
+<div class="switch-case">
+  <div class="switch-case-header">Case "execute":</div>
+  <div class="block-children">
+    <div class="switch-child">
+<div class="role-message assistant">
+  <div class="role-message-header">Role: assistant</div>
+  <div class="role-body-block"><span class="func-block">
+    execute_plan()
+  </span></div>
+</div></div>
+  </div>
+</div>
+  
+<div class="switch-default">
+  <div class="switch-default-header">Default:</div>
+  <div class="block-children">
+    <div class="switch-child">
+<div class="role-message assistant">
+  <div class="role-message-header">Role: assistant</div>
+  <div class="role-body-block"><span class="template-block">
+    UNKNOWN_RUN_MODE()
+  </span></div>
+</div></div>
+  </div>
+</div>
+</div>
+</div>
+  </body>
+</html>

@@ -60,6 +60,17 @@ After running the command, open the provided local URL (usually http://localhost
 
 ---
 
+## Static HTML Generation (No Server)
+
+In addition to the interactive Vite-based viewer, the project supports a
+serverless static rendering mode using Bun.
+
+To generate a standalone HTML file:
+
+```bash
+npm run render:static -- output.html
+```
+
 ## Running Different Examples
 The rendered prompt is selected in:
 

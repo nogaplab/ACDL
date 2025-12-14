@@ -21,12 +21,24 @@ import {
 } from "./types/types";
 
 
-export function renderPrompt(prompt: Prompt): string {
+export function renderPrompt(
+  prompt: Prompt,
+  style: string = "default"
+): string {
   const titleHtml = renderPromptTitle(prompt.title);
   const bodyHtml  = renderPromptBody(prompt.body);
-  return `<div class="prompt-container">${titleHtml}${bodyHtml}</div>`;
-}
 
+  // For now, style is unused.
+  // In the future, it can control:
+  // - CSS class selection
+  // - layout variants
+  // - compact vs expanded rendering
+  return `
+<div class="prompt-container prompt-style-${style}">
+  ${titleHtml}
+  ${bodyHtml}
+</div>`;
+}
 
 /**
  * Helper: escape characters that are special in HTML.
@@ -39,122 +51,6 @@ function escapeHtml(text: string): string {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
-}
-
-/**
- * Top-level: render a full HTML document for a Prompt.
- */
-export function renderPromptToHtml(prompt: Prompt): string {
-  const titleHtml = renderPromptTitle(prompt.title);
-  const bodyHtml = renderPromptBody(prompt.body);
-
-  // This is the HTML *wrapper* (document structure + basic styling).
-  return `
-<!doctype html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <title>${escapeHtml(prompt.title.name)}</title>
-    <style>
-      body {
-        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        margin: 0;
-        padding: 1.5rem;
-        background: #f5f5f5;
-      }
-      .prompt-container {
-        max-width: 900px;
-        margin: 0 auto;
-        background: white;
-        border-radius: 12px;
-        padding: 1.5rem 2rem;
-        box-shadow: 0 4px 16px rgba(0,0,0,0.08);
-      }
-      .prompt-title {
-        border-bottom: 1px solid #ddd;
-        padding-bottom: 0.5rem;
-        margin-bottom: 1rem;
-      }
-      .prompt-title h1 {
-        margin: 0;
-        font-size: 1.5rem;
-      }
-      .prompt-title .indices {
-        font-size: 0.85rem;
-        color: #555;
-      }
-      .role-message {
-        border-radius: 8px;
-        padding: 0.75rem 1rem;
-        margin-bottom: 0.75rem;
-      }
-      .role-message.system {
-        background: #e0f0ff;
-      }
-      .role-message.user {
-        background: #fff0e0;
-      }
-      .role-message.assistant {
-        background: #e7ffe0;
-      }
-      .role-message-header {
-        font-weight: 600;
-        margin-bottom: 0.25rem;
-        font-size: 0.9rem;
-      }
-      .role-body-block {
-        margin-left: 0.75rem;
-        margin-top: 0.25rem;
-      }
-      .template-block {
-        font-family: monospace;
-        background: #f0f0f0;
-        padding: 0.25rem 0.5rem;
-        border-radius: 4px;
-        display: inline-block;
-      }
-      .context-var {
-        font-family: monospace;
-        color: #333;
-      }
-      .context-var .base {
-        font-weight: 600;
-      }
-      .context-var .path {
-        opacity: 0.8;
-      }
-      .foreach-block,
-      .match-block {
-        border-left: 3px solid #bbb;
-        margin: 0.4rem 0;
-        padding-left: 0.6rem;
-        font-family: monospace;
-        font-size: 0.9rem;
-      }
-      .foreach-header,
-      .match-header {
-        font-weight: 600;
-        margin-bottom: 0.25rem;
-      }
-      .block-children {
-        margin-left: 0.5rem;
-        margin-top: 0.2rem;
-      }
-      .comment {
-        font-size: 0.8rem;
-        color: #777;
-        font-style: italic;
-        margin-left: 0.5rem;
-      }
-    </style>
-  </head>
-  <body>
-    <div class="prompt-container">
-      ${titleHtml}
-      ${bodyHtml}
-    </div>
-  </body>
-</html>`;
 }
 
 function renderPromptTitle(title: PromptTitle): string {
@@ -170,7 +66,6 @@ function renderPromptTitle(title: PromptTitle): string {
   <h1>${escapeHtml(title.name)}${indexSuffix}</h1>
 </div>`;
 }
-
 
 function renderBracketedIndex(index: Index): string {
   if (index.kind === "time-index") {

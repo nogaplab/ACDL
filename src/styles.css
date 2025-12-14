@@ -1,0 +1,219 @@
+/* ======================================================
+   GLOBAL STYLES
+   ====================================================== */
+
+body {
+  font-family: system-ui, sans-serif;
+  padding: 20px;
+  background: #f8f8f8;
+}
+
+.prompt-title h1 {
+  margin: 0;
+  font-size: 24px;
+}
+
+/* ======================================================
+   COLLAPSIBLE BLOCK HEADERS
+   ====================================================== */
+
+.collapsible-header {
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+  padding-left: 16px;
+}
+
+.collapsible-header::before {
+  content: "▼";
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-size: 12px;
+  color: #444;
+}
+
+.collapsed .collapsible-header::before {
+  content: "▶";
+}
+
+.collapsed .block-children {
+  display: none;
+}
+
+/* ======================================================
+   ROLE MESSAGE STYLING
+   ====================================================== */
+
+.role-message {
+  padding: 10px;
+  margin: 12px 0;
+  border-radius: 6px;
+  border-left: 5px solid #ccc;
+  background: #fff;
+}
+
+.role-message.system {
+  background: #e4f0ff;
+  border-color: #7ab4ff;
+}
+
+.role-message.user {
+  background: #fff2e4;
+  border-color: #ffb47a;
+}
+
+.role-message.assistant {
+  background: #e7ffe4;
+  border-color: #71d86d;
+}
+
+.role-message-header {
+  font-weight: bold;
+  margin-bottom: 6px;
+  font-size: 14px;
+}
+
+.role-body-block {
+  margin-left: 15px;
+  margin-top: 4px;
+}
+
+/* ======================================================
+   TEMPLATE, FUNC, CONTEXT VAR
+   ====================================================== */
+
+.template-block {
+  background: #eee;
+  padding: 2px 5px;
+  border-radius: 4px;
+  font-family: monospace;
+  display: inline-block;
+}
+
+.func-block {
+  background: #f0e9ff;
+  padding: 2px 5px;
+  border-radius: 4px;
+  font-family: monospace;
+  display: inline-block;
+}
+
+.context-var {
+  background: #fff8cc;
+  padding: 2px 5px;
+  border-radius: 4px;
+  font-family: monospace;
+  display: inline-block;
+}
+
+.time-index {
+  color: #0066cc;
+  font-family: monospace;
+}
+
+.other-index {
+  color: #444;
+  font-family: monospace;
+}
+
+/* ======================================================
+   LOOP BLOCKS
+   ====================================================== */
+
+.loop-block-outside-role,
+.loop-block-inside-role {
+  border-left: 3px solid #aaa;
+  padding-left: 10px;
+  margin: 14px 0;
+  font-family: monospace;
+}
+
+.loop-header {
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+
+/* ======================================================
+   SWITCH BLOCKS
+   ====================================================== */
+
+.switch-block-outside-role,
+.switch-block-inside-role {
+  border-left: 3px solid #777;
+  padding-left: 10px;
+  margin: 14px 0;
+  font-family: monospace;
+}
+
+.switch-header {
+  font-weight: bold;
+  margin-bottom: 6px;
+}
+
+.switch-case-header,
+.switch-default-header {
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+
+/* ======================================================
+   CONDITIONAL BLOCKS
+   ====================================================== */
+
+.conditional-block-outside-role,
+.conditional-block-inside-role {
+  border-left: 3px solid #555;
+  padding-left: 10px;
+  margin: 14px 0;
+  font-family: monospace;
+}
+
+.conditional-header {
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+
+/* ======================================================
+   BLOCK CHILDREN INDENTATION
+   ====================================================== */
+
+.block-children {
+  margin-left: 15px;
+}
+
+.conditional-child,
+.role-condition-child,
+.switch-child,
+.role-switch-child,
+.loop-child,
+.role-loop-child {
+  margin-left: 12px;
+}
+
+/* ======================================================
+   ERROR BLOCK
+   ====================================================== */
+
+.error-block {
+  background: #ffe6e6;
+  border: 1px solid #ff5c5c;
+  padding: 8px;
+  border-radius: 6px;
+  margin: 10px 0;
+}
+
+.error-title {
+  font-weight: bold;
+  color: #b30000;
+  margin-bottom: 4px;
+}
+
+.error-json {
+  background: #fff0f0;
+  padding: 6px;
+  border-radius: 4px;
+  white-space: pre-wrap;
+  font-size: 13px;
+  overflow-x: auto;
+}
