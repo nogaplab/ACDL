@@ -21,7 +21,7 @@ export type TimeIndex = {
 }
 
 export type OtherIndex = {
-  kind: "non-time-index";
+  kind: "other-index";
   name: string;
 }
 
@@ -49,14 +49,15 @@ export type TextArgs = ContextVar | TimeIndex | Func;
 export type Func = {
     kind: "function";
     name: FuncName;
-    arguments: Array<Func|ContextVar|TimeIndex>; 
+    arguments: Array<TextArgs>; 
 }
 
 export type FuncName = string; // Must be CamelCase.
 
 export type Template = {
+  kind: "template";
   name: string;
-  arguments: Array<Func|ContextVar|TimeIndex>;
+  arguments: Array<TextArgs>;
   comment?: string;
 }
 
@@ -94,27 +95,27 @@ export type ConditionalBlockOutsideRole = {
 };
 
 export type SwitchBlockOutsideRole = {
-  kind: "switch-block";
+  kind: "switch-block-outside-role";
   expression: string; 
   cases: Array<CaseBlockOutsideRole>;
   defaultCase?: DefaultCaseBlockOutsideRole;
 };
 
 export type CaseBlockOutsideRole = {
-  kind: "case";
+  kind: "case-block-outside-role";
   match: string;
   body: Array<PromptBlock>;
 };
 
 export type DefaultCaseBlockOutsideRole = {
-  kind: "default";
+  kind: "default-case-block-outside-role";
   body: Array<PromptBlock>;
 };
 
 
 // Inside Role Building Blocks
 
-export type RoleBuildingBlock = ConditionalBlockInsideRole|LoopBlockInsideRole|SwitchBlockInsideRole|Template;
+export type RoleBuildingBlock = ConditionalBlockInsideRole|LoopBlockInsideRole|SwitchBlockInsideRole|Template|ContextVar|Func;
 
 export type LoopBlockInsideRole = {
   kind: "loop-block-inside-role";
@@ -129,7 +130,7 @@ export type Iterable = {
 }
 
 export type ConditionalBlockInsideRole = {
-  kind: "conditional-block-outside-role";
+  kind: "conditional-block-inside-role";
   Ifcondition: string;
   IfBody: Array<RoleBuildingBlock>;
   elseif: Array<string>;
@@ -138,19 +139,19 @@ export type ConditionalBlockInsideRole = {
 };
 
 export type SwitchBlockInsideRole = {
-  kind: "switch-block";
+  kind: "switch-block-inside-role";
   expression: string; // what type is this? some variable whose value needs to match one of the cases
   cases: Array<CaseBlockInsideRole>;
   defaultCase?: DefaultCaseBlockInsideRole;
 };
 
 export type CaseBlockInsideRole = {
-  kind: "case";
+  kind: "case-block-inside-role";
   match: string;
   body: Array<RoleBuildingBlock>;
 };
 
 export type DefaultCaseBlockInsideRole = {
-  kind: "default";
+  kind: "default-case-block-inside-role";
   body: Array<RoleBuildingBlock>;
 };

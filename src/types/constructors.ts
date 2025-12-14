@@ -1,4 +1,27 @@
-import { Prompt, PromptTitle, Index, TimeIndex, OtherIndex, PromptBody, RoleMessage, ContextVar, PathDesc, Func, Template, LoopBlockOutsideRole, ConditionalBlockOutsideRole, SwitchBlockOutsideRole, CaseBlockOutsideRole, DefaultCaseBlockOutsideRole, LoopBlockInsideRole, ConditionalBlockInsideRole, SwitchBlockInsideRole, CaseBlockInsideRole, DefaultCaseBlockInsideRole } from "./types";
+import { 
+  Prompt, 
+  PromptTitle, 
+  Index, 
+  TimeIndex, 
+  OtherIndex, 
+  PromptBody, 
+  RoleMessage, 
+  ContextVar, 
+  PathDesc, 
+  Func, 
+  Template, 
+  LoopBlockOutsideRole, 
+  ConditionalBlockOutsideRole, 
+  SwitchBlockOutsideRole, 
+  CaseBlockOutsideRole, 
+  DefaultCaseBlockOutsideRole, 
+  LoopBlockInsideRole, 
+  ConditionalBlockInsideRole, 
+  SwitchBlockInsideRole, 
+  CaseBlockInsideRole, 
+  DefaultCaseBlockInsideRole,
+  Iterable
+} from "./types.js";
 
 
 
@@ -17,7 +40,7 @@ export function promptTitle(params: Omit<PromptTitle, "kind">): PromptTitle {
 }
 
 export function index(kind: "time-index", name: string): TimeIndex;
-export function index(kind: "non-time-index", name: string): OtherIndex;
+export function index(kind: "other-index", name: string): OtherIndex;
 
 export function index(kind: any, name: string): Index {
   return { kind, name };
@@ -28,7 +51,7 @@ export function timeIndex(params: Omit<TimeIndex, "kind">): TimeIndex {
 }
 
 export function otherIndex(params: Omit<OtherIndex, "kind">): OtherIndex {
-  return { ...params, kind: "non-time-index" };
+  return { ...params, kind: "other-index" };
 }
 
 export function promptBody(params: Omit<PromptBody, "kind">): PromptBody {
@@ -95,3 +118,6 @@ export function defaultCaseBlockInsideRole(params: Omit<DefaultCaseBlockInsideRo
     return { ...params, kind: "default-case-block-inside-role" };
 }
 
+export function Iterable(params: Omit<Iterable, "kind">): Iterable {
+  return {... params, kind: "iterable" };
+}

@@ -1,4 +1,12 @@
-import { exampleAst } from "./types/ast";
+import { examplePrompt } from "./example.js";
+import { renderPrompt } from "./renderPrompt.js";
+import { examplePrompt3 } from "./agentPlanner.js";
+import { examplePrompt2 } from "./DialogueContextBuilder.js";
 
-console.log("PDDL TypeScript environment is running.");
-console.log("Example AST:", exampleAst);
+
+export function runRenderer() {
+    console.log("Rendered Prompt:");
+    console.log("=====================================");   
+    console.log()
+  return renderPrompt(examplePrompt2);
+}
