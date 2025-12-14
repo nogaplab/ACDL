@@ -225,12 +225,14 @@ function renderTextArgs(arg: any): string {
 function renderTemplateBlock(block: Template): string {
   const args = block.arguments ?? [];
 
-  // Correct: render each argument using renderTextArgs
-  const argsText = args.map(renderTextArgs).join(", ");
+  const argsText =
+    args.length > 0
+      ? `(${args.map(renderTextArgs).join(", ")})`
+      : "";
 
-  const core = `<span class="template-block">
-    ${escapeHtml(block.name)}(${argsText})
-  </span>`;
+  const core = `<span class="template-block">${escapeHtml(
+    block.name
+  )}${argsText}</span>`;
 
   if (block.comment) {
     return `${core}<span class="comment"> // ${escapeHtml(block.comment)}</span>`;
@@ -238,6 +240,7 @@ function renderTemplateBlock(block: Template): string {
 
   return core;
 }
+
 
 
 /**
