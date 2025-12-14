@@ -68,9 +68,7 @@ src/main.ts
 ```
 
 Example:
-
 ```ts
-Copy code
 import { examplePrompt } from "./example";
 import { renderPrompt } from "./renderPrompt";
 
