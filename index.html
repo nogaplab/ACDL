@@ -240,24 +240,29 @@
   <h2>Prompt Renderer Output</h2>
   <div id="output"></div>
 
-  <script type="module">
-    import { runRenderer } from "./dist/src/main.js";
+<script type="module">
+  import { runRenderer } from "/src/main.ts";
 
-    const html = runRenderer();
-    document.getElementById("output").innerHTML = html;
+  const html = runRenderer();
 
-    // enable collapsible behavior
-    document.querySelectorAll(
-      ".loop-header, .switch-header, .conditional-header, .role-message-header"
-    ).forEach(header => {
-      const container = header.parentElement;
-      header.classList.add("collapsible-header");
+  const output = document.getElementById("output");
+  if (output) {
+    output.innerHTML = html;
+  }
 
-      header.addEventListener("click", () => {
-        container.classList.toggle("collapsed");
-      });
+  // enable collapsible behavior
+  document.querySelectorAll(
+    ".loop-header, .switch-header, .conditional-header, .role-message-header"
+  ).forEach(header => {
+    const container = header.parentElement;
+    header.classList.add("collapsible-header");
+
+    header.addEventListener("click", () => {
+      container.classList.toggle("collapsed");
     });
-  </script>
+  });
+</script>
+
 
 </body>
 </html>

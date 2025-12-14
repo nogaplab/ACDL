@@ -5,7 +5,7 @@ import {
   conditionalBlockInsideRole, switchBlockOutsideRole,
   caseBlockOutsideRole, defaultCaseBlockOutsideRole, Iterable,
   otherIndex, timeIndex,
-} from "./types/constructors.js";
+} from "./types/constructors";
 
 
 // --- DUMMY PROMPT EXAMPLE ---

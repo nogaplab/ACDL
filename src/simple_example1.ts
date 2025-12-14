@@ -1,5 +1,5 @@
 import {prompt, promptTitle, promptBody, roleMessage, template, contextVar, pathDesc, index} from "./types/constructors";
-import {Prompt} from "./types/types.js";
+import {Prompt} from "./types/types";
 
 const p: Prompt = prompt({
   title: promptTitle({

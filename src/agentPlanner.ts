@@ -6,7 +6,7 @@ import {
   caseBlockInsideRole, defaultCaseBlockInsideRole,
   switchBlockOutsideRole, caseBlockOutsideRole, defaultCaseBlockOutsideRole,
   otherIndex, timeIndex, Iterable
-} from "./types/constructors.js";
+} from "./types/constructors";
 
 export const examplePrompt3 = prompt({
   title: promptTitle({

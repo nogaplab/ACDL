@@ -18,7 +18,7 @@ import {
   SwitchBlockInsideRole, 
   CaseBlockInsideRole, 
   PromptBlock
-} from "./types/types.js";
+} from "./types/types";
 
 
 export function renderPrompt(prompt: Prompt): string {

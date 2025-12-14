@@ -1,7 +1,7 @@
-import { examplePrompt } from "./example.js";
-import { renderPrompt } from "./renderPrompt.js";
-import { examplePrompt3 } from "./agentPlanner.js";
-import { examplePrompt2 } from "./DialogueContextBuilder.js";
+import { examplePrompt } from "./example";
+import { renderPrompt } from "./renderPrompt";
+import { examplePrompt3 } from "./agentPlanner";
+import { examplePrompt2 } from "./DialogueContextBuilder";
 
 
 export function runRenderer() {

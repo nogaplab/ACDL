@@ -5,7 +5,7 @@ import {
   conditionalBlockInsideRole, conditionalBlockOutsideRole,
   switchBlockOutsideRole, caseBlockOutsideRole, defaultCaseBlockOutsideRole,
   otherIndex, timeIndex, Iterable
-} from "./types/constructors.js";
+} from "./types/constructors";
 
 
 export const examplePrompt2 = prompt({
