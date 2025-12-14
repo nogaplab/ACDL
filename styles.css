@@ -13,8 +13,10 @@ body {
   font-size: 24px;
 }
 
+
 /* ======================================================
    COLLAPSIBLE BLOCK HEADERS
+   (STRUCTURE — NOT BOLD)
    ====================================================== */
 
 .collapsible-header {
@@ -22,6 +24,8 @@ body {
   user-select: none;
   position: relative;
   padding-left: 16px;
+  font-weight: normal;
+  opacity: 0.8;
 }
 
 .collapsible-header::before {
@@ -40,6 +44,7 @@ body {
 .collapsed .block-children {
   display: none;
 }
+
 
 /* ======================================================
    ROLE MESSAGE STYLING
@@ -68,10 +73,12 @@ body {
   border-color: #71d86d;
 }
 
+/* Role header = STRUCTURE */
 .role-message-header {
-  font-weight: bold;
+  font-weight: normal;
   margin-bottom: 6px;
   font-size: 14px;
+  opacity: 0.8;
 }
 
 .role-body-block {
@@ -79,11 +86,15 @@ body {
   margin-top: 4px;
 }
 
+
 /* ======================================================
    TEMPLATE, FUNC, CONTEXT VAR
    ====================================================== */
 
-.template-block {
+.template-block,
+.func-block,
+.context-var {
+  font-weight: bold;
   background: #eee;
   padding: 2px 5px;
   border-radius: 4px;
@@ -93,29 +104,27 @@ body {
 
 .func-block {
   background: #f0e9ff;
-  padding: 2px 5px;
-  border-radius: 4px;
-  font-family: monospace;
-  display: inline-block;
 }
 
 .context-var {
   background: #fff8cc;
-  padding: 2px 5px;
-  border-radius: 4px;
+}
+
+/* Indices are NOT semantic content */
+.time-index,
+.other-index {
+  font-weight: normal;
   font-family: monospace;
-  display: inline-block;
 }
 
 .time-index {
   color: #0066cc;
-  font-family: monospace;
 }
 
 .other-index {
   color: #444;
-  font-family: monospace;
 }
+
 
 /* ======================================================
    LOOP BLOCKS
@@ -130,9 +139,11 @@ body {
 }
 
 .loop-header {
-  font-weight: bold;
+  font-weight: normal;
   margin-bottom: 4px;
+  opacity: 0.8;
 }
+
 
 /* ======================================================
    SWITCH BLOCKS
@@ -146,16 +157,14 @@ body {
   font-family: monospace;
 }
 
-.switch-header {
-  font-weight: bold;
-  margin-bottom: 6px;
-}
-
+.switch-header,
 .switch-case-header,
 .switch-default-header {
-  font-weight: bold;
+  font-weight: normal;
   margin-bottom: 4px;
+  opacity: 0.8;
 }
+
 
 /* ======================================================
    CONDITIONAL BLOCKS
@@ -170,9 +179,11 @@ body {
 }
 
 .conditional-header {
-  font-weight: bold;
+  font-weight: normal;
   margin-bottom: 4px;
+  opacity: 0.8;
 }
+
 
 /* ======================================================
    BLOCK CHILDREN INDENTATION
@@ -190,6 +201,7 @@ body {
 .role-loop-child {
   margin-left: 12px;
 }
+
 
 /* ======================================================
    ERROR BLOCK
