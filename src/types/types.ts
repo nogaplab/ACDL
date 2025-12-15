@@ -50,6 +50,7 @@ export type Func = {
     kind: "function";
     name: FuncName;
     arguments: Array<TextArgs>; 
+    indices?: Array<OtherIndex>;
 }
 
 export type FuncName = string; // Must be CamelCase.

@@ -174,13 +174,24 @@ function renderRoleBuildingBlock(block: RoleBuildingBlock): string {
  *    can be styled differently from templates, context vars, etc.
  */
 function renderFuncBlock(block: Func): string {
-  const args = block.arguments ?? [];
-  const argsText = args.map(renderTextArgs).join(", ");
+  const argsText = (block.arguments ?? [])
+    .map(renderTextArgs)
+    .join(", ");
 
-  return `<span class="func-block">
-    ${escapeHtml(block.name)}(${argsText})
-  </span>`;
+  const resultIndices =
+    block.indices && block.indices.length > 0
+      ? block.indices.map(renderBracketedIndex).map(i => `[${i}]`).join("")
+      : "";
+
+  return `
+    <span class="func-block">
+      <span class="func-name">${escapeHtml(block.name)}</span>
+      <span class="func-parens">(</span>${argsText}<span class="func-parens">)</span>
+      ${resultIndices}
+    </span>
+  `;
 }
+
 
 
 function renderTextArgs(arg: any): string {

@@ -103,8 +103,18 @@ body {
 }
 
 .func-block {
-  background: #f0e9ff;
+  background: none;
+  padding: 0;
+  border-radius: 0;
+  font-weight: bold;
+  display: inline;
 }
+
+.func-block .other-index {
+  font-weight: normal;
+  opacity: 0.85;
+}
+
 
 .context-var {
   background: #fff8cc;
