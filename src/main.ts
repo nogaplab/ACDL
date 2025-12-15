@@ -18,7 +18,7 @@ export function runRenderer(exampleNames: string[] = ["example1"]): void {
       }
       return renderPrompt(prompt);
     })
-    .join("");
+    .join("/n/n");
 
   output.innerHTML = html;
   enableCollapsibleBlocks();
