@@ -17,8 +17,25 @@ import {
   ConditionalBlockInsideRole, 
   SwitchBlockInsideRole, 
   CaseBlockInsideRole, 
-  PromptBlock
+  PromptBlock,
+  TextArgs
 } from "./types/types";
+
+
+function wrapBlock(
+  cls: string,
+  headerHtml: string,
+  bodyHtml: string
+): string {
+  return `
+<div class="${cls}">
+  <div class="${cls}-header">${headerHtml}</div>
+  <div class="block-children">
+    ${bodyHtml}
+  </div>
+</div>`;
+}
+
 
 
 export function renderPrompt(
@@ -54,12 +71,10 @@ function escapeHtml(text: string): string {
 }
 
 function renderPromptTitle(title: PromptTitle): string {
-  const indices = title.indices ?? [];
+  const indices = title.indices;
 
   // Build something like:  prompt[@t][agent_name]
-  const indexSuffix = indices
-    .map(renderBracketedIndex)    // each becomes [@t] or [agent_name]
-    .join("");
+  const indexSuffix = renderIndexList(title.indices);
 
   return `
 <div class="prompt-title">
@@ -67,13 +82,18 @@ function renderPromptTitle(title: PromptTitle): string {
 </div>`;
 }
 
-function renderBracketedIndex(index: Index): string {
-  if (index.kind === "time-index") {
-    return `[@${escapeHtml(index.name)}]`;
-  }
-
-  return `[${escapeHtml(index.name)}]`;
+function renderIndexValue(index: Index): string {
+  return index.kind === "time-index"
+    ? `@${escapeHtml(index.name)}`
+    : escapeHtml(index.name);
 }
+
+function renderIndexList(indices: Index[]): string {
+  if (indices.length === 0) return "";
+  return `[${indices.map(renderIndexValue).join(", ")}]`;
+}
+
+
 
 /**
  * Render the body of the prompt: an ordered list of blocks.
@@ -155,8 +175,8 @@ function renderRoleBuildingBlock(block: RoleBuildingBlock): string {
     case "switch-block-inside-role":
       return renderSwitchInsideRole(block);
 
-    default:
-      return `<code>Error! unknown or disallowed role block</code>`;
+  //  default:
+  //    return `<code>Error! unknown or disallowed role block</code>`;
   }
 }
 
@@ -174,14 +194,13 @@ function renderRoleBuildingBlock(block: RoleBuildingBlock): string {
  *    can be styled differently from templates, context vars, etc.
  */
 function renderFuncBlock(block: Func): string {
-  const argsText = (block.arguments ?? [])
+  const argsText = block.arguments
     .map(renderTextArgs)
     .join(", ");
 
   const resultIndices =
     block.indices && block.indices.length > 0
-      ? block.indices.map(renderBracketedIndex).map(i => `[${i}]`).join("")
-      : "";
+      ? renderIndexList(block.indices) : "";
 
   return `
     <span class="func-block">
@@ -194,7 +213,7 @@ function renderFuncBlock(block: Func): string {
 
 
 
-function renderTextArgs(arg: any): string {
+function renderTextArgs(arg: TextArgs): string {
   switch (arg.kind) {
 
     case "context-var":
@@ -206,9 +225,6 @@ function renderTextArgs(arg: any): string {
     case "time-index":
       // TimeIndex arguments are simple, just @name
       return `<span class="time-index">@${escapeHtml(arg.name)}</span>`;
-
-    default:
-      return `<span class="error-block">Error! Disallowed or unknown TextArg kind</span>`;
   }
 }
 
@@ -234,11 +250,10 @@ function renderTextArgs(arg: any): string {
  *    <span class="template-block">SETUP()</span><span class="comment"> // setup instructions</span>
  */
 function renderTemplateBlock(block: Template): string {
-  const args = block.arguments ?? [];
 
   const argsText =
-    args.length > 0
-      ? `(${args.map(renderTextArgs).join(", ")})`
+    block.arguments.length > 0
+      ? `(${block.arguments.map(renderTextArgs).join(", ")})`
       : "";
 
   const core = `<span class="template-block">${escapeHtml(
@@ -287,10 +302,9 @@ function renderContextVarBlock(block: ContextVar): string {
 
   // 1. Render the ROOT segment (obs, resp, mem, etc.)
   //    If there are indices on the root, append them directly.
-  const rootIndices = block.indices ?? [];
+  const rootIndices = block.indices;
   const rootIndexText = rootIndices.length > 0
-    ? rootIndices.map(renderBracketedIndex).join("")
-    : "";
+    ? renderIndexList(block.indices) : "";
 
   segments.push(
     `<span class="segment base">${escapeHtml(block.base)}${rootIndexText}</span>`
@@ -299,11 +313,10 @@ function renderContextVarBlock(block: ContextVar): string {
   // 2. Render every segment in the PathDesc chain.
   let current: PathDesc | undefined = block.path;
   while (current) {
-    const segIndices = current.indices ?? [];
+    const segIndices = current.indices;
     const segIndexText =
       segIndices.length > 0
-        ? segIndices.map(renderBracketedIndex).join("")
-        : "";
+        ? renderIndexList(current.indices): "";
 
     segments.push(
       `<span class="segment">${escapeHtml(current.base)}${segIndexText}</span>`
@@ -351,24 +364,21 @@ function renderContextVarBlock(block: ContextVar): string {
  *   - escapes all text safely
  */
 function renderLoopOutsideRole(block: LoopBlockOutsideRole): string {
-  const indexText = block.index.name;
-  const iterableText = block.iterable.value;
+  const header = `ForEach(${escapeHtml(block.index.name)}: ${escapeHtml(block.iterable.value)}):`;
 
-  const header = `ForEach(${escapeHtml(indexText)}: ${escapeHtml(iterableText)}):`;
-  const bodyHtml = (block.body ?? [])
-    .map((child: any) =>
+  const bodyHtml = block.body
+    .map(child =>
       `<div class="loop-child">${renderTopLevelBlock(child)}</div>`
     )
     .join("\n");
 
-  return `
-<div class="loop-block-outside-role">
-  <div class="loop-header">${header}</div>
-  <div class="loop-children">
-    ${bodyHtml}
-  </div>
-</div>`;
+  return wrapBlock(
+    "loop-block-outside-role",
+    header,
+    bodyHtml
+  );
 }
+
 
 
 /**
@@ -397,19 +407,13 @@ function renderLoopInsideRole(block: LoopBlockInsideRole): string {
   const iterableText = block.iterable.value;
 
   const header = `ForEach(${escapeHtml(indexText)}: ${escapeHtml(iterableText)}):`;
-  const bodyHtml = (block.body ?? [])
+  const bodyHtml = block.body
     .map((child: any) =>
       `<div class="role-loop-child">${renderRoleBuildingBlock(child)}</div>`
     )
     .join("\n");
 
-  return `
-<div class="loop-block-inside-role">
-  <div class="loop-header">${header}</div>
-  <div class="block-children">
-    ${bodyHtml}
-  </div>
-</div>`;
+  return wrapBlock("loop-block-inside-role", header, bodyHtml);
 }
 
 
@@ -439,49 +443,45 @@ function renderLoopInsideRole(block: LoopBlockInsideRole): string {
 function renderSwitchOutsideRole(block: SwitchBlockOutsideRole): string {
   const header = `Switch(${escapeHtml(block.expression)}):`;
 
-  const casesHtml = (block.cases ?? [])
+  const casesHtml = block.cases
     .map((c: CaseBlockOutsideRole) => {
-      const bodyHtml = (c.body ?? [])
-        .map((child: any) => 
+      const bodyHtml = c.body
+        .map(child =>
           `<div class="switch-child">${renderTopLevelBlock(child)}</div>`
         )
         .join("\n");
 
-      return `
-<div class="switch-case">
-  <div class="switch-case-header">Case "${escapeHtml(c.match)}":</div>
-  <div class="block-children">
-    ${bodyHtml}
-  </div>
-</div>`;
+      return wrapBlock(
+        "switch-case",
+        `Case "${escapeHtml(c.match)}":`,
+        bodyHtml
+      );
     })
     .join("\n");
 
   const defaultHtml = block.defaultCase
     ? (() => {
-        const bodyHtml = (block.defaultCase!.body ?? [])
-          .map((child: any) =>
+        const bodyHtml = block.defaultCase.body
+          .map(child =>
             `<div class="switch-child">${renderTopLevelBlock(child)}</div>`
           )
           .join("\n");
 
-        return `
-<div class="switch-default">
-  <div class="switch-default-header">Default:</div>
-  <div class="block-children">
-    ${bodyHtml}
-  </div>
-</div>`;
+        return wrapBlock(
+          "switch-default",
+          "Default:",
+          bodyHtml
+        );
       })()
     : "";
 
-  return `
-<div class="switch-block-outside-role">
-  <div class="switch-header">${header}</div>
-  ${casesHtml}
-  ${defaultHtml}
-</div>`;
+  return wrapBlock(
+    "switch-block-outside-role",
+    header,
+    `${casesHtml}${defaultHtml}`
+  );
 }
+
 
 
 /**
@@ -510,49 +510,45 @@ function renderSwitchOutsideRole(block: SwitchBlockOutsideRole): string {
 function renderSwitchInsideRole(block: SwitchBlockInsideRole): string {
   const header = `Switch(${escapeHtml(block.expression)}):`;
 
-  const casesHtml = (block.cases ?? [])
+  const casesHtml = block.cases
     .map((c: CaseBlockInsideRole) => {
-      const bodyHtml = (c.body ?? [])
-        .map((child: RoleBuildingBlock) =>
+      const bodyHtml = c.body
+        .map(child =>
           `<div class="role-switch-child">${renderRoleBuildingBlock(child)}</div>`
         )
         .join("\n");
 
-      return `
-<div class="switch-case">
-  <div class="switch-case-header">Case "${escapeHtml(c.match)}":</div>
-  <div class="block-children">
-    ${bodyHtml}
-  </div>
-</div>`;
+      return wrapBlock(
+        "switch-case",
+        `Case "${escapeHtml(c.match)}":`,
+        bodyHtml
+      );
     })
     .join("\n");
 
   const defaultHtml = block.defaultCase
     ? (() => {
-        const bodyHtml = (block.defaultCase!.body ?? [])
-          .map((child: RoleBuildingBlock) =>
+        const bodyHtml = block.defaultCase.body
+          .map(child =>
             `<div class="role-switch-child">${renderRoleBuildingBlock(child)}</div>`
           )
           .join("\n");
 
-        return `
-<div class="switch-default">
-  <div class="switch-default-header">Default:</div>
-  <div class="block-children">
-    ${bodyHtml}
-  </div>
-</div>`;
+        return wrapBlock(
+          "switch-default",
+          "Default:",
+          bodyHtml
+        );
       })()
     : "";
 
-  return `
-<div class="switch-block-inside-role">
-  <div class="switch-header">${header}</div>
-  ${casesHtml}
-  ${defaultHtml}
-</div>`;
+  return wrapBlock(
+    "switch-block-inside-role",
+    header,
+    `${casesHtml}${defaultHtml}`
+  );
 }
+
 
 
 /**
@@ -580,67 +576,52 @@ function renderSwitchInsideRole(block: SwitchBlockInsideRole): string {
  *   - elseBody?: RoleBuildingBlock[]
  */
 function renderConditionalInsideRole(block: ConditionalBlockInsideRole): string {
-  // --- IF ---
-  const ifHeader = `If (${escapeHtml(block.Ifcondition)}):`;
-  const ifBodyHtml = (block.IfBody ?? [])
-    .map((child: RoleBuildingBlock) =>
-      `<div class="role-condition-child">${renderRoleBuildingBlock(child)}</div>`
+  const renderBody = (body: RoleBuildingBlock[]) =>
+    body
+      .map(child =>
+        `<div class="role-condition-child">${renderRoleBuildingBlock(child)}</div>`
+      )
+      .join("\n");
+
+  const parts: string[] = [];
+
+  // IF
+  parts.push(
+    wrapBlock(
+      "conditional-section",
+      `If (${escapeHtml(block.Ifcondition)}):`,
+      renderBody(block.IfBody)
     )
-    .join("\n");
+  );
 
-  let fullHtml = `
-<div class="conditional-block-inside-role">
-  <div class="conditional-header">${ifHeader}</div>
-  <div class="block-children">
-    ${ifBodyHtml}
-  </div>
-`;
-
-  // --- ELSEIFs ---
-  const elseifConds = block.elseif ?? [];
-  const elseifBodies = block.elseifBody ?? [];
-
-  for (let i = 0; i < elseifConds.length; i++) {
-    const cond = elseifConds[i];
-    const body = elseifBodies[i] ?? [];
-
-    const elseifHeader = `ElseIf (${escapeHtml(cond)}):`;
-    const elseifBodyHtml = body
-      .map((child: RoleBuildingBlock) =>
-        `<div class="role-condition-child">${renderRoleBuildingBlock(child)}</div>`
+  // ELSEIFs
+  for (let i = 0; i < block.elseif.length; i++) {
+    parts.push(
+      wrapBlock(
+        "conditional-section",
+        `ElseIf (${escapeHtml(block.elseif[i])}):`,
+        renderBody(block.elseifBody[i])
       )
-      .join("\n");
-
-    fullHtml += `
-  <div class="conditional-header">${elseifHeader}</div>
-  <div class="block-children">
-    ${elseifBodyHtml}
-  </div>
-`;
+    );
   }
 
-  // --- ELSE ---
+  // ELSE
   if (block.elseBody && block.elseBody.length > 0) {
-    const elseHeader = `Else:`;
-    const elseBodyHtml = block.elseBody
-      .map((child: RoleBuildingBlock) =>
-        `<div class="role-condition-child">${renderRoleBuildingBlock(child)}</div>`
+    parts.push(
+      wrapBlock(
+        "conditional-section",
+        "Else:",
+        renderBody(block.elseBody)
       )
-      .join("\n");
-
-    fullHtml += `
-  <div class="conditional-header">${elseHeader}</div>
-  <div class="block-children">
-    ${elseBodyHtml}
-  </div>
-`;
+    );
   }
 
-  // Close wrapper
-  fullHtml += `</div>`;
-
-  return fullHtml;
+  return `
+<div class="conditional-block-inside-role">
+  ${parts.join("\n")}
+</div>`;
 }
+
 
 
 /**
@@ -673,64 +654,49 @@ function renderConditionalInsideRole(block: ConditionalBlockInsideRole): string 
  *   - elseBody?: PromptBlock[]
  */
 function renderConditionalOutsideRole(block: ConditionalBlockOutsideRole): string {
-  // --- IF ---
-  const ifHeader = `If (${escapeHtml(block.Ifcondition)}):`;
-  const ifBodyHtml = (block.IfBody ?? [])
-    .map((child: any /* PromptBlock */) =>
-      `<div class="conditional-child">${renderTopLevelBlock(child)}</div>`
+  const renderBody = (body: PromptBlock[]) =>
+    body
+      .map(child =>
+        `<div class="role-condition-child">${renderTopLevelBlock(child)}</div>`
+      )
+      .join("\n");
+
+  const parts: string[] = [];
+
+  // IF
+  parts.push(
+    wrapBlock(
+      "conditional-section",
+      `If (${escapeHtml(block.Ifcondition)}):`,
+      renderBody(block.IfBody)
     )
-    .join("\n");
+  );
 
-  let fullHtml = `
-<div class="conditional-block-outside-role">
-  <div class="conditional-header">${ifHeader}</div>
-  <div class="block-children">
-    ${ifBodyHtml}
-  </div>
-`;
-
-  // --- ELSEIFs ---
-  const elseifConds = block.elseif ?? [];
-  const elseifBodies = block.elseifBody ?? [];
-
-  for (let i = 0; i < elseifConds.length; i++) {
-    const cond = elseifConds[i];
-    const body = elseifBodies[i] ?? [];
-
-    const elseifHeader = `ElseIf (${escapeHtml(cond)}):`;
-    const elseifBodyHtml = body
-      .map((child: any /* PromptBlock */) =>
-        `<div class="conditional-child">${renderTopLevelBlock(child)}</div>`
+  // ELSEIFs
+  for (let i = 0; i < block.elseif.length; i++) {
+    parts.push(
+      wrapBlock(
+        "conditional-section",
+        `ElseIf (${escapeHtml(block.elseif[i])}):`,
+        renderBody(block.elseifBody[i])
       )
-      .join("\n");
-
-    fullHtml += `
-  <div class="conditional-header">${elseifHeader}</div>
-  <div class="block-children">
-    ${elseifBodyHtml}
-  </div>
-`;
+    );
   }
 
-  // --- ELSE ---
+  // ELSE
   if (block.elseBody && block.elseBody.length > 0) {
-    const elseHeader = `Else:`;
-    const elseBodyHtml = block.elseBody
-      .map((child: any /* PromptBlock */) =>
-        `<div class="conditional-child">${renderTopLevelBlock(child)}</div>`
+    parts.push(
+      wrapBlock(
+        "conditional-section",
+        "Else:",
+        renderBody(block.elseBody)
       )
-      .join("\n");
-
-    fullHtml += `
-  <div class="conditional-header">${elseHeader}</div>
-  <div class="block-children">
-    ${elseBodyHtml}
-  </div>
-`;
+    );
   }
 
-  // close outer wrapper
-  fullHtml += `</div>`;
-
-  return fullHtml;
+  return `
+<div class="conditional-block-inside-role">
+  ${parts.join("\n")}
+</div>`;
 }
+

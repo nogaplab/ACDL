@@ -1,7 +1,7 @@
 // src/main.ts
 import { renderPrompt } from "./renderPrompt";
 import { enableCollapsibleBlocks } from "./ui";
-import { EXAMPLES } from "./examples";
+import { EXAMPLES } from "./examples/index";
 
 /**
  * Render selected examples into the page.
@@ -18,7 +18,7 @@ export function runRenderer(exampleNames: string[] = ["example1"]): void {
       }
       return renderPrompt(prompt);
     })
-    .join("/n/n");
+    .join("\n\n");
 
   output.innerHTML = html;
   enableCollapsibleBlocks();

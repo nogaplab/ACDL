@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<!-- saved from url=(0032)http://localhost:5173/index.html -->
+<html style="--vsc-domain: &quot;localhost&quot;;"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <script type="module" src="./examples for gal_files/client"></script>
+
+  
+  <title>Prompt Renderer</title>
+
+  <link rel="stylesheet" href="./examples for gal_files/styles.css">
+<style type="text/css" id="tts-styles">[data-tts-block-id].tts-active {background: rgba(206, 225, 255, 0.9) !important;} [data-tts-sentence-id].tts-active {background: rgba(0, 89, 191, 0.7) !important;}</style></head>
+
+<body>
+  <h2>Prompt Renderer Output</h2>
+  <div id="output">
+<div class="prompt-container prompt-style-default">
+  
+<div class="prompt-title">
+  <h1>DialogReasoningPrompt[@t, agent_name]</h1>
+</div>
+  
+<div class="role-message user">
+  <div class="role-message-header collapsible-header">Role: user</div>
+  <div class="role-body-block">
+<span class="context-var">
+  <span class="segment base">mem</span>.<span class="segment">agent_desc</span>
+</span></div>
+</div>
+
+<div class="role-message user">
+  <div class="role-message-header collapsible-header">Role: user</div>
+  <div class="role-body-block">
+<span class="context-var">
+  <span class="segment base">obs</span>.<span class="segment">datetime[@t]</span>
+</span></div>
+<div class="role-body-block">
+<span class="context-var">
+  <span class="segment base">mem</span>.<span class="segment">status[@t]</span>
+</span></div>
+<div class="role-body-block">
+<span class="context-var">
+  <span class="segment base">obs</span>.<span class="segment">general[@t]</span>
+</span></div>
+</div>
+
+<div class="role-message assistant">
+  <div class="role-message-header collapsible-header">Role: assistant</div>
+  <div class="role-body-block">
+    <span class="func-block">
+      <span class="func-name">get_context_summary</span>
+      <span class="func-parens">(</span><span class="time-index">@t</span>, 
+<span class="context-var">
+  <span class="segment base">mem</span>.<span class="segment">agent_name</span>
+</span>, 
+    <span class="func-block">
+      <span class="func-name">get_topic</span>
+      <span class="func-parens">(</span><span class="func-parens">)</span>
+      
+    </span>
+  <span class="func-parens">)</span>
+      
+    </span>
+  </div>
+</div>
+
+<div class="loop-block-outside-role">
+  <div class="loop-block-outside-role-header">ForEach(i: t-k…t-1):</div>
+  <div class="block-children">
+    <div class="loop-child">
+<div class="role-message user">
+  <div class="role-message-header collapsible-header">Role: user</div>
+  <div class="role-body-block">
+<span class="context-var">
+  <span class="segment base">obs</span>.<span class="segment">agent_utterance[@i]</span>
+</span></div>
+</div></div>
+<div class="loop-child">
+<div class="role-message assistant">
+  <div class="role-message-header collapsible-header">Role: assistant</div>
+  <div class="role-body-block">
+<span class="context-var">
+  <span class="segment base">act</span>.<span class="segment">my_utterance[@i]</span>
+</span></div>
+</div></div>
+  </div>
+</div>
+
+<div class="loop-block-outside-role">
+  <div class="loop-block-outside-role-header">ForEach(agent_name: agent_names):</div>
+  <div class="block-children">
+    <div class="loop-child">
+<div class="role-message user">
+  <div class="role-message-header collapsible-header">Role: user</div>
+  <div class="role-body-block">
+<div class="conditional-block-inside-role">
+  
+<div class="conditional-section">
+  <div class="conditional-section-header">If (obs.in_dialog(agent_name)):</div>
+  <div class="block-children">
+    <div class="role-condition-child">
+    <span class="func-block">
+      <span class="func-name">get_dialog_history</span>
+      <span class="func-parens">(</span>
+<span class="context-var">
+  <span class="segment base">mem</span>.<span class="segment">agent_name</span>
+</span><span class="func-parens">)</span>
+      
+    </span>
+  </div>
+  </div>
+</div>
+</div></div>
+</div></div>
+  </div>
+</div>
+
+<div class="role-message system">
+  <div class="role-message-header collapsible-header">Role: system</div>
+  <div class="role-body-block"><span class="template-block">QUESTION</span><span class="comment"> // How would Eddy respond to John?</span></div>
+</div>
+</div>
+
+
+<div class="prompt-container prompt-style-default">
+  
+<div class="prompt-title">
+  <h1>TeamGamePrompt[@t]</h1>
+</div>
+  
+<div class="role-message system">
+  <div class="role-message-header collapsible-header">Role: system</div>
+  <div class="role-body-block"><span class="template-block">TASK_INTRO</span></div>
+<div class="role-body-block"><span class="template-block">MAP_DESCRIPTION</span></div>
+<div class="role-body-block"><span class="template-block">CHALLENGE</span></div>
+<div class="role-body-block"><span class="template-block">TOOLS</span></div>
+<div class="role-body-block"><span class="template-block">ACTIONS</span></div>
+<div class="role-body-block"><span class="template-block">COMMUNICATION_INSTRUCTIONS</span></div>
+<div class="role-body-block"><span class="template-block">OBSERVATION_INSTRUCTIONS</span></div>
+<div class="role-body-block"><span class="template-block">BELIEF_INTRO</span></div>
+<div class="role-body-block"><span class="template-block">ROLE</span></div>
+</div>
+
+<div class="role-message user">
+  <div class="role-message-header collapsible-header">Role: user</div>
+  <div class="role-body-block">
+<span class="context-var">
+  <span class="segment base">obs</span>.<span class="segment">round_number[@t]</span>
+</span></div>
+<div class="role-body-block">
+<span class="context-var">
+  <span class="segment base">obs</span>.<span class="segment">team_score[@t]</span>
+</span></div>
+<div class="role-body-block">
+<span class="context-var">
+  <span class="segment base">obs</span>.<span class="segment">general[@t]</span>
+</span></div>
+<div class="role-body-block">
+<div class="loop-block-inside-role">
+  <div class="loop-block-inside-role-header">ForEach(teammate: obs.teammates):</div>
+  <div class="block-children">
+    <div class="role-loop-child">
+<span class="context-var">
+  <span class="segment base">mem</span>.<span class="segment">teammate_location[@t, teammate]</span>
+</span></div>
+  </div>
+</div></div>
+<div class="role-body-block">
+<span class="context-var">
+  <span class="segment base">obs</span>.<span class="segment">room_connectivity</span>
+</span></div>
+<div class="role-body-block">
+<div class="loop-block-inside-role">
+  <div class="loop-block-inside-role-header">ForEach(bomb: bombs):</div>
+  <div class="block-children">
+    <div class="role-loop-child">
+<span class="context-var">
+  <span class="segment base">obs</span>.<span class="segment">bomb_location[@t, bomb]</span>
+</span></div>
+<div class="role-loop-child">
+<span class="context-var">
+  <span class="segment base">obs</span>.<span class="segment">bomb_details[@t, bomb]</span>
+</span></div>
+  </div>
+</div></div>
+<div class="role-body-block">
+<div class="loop-block-inside-role">
+  <div class="loop-block-inside-role-header">ForEach(agent: agents):</div>
+  <div class="block-children">
+    <div class="role-loop-child">
+<span class="context-var">
+  <span class="segment base">obs</span>.<span class="segment">agent_inventory[@t, agent]</span>
+</span></div>
+  </div>
+</div></div>
+<div class="role-body-block">
+<span class="context-var">
+  <span class="segment base">obs</span>.<span class="segment">available_actions[@t]</span>
+</span></div>
+</div>
+</div>
+
+
+<div class="prompt-container prompt-style-default">
+  
+<div class="prompt-title">
+  <h1>RAGRepairPrompt[@t]</h1>
+</div>
+  
+<div class="role-message system">
+  <div class="role-message-header collapsible-header">Role: system</div>
+  <div class="role-body-block"><span class="template-block">ROLE_DESCRIPTION</span><span class="comment"> // you are an assistant who’s job is…</span></div>
+</div>
+
+<div class="loop-block-outside-role">
+  <div class="loop-block-outside-role-header">ForEach(i: 1…t-1):</div>
+  <div class="block-children">
+    <div class="loop-child">
+<div class="role-message user">
+  <div class="role-message-header collapsible-header">Role: user</div>
+  <div class="role-body-block">
+<span class="context-var">
+  <span class="segment base">obs</span>.<span class="segment">user_input[i]</span>
+</span></div>
+</div></div>
+<div class="loop-child">
+<div class="role-message user">
+  <div class="role-message-header collapsible-header">Role: user</div>
+  <div class="role-body-block">
+<div class="loop-block-inside-role">
+  <div class="loop-block-inside-role-header">ForEach(k: 1…(mem.rag_resp[@i]).len()):</div>
+  <div class="block-children">
+    <div class="role-loop-child">
+<span class="context-var">
+  <span class="segment base">mem</span>.<span class="segment">rag_resp[i, k]</span>
+</span></div>
+  </div>
+</div></div>
+</div></div>
+<div class="loop-child">
+<div class="role-message assistant">
+  <div class="role-message-header collapsible-header">Role: assistant</div>
+  <div class="role-body-block">
+<span class="context-var">
+  <span class="segment base">resp</span>.<span class="segment">llm_text[i]</span>
+</span></div>
+</div></div>
+  </div>
+</div>
+
+<div class="role-message system">
+  <div class="role-message-header collapsible-header">Role: system</div>
+  <div class="role-body-block">
+<div class="conditional-block-inside-role">
+  
+<div class="conditional-section">
+  <div class="conditional-section-header">If (resp.llm_text[@t-1].len() &gt; num):</div>
+  <div class="block-children">
+    <div class="role-condition-child"><span class="template-block">LENGTH_INSTRUCTIONS</span><span class="comment"> // be more concise, previous reply was too long</span></div>
+  </div>
+</div>
+
+<div class="conditional-section">
+  <div class="conditional-section-header">ElseIf (parse_bad(obs.user_input[@t])):</div>
+  <div class="block-children">
+    <div class="role-condition-child"><span class="template-block">WRONG_INSTRUCTIONS</span><span class="comment"> // previous reply was wrong, fix it</span></div>
+  </div>
+</div>
+
+<div class="conditional-section">
+  <div class="conditional-section-header">ElseIf (parse_more(obs.user_input[@t])):</div>
+  <div class="block-children">
+    <div class="role-condition-child">
+<span class="context-var">
+  <span class="segment base">obs</span>.<span class="segment">user_input[@t]</span>
+</span></div>
+<div class="role-condition-child">
+<div class="loop-block-inside-role">
+  <div class="loop-block-inside-role-header">ForEach(i: 1…improve_rag_response(obs.user_input[@t]).len()):</div>
+  <div class="block-children">
+    <div class="role-loop-child">
+    <span class="func-block">
+      <span class="func-name">improve_rag_response</span>
+      <span class="func-parens">(</span>
+<span class="context-var">
+  <span class="segment base">obs</span>.<span class="segment">user_input[@t]</span>
+</span><span class="func-parens">)</span>
+      [i]
+    </span>
+  </div>
+  </div>
+</div></div>
+  </div>
+</div>
+
+<div class="conditional-section">
+  <div class="conditional-section-header">Else:</div>
+  <div class="block-children">
+    <div class="role-condition-child">
+<div class="loop-block-inside-role">
+  <div class="loop-block-inside-role-header">ForEach(i: 1…mem.rag_resp[@t].len()):</div>
+  <div class="block-children">
+    <div class="role-loop-child">
+<span class="context-var">
+  <span class="segment base">mem</span>.<span class="segment">rag_resp[@t, i]</span>
+</span></div>
+  </div>
+</div></div>
+  </div>
+</div>
+</div></div>
+</div>
+
+<div class="role-message system">
+  <div class="role-message-header collapsible-header">Role: system</div>
+  <div class="role-body-block"><span class="template-block">FINAL_INSTRUCTIONS</span><span class="comment"> // what to do next</span></div>
+</div>
+</div></div>
+
+  <script type="module" src="./examples for gal_files/index.html"></script>
+
+
+</body></html>

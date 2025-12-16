@@ -1,12 +1,15 @@
 import {
   prompt, promptTitle, promptBody,
   roleMessage, template, contextVar, pathDesc, func,
-  loopBlockInsideRole, loopBlockOutsideRole,
-  conditionalBlockInsideRole, Iterable,
+  loopBlockOutsideRole, conditionalBlockInsideRole, Iterable,
   timeIndex, otherIndex,
 } from "../types/constructors";
+import { Prompt } from "../types/types";
 
-export const dialogReasoningPrompt = prompt({
+
+
+// Example: Dialog Reasoning Prompt
+export const dialogReasoningPrompt: Prompt = prompt({
   title: promptTitle({
     name: "DialogReasoningPrompt",
     indices: [
@@ -24,7 +27,7 @@ export const dialogReasoningPrompt = prompt({
       // ─────────────────────────────────────────────
       //
       roleMessage({
-        role: "system",
+        role: "user",
         body: [
           contextVar({
             base: "mem",
@@ -159,7 +162,7 @@ export const dialogReasoningPrompt = prompt({
                     arguments: [
                       contextVar({ base: "mem", path: pathDesc({base:"agent_name", indices: [] }), indices: []})
                 ]})],
-                elseif: [""],
+                elseif: [],
                 elseifBody: [],
                 elseBody: []
               })
