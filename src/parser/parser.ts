@@ -34,7 +34,7 @@ export class Parser {
   private consume(type?: string, value?: string): Token {
     const tok = this.peek();
     if (type && tok.type !== type) {
-      throw new Error(`[${tok.line}:${tok.col}] Expected token type ${type}, got ${tok.type}`);
+      throw new Error(`[${tok.line}:${tok.col}] Expected token type ${type}, got ${tok.type} with value ${tok.value}`);
     }
     if (value && (tok as any).value !== value) {
       throw new Error(`[${tok.line}:${tok.col}] Expected value "${value}", got "${(tok as any).value}"`);
@@ -135,44 +135,71 @@ export class Parser {
     const val = tok.value;
 
     if (tok.type === "KEYWORD") {
+      // 1. Check for Control Flow
       if (val === "If") return this.parseConditionalInside();
       if (val === "ForEach") return this.parseLoopInside();
       if (val === "Switch") return this.parseSwitchInside();
       
+      // 2. Check for Context Namespaces
       const namespaces = ["obs", "mem", "act", "resp", "prompt"];
-      if (namespaces.includes(val as string)) return this.parseContextVar();
+      if (namespaces.includes(val as string)) {
+        return this.parseContextVar();
+      }
     }
 
-    // Role Message prefixes are disallowed here by the lack of an IDENT check
+    // 3. Handle Templates/Functions (IDENT)
     if (tok.type === "IDENT") return this.parseTemplateOrFunc();
 
-    throw new Error(`[${tok.line}:${tok.col}] Syntax Error: "${val}" is not allowed inside a Role Message.`);
+    throw new Error(`[${tok.line}:${tok.col}] Unexpected ${tok.type} (${val}) inside role.`);
   }
 
   /* ───────────────── Expressions & Shared Rules ───────────────── */
 
   private parseContextVar(): AST.ContextVar {
-    const base = this.consume("KEYWORD").value as AST.ContextBase;
+    console.log("parseContextVar called");
+    const baseTok = this.consume("KEYWORD"); 
+    console.log("baseTok consumed:", baseTok);
+    const base = baseTok.value as AST.ContextBase; 
+
     const indices = this.parseOptionalIndices();
-    let path: AST.PathDesc | undefined;
-    if (this.match("SYMBOL", ".")) path = this.parsePathDesc();
-    return Create.contextVar({ base, indices, path: path! });
+    
+    let path: AST.PathDesc;
+    this.consume("SYMBOL", ".")
+    path = this.parsePathDesc();
+    
+    return Create.contextVar({ base, indices, path });
   }
 
   private parsePathDesc(): AST.PathDesc {
-    const base = this.consume("IDENT").value as string;
+    console.log("parsePathDesc called");
+    const tok = this.peek();
+
+    if (tok.type !== "IDENT" && tok.type !== "KEYWORD") {
+        throw new Error(`[${tok.line}:${tok.col}] Expected identifier in path, got ${tok.type}`);
+    }
+
+    const base = this.consume().value as string;
+    console.log("base consumed for pathDesc:", base);
     const indices = this.parseOptionalIndices();
+    console.log("indices parsed for pathDesc:", indices);
     let next: AST.PathDesc | undefined;
-    if (this.match("SYMBOL", ".")) next = this.parsePathDesc();
+    if (this.match("SYMBOL", ".")) {
+      next = this.parsePathDesc();
+      console.log("next pathDesc parsed:", next);
+    } 
+    console.log("returning pathDesc");
     return Create.pathDesc({ base, indices, next });
   }
 
   private parseTemplateOrFunc(): AST.Template | AST.Func {
     const name = this.consume("IDENT").value as string;
-    this.consume("SYMBOL", "(");
-    const args = this.parseTextArgs();
-    this.consume("SYMBOL", ")");
-
+    const args: AST.TextArgs[] = [];
+    if (this.peek().value === "(") {
+      this.consume("SYMBOL", "(");
+      const args = this.parseTextArgs();
+      this.consume("SYMBOL", ")");
+    }
+    
     // Template logic: All caps or specifically handled
     if (name === name.toUpperCase()) {
       let comment = this.peek().type === "COMMENT" ? (this.consume("COMMENT").value as string) : undefined;
@@ -182,27 +209,43 @@ export class Parser {
   }
 
   private parseTextArgs(): AST.TextArgs[] {
-    const args: AST.TextArgs[] = [];
-    if (this.peek().value === ")") return args;
-    do {
-      const tok = this.peek();
-      if (this.match("SYMBOL", "@")) {
-        args.push(Create.timeIndex({ name: this.consume("IDENT").value as string }));
-      } else if (tok.type === "KEYWORD") {
-        args.push(this.parseContextVar());
-      } else {
+  const args: AST.TextArgs[] = [];
+  if (this.peek().value === ")") return args;
+
+  do {
+    console.log("parseTextArgs called");
+    const tok = this.peek();
+
+    if (this.match("SYMBOL", "@")) {
+      // Handles @t
+      args.push(Create.timeIndex({ name: this.consume("IDENT").value as string }));
+    } 
+    else if (tok.type === "KEYWORD" && ["obs", "mem", "act", "resp", "prompt"].includes(tok.value as string)) {
+      console.log("picked KEYWORD for contextVar");
+      args.push(this.parseContextVar());
+    } 
+    else if (tok.type === "IDENT") {
+      console.log("picked IDENT for template/func");
         args.push(this.parseTemplateOrFunc() as AST.Func);
       }
-    } while (this.match("SYMBOL", ","));
-    return args;
-  }
+    else {
+      throw new Error(`[${tok.line}:${tok.col}] Unexpected token in arguments: ${tok.type} (${tok.value})`);
+    }
+  } while (this.match("SYMBOL", ","));
+
+  return args;
+}
 
   private parseOptionalIndices(): AST.Index[] {
     const indices: AST.Index[] = [];
-    while (this.match("SYMBOL", "[")) {
+    console.log("parseOptionalIndices called");
+    if (this.match("SYMBOL", "[")){
       indices.push(this.parseIndex());
-      this.consume("SYMBOL", "]");
+      while (this.match("SYMBOL", ",")) {
+        indices.push(this.parseIndex());
+      }
     }
+    if (this.peek().value === "]") this.consume("SYMBOL", "]");
     return indices;
   }
 
@@ -225,7 +268,6 @@ export class Parser {
     let iter = "";
     while ((this.peek() as any).value !== ")") iter += (this.consume() as any).value + " ";
     this.consume("SYMBOL", ")");
-    this.consume("SYMBOL", ":");
     this.consume("SYMBOL", "{");
 
     const body: AST.PromptBlock[] = [];
@@ -239,11 +281,9 @@ export class Parser {
 
   private parseConditionalOutside(): AST.ConditionalBlockOutsideRole {
     this.consume("KEYWORD", "If");
-    this.consume("SYMBOL", "(");
     let cond = "";
-    while ((this.peek() as any).value !== ")") cond += (this.consume() as any).value;
+    while (this.peek().value !== ")") cond += (this.consume().value as string);
     this.consume("SYMBOL", ")");
-    this.consume("SYMBOL", ":");
     this.consume("SYMBOL", "{");
 
     const body: AST.PromptBlock[] = [];
@@ -261,7 +301,6 @@ export class Parser {
     let iter = "";
     while ((this.peek() as any).value !== ")") iter += (this.consume() as any).value;
     this.consume("SYMBOL", ")");
-    this.consume("SYMBOL", ":");
     this.consume("SYMBOL", "{");
 
     const body: AST.RoleBuildingBlock[] = [];
@@ -273,11 +312,9 @@ export class Parser {
 
   private parseConditionalInside(): AST.ConditionalBlockInsideRole {
     this.consume("KEYWORD", "If");
-    this.consume("SYMBOL", "(");
     let cond = "";
-    while ((this.peek() as any).value !== ")") cond += (this.consume() as any).value;
+    while (this.peek().value !== ")") cond += (this.consume().value as string);
     this.consume("SYMBOL", ")");
-    this.consume("SYMBOL", ":");
     this.consume("SYMBOL", "{");
 
     const body: AST.RoleBuildingBlock[] = [];

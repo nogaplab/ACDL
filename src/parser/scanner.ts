@@ -220,10 +220,7 @@ export class Scanner {
     }
 
     // ── Namespace keywords (must be followed by '.')
-    if (
-        NAMESPACE_KEYWORDS.has(value as NamespaceKeyword) &&
-        this.peek() === "."
-    ) {
+    if (NAMESPACE_KEYWORDS.has(value as NamespaceKeyword)) {
         return {
         type: "KEYWORD",
         value: value as NamespaceKeyword,

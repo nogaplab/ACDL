@@ -3,17 +3,61 @@
 <head>
   <meta charset="UTF-8" />
   <title>Prompt Renderer</title>
-
   <link rel="stylesheet" href="/styles.css" />
+  <style>
+    #drop-zone {
+      border: 3px dashed #4A90E2;
+      border-radius: 12px;
+      padding: 50px;
+      text-align: center;
+      margin: 20px auto;
+      max-width: 600px;
+      background: #f0f7ff;
+      color: #4A90E2;
+      font-family: sans-serif;
+      font-weight: bold;
+      transition: all 0.2s ease;
+      cursor: pointer; /* Indicates the whole area is interactive */
+    }
+    #drop-zone.hover { background: #d0e7ff; border-color: #007AFF; scale: 1.02; }
+    
+    /* Styling for the Browse Button */
+    .browse-btn {
+      display: inline-block;
+      margin-top: 15px;
+      padding: 10px 20px;
+      background-color: #4A90E2;
+      color: white;
+      border-radius: 6px;
+      text-decoration: none;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .browse-btn:hover { background-color: #357ABD; }
+
+    .error-msg { color: #b71c1c; background: #ffebee; border: 1px solid #ffcdd2; padding: 15px; margin-top: 20px; border-radius: 8px; font-family: monospace; }
+  </style>
 </head>
 
 <body>
-  <h2>Prompt Renderer Output</h2>
+  <label id="drop-zone" for="pddl-upload">
+    <div>Drop your .pddl file here to parse and visualize</div>
+    <div>or</div>
+    <div class="browse-btn">Browse Files</div>
+    
+    <input type="file" id="pddl-upload" accept=".pddl" style="display: none;" />
+  </label>
+
   <div id="output"></div>
 
   <script type="module">
-    import { runRenderer } from "/src/main.ts";
-    runRenderer(["genAgentsPrompt", "bombPrompt", "ragPrompt"]);
+    // Using the combined handler function name for clarity
+    import { initFileHandlers } from "/src/main-ui.ts";
+    
+    // Initialize both drag-and-drop and file explorer paths
+    document.addEventListener("DOMContentLoaded", () => {
+      initFileHandlers();
+    });
   </script>
 </body>
 </html>

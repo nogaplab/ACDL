@@ -211,3 +211,59 @@ body {
 .role-loop-child {
   margin-left: 12px;
 }
+
+
+/* ======================================================
+   UPLOAD ZONE STYLES
+   ====================================================== */
+
+.upload-container {
+  border: 2px dashed #ccc;
+  padding: 30px;
+  text-align: center;
+  margin: 20px 0;
+  transition: all 0.3s ease;
+}
+
+.upload-container.hover {
+  background-color: #f0f8ff;
+  border-color: #007bff;
+}
+
+.upload-button {
+  display: inline-block;
+  padding: 10px 20px;
+  background-color: #007bff;
+  color: white;
+  border-radius: 5px;
+  cursor: pointer;
+  margin-top: 10px;
+}
+
+.upload-button:hover {
+  background-color: #0056b3;
+}
+
+#drop-zone {
+  display: flex;            /* Fixes the collapsed layout shown in the image */
+  flex-direction: column;   /* Stacks text and button vertically */
+  align-items: center;      /* Centers items horizontally */
+  justify-content: center;  /* Centers items vertically */
+  border: 3px dashed #4A90E2;
+  border-radius: 12px;
+  padding: 50px;
+  margin: 20px auto;
+  max-width: 600px;
+  background: #f0f7ff;
+  color: #4A90E2;
+  font-family: sans-serif;
+  font-weight: bold;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+#drop-zone.hover { 
+  background: #d0e7ff; 
+  border-color: #007AFF; 
+  transform: scale(1.02); 
+}
