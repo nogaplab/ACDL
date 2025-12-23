@@ -11,7 +11,8 @@ export type ControlKeyword =
   | "Else"
   | "ForEach"
   | "Switch"
-  | "Case";
+  | "Case"
+  | "Default";
 
 export type Keyword = NamespaceKeyword | ControlKeyword;
 
@@ -28,6 +29,6 @@ export type Token =
   | { type: "NUMBER"; value: string; line: number; col: number }
   | { type: "SYMBOL"; value: string; line: number; col: number }
   | { type: "COMMENT"; value: string; line: number; col: number }
-  | { type: "EOF"; line: number; col: number }
+  | { type: "EOF"; value: null, line: number; col: number }
   | { type: "RANGE"; value: RangeSymbol; line: number; col: number }
   | { type: "OPERATOR"; value: Operator; line: number; col: number };

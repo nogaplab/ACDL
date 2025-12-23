@@ -4,7 +4,7 @@ import {
   loopBlockInsideRole, loopBlockOutsideRole,
   conditionalBlockInsideRole, Iterable,
   timeIndex, otherIndex,
-} from "../types/constructors";
+} from "../constructors";
 
 export const ragRepairPrompt = prompt({
   title: promptTitle({

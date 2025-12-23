@@ -47,7 +47,7 @@ export class Scanner {
   nextToken(): Token {
     this.skipWhitespace();
     if (this.isEOF()) {
-        return { type: "EOF", line: this.line, col: this.col };
+        return { type: "EOF", value: null, line: this.line, col: this.col };
     }
 
     const ch = this.peek();

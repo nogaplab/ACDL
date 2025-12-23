@@ -3,7 +3,7 @@ import {
   roleMessage, template, contextVar, pathDesc,
   loopBlockInsideRole, Iterable,
   timeIndex, otherIndex,
-} from "../types/constructors";
+} from "../constructors";
 
 export const teamGamePrompt = prompt({
   title: promptTitle({

@@ -10,5 +10,5 @@
     "esModuleInterop": true,
     "skipLibCheck": true
   },
-  "include": ["src", "types", "parser/lexer.ts", "parser/parser.ts"]
+  "include": ["src", "types", "src/parser/lexer.ts", "src/parser/parser.ts"]
 }

@@ -3,8 +3,8 @@ import {
   roleMessage, template, contextVar, pathDesc, func,
   loopBlockOutsideRole, conditionalBlockInsideRole, Iterable,
   timeIndex, otherIndex,
-} from "../types/constructors";
-import { Prompt } from "../types/types";
+} from "../constructors";
+import { Prompt } from "../types";
 
 
 

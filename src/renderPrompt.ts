@@ -19,7 +19,7 @@ import {
   CaseBlockInsideRole, 
   PromptBlock,
   TextArgs
-} from "./types/types";
+} from "./types";
 
 
 function wrapBlock(

@@ -1,5 +1,5 @@
-import {prompt, promptTitle, promptBody, roleMessage, template, contextVar, pathDesc, index} from "./types/constructors";
-import {Prompt} from "./types/types";
+import {prompt, promptTitle, promptBody, roleMessage, template, contextVar, pathDesc, index} from "../constructors";
+import {Prompt} from "../types";
 
 const p: Prompt = prompt({
   title: promptTitle({
@@ -30,7 +30,7 @@ const p: Prompt = prompt({
             indices: []
           })
         ]
-      }),
+      })
     ]
   })
 });

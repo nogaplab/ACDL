@@ -10,7 +10,7 @@ export type PromptTitle = {
   indices: Array<Index>;
 }
 
-type Role = "user" | "assistant" | "system";
+export type Role = "user" | "assistant" | "system";
 
 // Index types:
 export type Index = TimeIndex | OtherIndex;

@@ -21,7 +21,7 @@ import {
   CaseBlockInsideRole, 
   DefaultCaseBlockInsideRole,
   Iterable
-} from "./types.js";
+} from "./types";
 
 
 
