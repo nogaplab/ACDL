@@ -37,7 +37,6 @@ function wrapBlock(
 }
 
 
-
 export function renderPrompt(
   prompt: Prompt,
   style: string = "default"

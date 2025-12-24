@@ -2,6 +2,7 @@ import { Token, NamespaceKeyword, ControlKeyword, Operator} from "./tokens.js";
 
 /* ───────────────── keywords ───────────────── */
 
+// change the name to context var keywords
 const NAMESPACE_KEYWORDS = new Set<NamespaceKeyword>([
   "obs",
   "mem",

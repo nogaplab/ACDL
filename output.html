@@ -1,0 +1,389 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Static Prompt Export</title>
+    <style>
+        body { font-family: sans-serif; padding: 40px; background: #fafafa; }
+        .prompt-section { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 40px; }
+        .error-msg { color: #b71c1c; background: #ffebee; padding: 15px; border: 1px solid #ffcdd2; border-radius: 8px; font-family: monospace; }
+        /* ======================================================
+   GLOBAL STYLES
+   ====================================================== */
+
+body {
+  font-family: system-ui, sans-serif;
+  padding: 20px;
+  background: #f8f8f8;
+}
+
+.prompt-title h1 {
+  margin: 0;
+  font-size: 24px;
+}
+
+
+/* ======================================================
+   COLLAPSIBLE BLOCK HEADERS
+   (STRUCTURE — NOT BOLD)
+   ====================================================== */
+
+.collapsible-header {
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+  padding-left: 16px;
+  font-weight: normal;
+  opacity: 0.8;
+}
+
+.collapsible-header::before {
+  content: "▼";
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-size: 12px;
+  color: #444;
+}
+
+.collapsed .collapsible-header::before {
+  content: "▶";
+}
+
+.collapsed .block-children {
+  display: none;
+}
+
+
+/* ======================================================
+   ROLE MESSAGE STYLING
+   ====================================================== */
+
+.role-message {
+  padding: 10px;
+  margin: 12px 0;
+  border-radius: 6px;
+  border-left: 5px solid #ccc;
+  background: #fff;
+}
+
+.role-message.system {
+  background: #e4f0ff;
+  border-color: #7ab4ff;
+}
+
+.role-message.user {
+  background: #fff2e4;
+  border-color: #ffb47a;
+}
+
+.role-message.assistant {
+  background: #e7ffe4;
+  border-color: #71d86d;
+}
+
+/* Role header = STRUCTURE */
+.role-message-header {
+  font-weight: normal;
+  margin-bottom: 6px;
+  font-size: 14px;
+  opacity: 0.8;
+}
+
+.role-body-block {
+  margin-left: 15px;
+  margin-top: 4px;
+}
+
+
+/* ======================================================
+   TEMPLATE, FUNC, CONTEXT VAR
+   ====================================================== */
+
+.template-block,
+.func-block,
+.context-var {
+  font-weight: bold;
+  background: #eee;
+  padding: 2px 5px;
+  border-radius: 4px;
+  font-family: monospace;
+  display: inline-block;
+}
+
+.func-block {
+  background: none;
+  padding: 0;
+  border-radius: 0;
+  font-weight: bold;
+  display: inline;
+}
+
+.func-block .other-index {
+  font-weight: normal;
+  opacity: 0.85;
+}
+
+
+.context-var {
+  background: #fff8cc;
+}
+
+/* Indices are NOT semantic content */
+.time-index,
+.other-index {
+  font-weight: normal;
+  font-family: monospace;
+}
+
+.time-index {
+  color: #0066cc;
+}
+
+.other-index {
+  color: #444;
+}
+
+
+/* ======================================================
+   LOOP BLOCKS
+   ====================================================== */
+
+.loop-block-outside-role,
+.loop-block-inside-role {
+  border-left: 3px solid #aaa;
+  padding-left: 10px;
+  margin: 14px 0;
+  font-family: monospace;
+}
+
+.loop-header {
+  font-weight: normal;
+  margin-bottom: 4px;
+  opacity: 0.8;
+}
+
+
+/* ======================================================
+   SWITCH BLOCKS
+   ====================================================== */
+
+.switch-block-outside-role,
+.switch-block-inside-role {
+  border-left: 3px solid #777;
+  padding-left: 10px;
+  margin: 14px 0;
+  font-family: monospace;
+}
+
+.switch-header,
+.switch-case-header,
+.switch-default-header {
+  font-weight: normal;
+  margin-bottom: 4px;
+  opacity: 0.8;
+}
+
+
+/* ======================================================
+   CONDITIONAL BLOCKS
+   ====================================================== */
+
+.conditional-block-outside-role,
+.conditional-block-inside-role {
+  border-left: 3px solid #555;
+  padding-left: 10px;
+  margin: 14px 0;
+  font-family: monospace;
+}
+
+.conditional-header {
+  font-weight: normal;
+  margin-bottom: 4px;
+  opacity: 0.8;
+}
+
+
+/* ======================================================
+   BLOCK CHILDREN INDENTATION
+   ====================================================== */
+
+.block-children {
+  margin-left: 15px;
+}
+
+.conditional-child,
+.role-condition-child,
+.switch-child,
+.role-switch-child,
+.loop-child,
+.role-loop-child {
+  margin-left: 12px;
+}
+
+
+/* ======================================================
+   UPLOAD ZONE STYLES
+   ====================================================== */
+
+.upload-container {
+  border: 2px dashed #ccc;
+  padding: 30px;
+  text-align: center;
+  margin: 20px 0;
+  transition: all 0.3s ease;
+}
+
+.upload-container.hover {
+  background-color: #f0f8ff;
+  border-color: #007bff;
+}
+
+.upload-button {
+  display: inline-block;
+  padding: 10px 20px;
+  background-color: #007bff;
+  color: white;
+  border-radius: 5px;
+  cursor: pointer;
+  margin-top: 10px;
+}
+
+.upload-button:hover {
+  background-color: #0056b3;
+}
+
+#drop-zone {
+  display: flex;            /* Fixes the collapsed layout shown in the image */
+  flex-direction: column;   /* Stacks text and button vertically */
+  align-items: center;      /* Centers items horizontally */
+  justify-content: center;  /* Centers items vertically */
+  border: 3px dashed #4A90E2;
+  border-radius: 12px;
+  padding: 50px;
+  margin: 20px auto;
+  max-width: 600px;
+  background: #f0f7ff;
+  color: #4A90E2;
+  font-family: sans-serif;
+  font-weight: bold;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+#drop-zone.hover { 
+  background: #d0e7ff; 
+  border-color: #007AFF; 
+  transform: scale(1.02); 
+}
+
+    </style>
+</head>
+<body>
+    <h1>Static Rendered Prompts</h1>
+    <section class="prompt-section"><h3>Source: my_prompt.pddl</h3>
+<div class="prompt-container prompt-style-default">
+  
+<div class="prompt-title">
+  <h1>Prompt[@t, agent_name]</h1>
+</div>
+  
+<div class="role-message system">
+  <div class="role-message-header">Role: system</div>
+  <div class="role-body-block">
+<span class="context-var">
+  <span class="segment base">mem</span>.<span class="segment">agent_desc</span>
+</span></div>
+</div>
+
+<div class="role-message user">
+  <div class="role-message-header">Role: user</div>
+  <div class="role-body-block">
+<span class="context-var">
+  <span class="segment base">obs</span>.<span class="segment">datetime[@t]</span>
+</span></div>
+</div>
+
+<div class="role-message user">
+  <div class="role-message-header">Role: user</div>
+  <div class="role-body-block">
+<span class="context-var">
+  <span class="segment base">mem</span>.<span class="segment">status[@t]</span>
+</span></div>
+</div>
+
+<div class="role-message user">
+  <div class="role-message-header">Role: user</div>
+  <div class="role-body-block">
+<span class="context-var">
+  <span class="segment base">obs</span>.<span class="segment">general[@t]</span>
+</span></div>
+</div>
+
+<div class="role-message assistant">
+  <div class="role-message-header">Role: assistant</div>
+  <div class="role-body-block">
+    <span class="func-block">
+      <span class="func-name">get_context_summary</span>
+      <span class="func-parens">(</span><span class="func-parens">)</span>
+      
+    </span>
+  </div>
+</div>
+
+<div class="loop-block-outside-role">
+  <div class="loop-block-outside-role-header">ForEach(i: t - k … t - 1):</div>
+  <div class="block-children">
+    <div class="loop-child">
+<div class="role-message user">
+  <div class="role-message-header">Role: user</div>
+  <div class="role-body-block">
+<span class="context-var">
+  <span class="segment base">obs</span>.<span class="segment">agent_utterance[@i]</span>
+</span></div>
+</div></div>
+<div class="loop-child">
+<div class="role-message assistant">
+  <div class="role-message-header">Role: assistant</div>
+  <div class="role-body-block">
+<span class="context-var">
+  <span class="segment base">act</span>.<span class="segment">my_utterance[@i]</span>
+</span></div>
+</div></div>
+  </div>
+</div>
+
+<div class="loop-block-outside-role">
+  <div class="loop-block-outside-role-header">ForEach(agent_name: agent_names):</div>
+  <div class="block-children">
+    <div class="loop-child">
+<div class="conditional-block-inside-role">
+  
+<div class="conditional-section">
+  <div class="conditional-section-header">If (obs.in_dialog(agent_name):</div>
+  <div class="block-children">
+    <div class="role-condition-child">
+<div class="role-message user">
+  <div class="role-message-header">Role: user</div>
+  <div class="role-body-block">
+    <span class="func-block">
+      <span class="func-name">get_dialog_history</span>
+      <span class="func-parens">(</span><span class="func-parens">)</span>
+      
+    </span>
+  </div>
+</div></div>
+  </div>
+</div>
+</div></div>
+  </div>
+</div>
+
+<div class="role-message system">
+  <div class="role-message-header">Role: system</div>
+  <div class="role-body-block"><span class="template-block">QUESTION</span><span class="comment"> // How would Eddy respond to John?</span></div>
+</div>
+</div></section><hr>
+</body>
+</html>

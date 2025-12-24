@@ -7,12 +7,11 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "render:static": "bun run src/renderToFile.ts"
+    "cli": "bun run src/main-cli.ts"
   },
   "devDependencies": {
-    "@types/bun": "^1.3.4",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.9.3",
+    "@types/bun": "^1.1.0",
+    "typescript": "^5.0.0",
     "vite": "^5.2.0"
   }
 }

@@ -1,7 +1,8 @@
 import { Scanner } from "./scanner";
 import { Token } from "./tokens";
-import * as AST from "../types";
-import * as Create from "../constructors";
+import * as AST from "./types";
+import * as Create from "./constructors";
+
 
 /**
  * Recursive Descent Parser for the PDDL-style Prompt DSL.
@@ -156,9 +157,7 @@ export class Parser {
   /* ───────────────── Expressions & Shared Rules ───────────────── */
 
   private parseContextVar(): AST.ContextVar {
-    console.log("parseContextVar called");
     const baseTok = this.consume("KEYWORD"); 
-    console.log("baseTok consumed:", baseTok);
     const base = baseTok.value as AST.ContextBase; 
 
     const indices = this.parseOptionalIndices();
@@ -171,7 +170,6 @@ export class Parser {
   }
 
   private parsePathDesc(): AST.PathDesc {
-    console.log("parsePathDesc called");
     const tok = this.peek();
 
     if (tok.type !== "IDENT" && tok.type !== "KEYWORD") {
@@ -179,15 +177,11 @@ export class Parser {
     }
 
     const base = this.consume().value as string;
-    console.log("base consumed for pathDesc:", base);
     const indices = this.parseOptionalIndices();
-    console.log("indices parsed for pathDesc:", indices);
     let next: AST.PathDesc | undefined;
     if (this.match("SYMBOL", ".")) {
       next = this.parsePathDesc();
-      console.log("next pathDesc parsed:", next);
     } 
-    console.log("returning pathDesc");
     return Create.pathDesc({ base, indices, next });
   }
 
@@ -213,7 +207,6 @@ export class Parser {
   if (this.peek().value === ")") return args;
 
   do {
-    console.log("parseTextArgs called");
     const tok = this.peek();
 
     if (this.match("SYMBOL", "@")) {
@@ -221,11 +214,9 @@ export class Parser {
       args.push(Create.timeIndex({ name: this.consume("IDENT").value as string }));
     } 
     else if (tok.type === "KEYWORD" && ["obs", "mem", "act", "resp", "prompt"].includes(tok.value as string)) {
-      console.log("picked KEYWORD for contextVar");
       args.push(this.parseContextVar());
     } 
     else if (tok.type === "IDENT") {
-      console.log("picked IDENT for template/func");
         args.push(this.parseTemplateOrFunc() as AST.Func);
       }
     else {
@@ -238,7 +229,6 @@ export class Parser {
 
   private parseOptionalIndices(): AST.Index[] {
     const indices: AST.Index[] = [];
-    console.log("parseOptionalIndices called");
     if (this.match("SYMBOL", "[")){
       indices.push(this.parseIndex());
       while (this.match("SYMBOL", ",")) {

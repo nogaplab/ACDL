@@ -1,4 +1,4 @@
-import { Parser } from "./parser/parser";
+import { Parser } from "./parser";
 import { renderPrompt } from "./renderPrompt";
 import { enableCollapsibleBlocks } from "./ui";
 
