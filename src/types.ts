@@ -75,7 +75,7 @@ export type PromptBlock = RoleMessage|ConditionalBlockOutsideRole|LoopBlockOutsi
 
 export type LoopBlockOutsideRole = {
   kind: "loop-block-outside-role";
-  index: OtherIndex;
+  index: Index;
   iterable: Iterable; 
   body: Array<PromptBlock>;
 };

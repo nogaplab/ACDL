@@ -46,6 +46,31 @@ body {
 }
 
 
+/* 1. Ensure the header indicates it can be clicked */
+.collapsible-header {
+  cursor: pointer;
+  user-select: none;
+}
+
+/* 2. Target the children containers and hide them when parent is collapsed */
+/* This covers 'block-children' from wrapBlock and 'role-body-block' from role messages */
+.collapsed > .block-children,
+.collapsed > .role-body-block,
+.collapsed > .role-loop-child,
+.collapsed > .role-switch-child,
+.collapsed > .role-condition-child,
+.collapsed > .loop-child,
+.collapsed > .switch-child {
+  display: none !important;
+}
+
+/* 3. Handle the arrow rotation */
+/* If you are using a span with a triangle inside the header */
+.collapsed .collapsible-toggle {
+  transform: rotate(-90deg);
+  display: inline-block;
+}
+
 /* ======================================================
    ROLE MESSAGE STYLING
    ====================================================== */
@@ -266,4 +291,47 @@ body {
   background: #d0e7ff; 
   border-color: #007AFF; 
   transform: scale(1.02); 
+}
+
+
+/* ======================================================
+   MAIN APP LAYOUT
+   ====================================================== */
+#app {
+  display: flex;
+  height: 100vh;
+}
+
+#sidebar {
+  width: 350px;
+  background: #f4f4f4;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid #ccc;
+}
+
+#pddl-editor {
+  width: 100%;
+  flex-grow: 1; /* Makes it fill the available space in the sidebar */
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  padding: 10px;
+  margin: 10px 0;
+  border: 1px solid #999;
+  border-radius: 4px;
+  resize: none;
+}
+
+#render-btn {
+  width: 100%;
+  padding: 10px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  cursor: pointer;
+}
+
+#render-btn:hover {
+  background-color: #0056b3;
 }

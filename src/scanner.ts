@@ -1,4 +1,4 @@
-import { Token, NamespaceKeyword, ControlKeyword, Operator} from "./tokens.js";
+import { Token, NamespaceKeyword, ControlKeyword, LogicalOperator, ArithmeticOperator} from "./tokens.js";
 
 /* ───────────────── keywords ───────────────── */
 
@@ -18,19 +18,21 @@ const CONTROL_KEYWORDS = new Set<ControlKeyword>([
   "ForEach",
   "Switch",
   "Case",
+  "Default"
 ]);
 
 /* ───────────────── operators ───────────────── */
-
-const OPERATORS = new Set<Operator>([
-  "-",
-  "+",
+const LOGIC_OP = new Set<LogicalOperator> ([ 
+   "=", "!", "<", ">", "&", "|", "^"
 ]);
 
+const ARITH_OP = new Set<ArithmeticOperator> ([
+  "-", "+", "%", "*", "/",
+])
 /* ───────────────── symbols ───────────────── */
-
+// Added characters like #, $, ?, etc., common in logic and templates
 const SYMBOLS = new Set<string>([
-  ":", ";", ".", ",", "(", ")", "{", "}", "*", "[", "]", "@",
+  ":", ";", ".", ",", "(", ")", "{", "}", "[", "]", "@", "#", "$", "?", "!", "_"
 ]);
 
 /* ───────────────── scanner ───────────────── */
@@ -75,11 +77,22 @@ export class Scanner {
     }
 
     // OPERATOR
-    if (OPERATORS.has(ch as Operator)) {
+    if (LOGIC_OP.has(ch as LogicalOperator)) {
         const col = this.col;
-        const value = this.advance() as Operator;
+        const value = this.advance() as LogicalOperator;
         return {
-            type: "OPERATOR",
+            type: "LOGIC_OP",
+            value,
+            line: this.line,
+            col,
+        };
+    }
+
+    if (ARITH_OP.has(ch as ArithmeticOperator)) {
+        const col = this.col;
+        const value = this.advance() as ArithmeticOperator;
+        return {
+            type: "ARITH_OP",
             value,
             line: this.line,
             col,

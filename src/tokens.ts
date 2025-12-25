@@ -18,9 +18,21 @@ export type Keyword = NamespaceKeyword | ControlKeyword;
 
 export type RangeSymbol = "…" | "...";
 
-export type Operator =
+export type ArithmeticOperator = 
+  | "*"
+  | "%"
   | "-"
-  | "+";
+  | "+"
+  | "/"
+
+export type LogicalOperator = 
+  | "="
+  | "!"
+  | ">"
+  | "<"
+  | "^"
+  | "&"
+  | "|";
 
 export type Token =
   | { type: "STRING"; value: string; line: number; col: number }
@@ -31,4 +43,5 @@ export type Token =
   | { type: "COMMENT"; value: string; line: number; col: number }
   | { type: "EOF"; value: null, line: number; col: number }
   | { type: "RANGE"; value: RangeSymbol; line: number; col: number }
-  | { type: "OPERATOR"; value: Operator; line: number; col: number };
+  | { type: "ARITH_OP"; value: ArithmeticOperator; line: number; col: number }
+  | { type: "LOGIC_OP"; value: LogicalOperator; line: number; col: number};
