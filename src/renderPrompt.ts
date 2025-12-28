@@ -18,7 +18,8 @@ import {
   SwitchBlockInsideRole, 
   CaseBlockInsideRole, 
   PromptBlock,
-  TextArgs
+  TextArgs,
+  CommentBlock
 } from "./types";
 
 
@@ -118,10 +119,15 @@ function renderTopLevelBlock(block: PromptBlock): string {
 
     case "switch-block-outside-role":
       return renderSwitchOutsideRole(block);
+
+    case "comment-block":
+      return renderCommentBlock(block)
   }
 }
 
-
+function renderCommentBlock(block: CommentBlock): string {
+  return `<div class="comment-block">// ${escapeHtml(block.text)}</div>`;
+}
 
 /**
  * Render a role message like:
@@ -173,6 +179,9 @@ function renderRoleBuildingBlock(block: RoleBuildingBlock): string {
 
     case "switch-block-inside-role":
       return renderSwitchInsideRole(block);
+
+    case "comment-block":
+      return renderCommentBlock(block)
 
   //  default:
   //    return `<code>Error! unknown or disallowed role block</code>`;

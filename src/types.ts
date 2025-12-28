@@ -69,8 +69,12 @@ export type PromptBody = {
   body: Array<PromptBlock>; 
 }
 
+export type CommentBlock = {
+  kind: "comment-block";
+  text: string;
+}
 
-export type PromptBlock = RoleMessage|ConditionalBlockOutsideRole|LoopBlockOutsideRole|SwitchBlockOutsideRole;
+export type PromptBlock = RoleMessage|ConditionalBlockOutsideRole|LoopBlockOutsideRole|SwitchBlockOutsideRole|CommentBlock;
 
 
 export type LoopBlockOutsideRole = {
@@ -116,7 +120,7 @@ export type DefaultCaseBlockOutsideRole = {
 
 // Inside Role Building Blocks
 
-export type RoleBuildingBlock = ConditionalBlockInsideRole|LoopBlockInsideRole|SwitchBlockInsideRole|Template|ContextVar|Func;
+export type RoleBuildingBlock = ConditionalBlockInsideRole|LoopBlockInsideRole|SwitchBlockInsideRole|Template|ContextVar|Func|CommentBlock;
 
 export type LoopBlockInsideRole = {
   kind: "loop-block-inside-role";

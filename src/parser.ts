@@ -86,8 +86,15 @@ export class Parser {
   private parsePromptBody(): AST.PromptBody {
     const body: AST.PromptBlock[] = [];
     while (this.peek().type !== "EOF" && (this.peek().value !== "}")) {
+      // Check for standalone comments
+        if (this.peek().type === "COMMENT") {
+            const text = this.consume("COMMENT").value as string;
+            body.push(Create.commentBlock({ text }));
+            continue;
+        }
       body.push(this.parseTopLevelBlock());
     }
+    const comment = this.parseOptionalComment();
     return Create.promptBody({ body });
   }
 
@@ -143,6 +150,13 @@ export class Parser {
     const tok = this.peek();
     const val = tok.value;
     console.log("started role building block")
+    
+    // Check for standalone comments FIRST
+    if (tok.type === "COMMENT") {
+        const text = this.consume("COMMENT").value as string;
+        return Create.commentBlock({ text });
+    }
+    
     if (tok.type === "KEYWORD") {
       // 1. Check for Control Flow
       if (val === "If") return this.parseConditionalInside();
@@ -544,7 +558,18 @@ export class Parser {
     });
   }
 
+
+  private parseOptionalComment(): string | undefined {
+      if (this.peek().type === "COMMENT") {
+          return this.consume("COMMENT").value as string;
+      }
+      return undefined;
+  }
+
+
   private isEOF(): boolean {
     return this.peek().type === "EOF"
   }
+
+
 }

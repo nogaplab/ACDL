@@ -20,7 +20,8 @@ import {
   SwitchBlockInsideRole, 
   CaseBlockInsideRole, 
   DefaultCaseBlockInsideRole,
-  Iterable
+  Iterable,
+  CommentBlock
 } from "./types";
 
 
@@ -120,4 +121,8 @@ export function defaultCaseBlockInsideRole(params: Omit<DefaultCaseBlockInsideRo
 
 export function Iterable(params: Omit<Iterable, "kind">): Iterable {
   return {... params, kind: "iterable" };
+}
+
+export function commentBlock(params: Omit<CommentBlock, "kind">): CommentBlock {
+  return { ...params, kind: "comment-block" };
 }
