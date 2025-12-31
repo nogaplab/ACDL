@@ -1,9 +1,11 @@
 import subprocess
-from anthropic import Anthropic
+from openai import OpenAI
 
-# Initialize client
-client = Anthropic(api_key="your-api-key-here")  # Or use env var
+with open('PDDLReactAgent/openai_key.txt', 'r') as f:
+    api_key = f.read().strip()
 
+# Initialize client with the key
+client = OpenAI(api_key=api_key)
 
 def read_file(path):
     try:
@@ -40,19 +42,9 @@ def write_file(path, content):
 
 
 def search_docs(query, pddl_content=None, error_message=None):
-    """
-    Use an LLM to search the language reference and provide guidance
-    
-    Args:
-        query: What to look for (e.g., "how to fix brace errors")
-        pddl_content: Optional - the actual PDDL file content with errors
-        error_message: Optional - the error from the validator
-    """
-    # Read the language reference
-    with open('../LANGUAGE_REFERENCE.md', 'r') as f:
+    with open('LANGUAGE_REFERENCE.md', 'r') as f:
         lang_ref = f.read()
     
-    # Build a prompt for the LLM
     prompt = f"""You are a PDDL prompt language expert. 
 
 Language Reference:
@@ -65,13 +57,14 @@ PDDL file content:
 
 Query: {query}
 
-Based on the language reference, explain what's wrong and how to fix it. Be specific about which rule was violated."""
+Based on the language reference, explain what's wrong and how to fix it."""
     
-    # Make LLM call
-    response = client.messages.create(
-        model="claude-sonnet-4-5-20250929",
+    # OpenAI format
+    response = client.chat.completions.create(
+        model="gpt-4o",  # or "gpt-4-turbo" or "gpt-3.5-turbo"
         messages=[{"role": "user", "content": prompt}],
         max_tokens=1024
     )
     
-    return response.content[0].text
+    return response.choices[0].message.content
+
