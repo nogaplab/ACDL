@@ -18,7 +18,9 @@ const CONTROL_KEYWORDS = new Set<ControlKeyword>([
   "ForEach",
   "Switch",
   "Case",
-  "Default"
+  "Default",
+  "break",
+  "continue"
 ]);
 
 /* ───────────────── operators ───────────────── */

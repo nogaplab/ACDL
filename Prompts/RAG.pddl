@@ -3,7 +3,7 @@ Prompt[t]: {
     ForEach(i: 1…t-1) {
 	    U: {obs.user_input[@i]}
         U: {ForEach(k: 1…(mem.RAG_resp).len()){
-            mem.RAG_resp[@i,k]}}
+            mem.RAG_resp[@i][k]}}
         A: {resp.LLM_text[@i]}
 	}
     Switch obs.user_input[@t] {

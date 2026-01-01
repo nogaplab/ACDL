@@ -118,29 +118,76 @@ export class Parser {
 
     throw new Error(`[${tok.line}:${tok.col}] Syntax Error: Unexpected token "${val}" in global scope.`);
   }
-
-  /**
-   * RoleMessage = ROLE_ID: { RoleBuildingBlock* }
-   */
+  /*
+   * RoleMessage = ROLE_ID: { RoleBuildingBlock* } | ROLE_ID: RoleBuildingBlock
+   * Supports both multi-line blocks with curly braces and single-line without braces
+  */
   private parseRoleMessage(): AST.RoleMessage {
     const roleId = this.consume("IDENT").value as string;
     this.consume("SYMBOL", ":");
-    this.consume("SYMBOL", "{");
 
     const roleMap: Record<string, AST.Role> = { "S": "system", "U": "user", "A": "assistant" };
     const role = roleMap[roleId];
 
     const body: AST.RoleBuildingBlock[] = [];
-    while (this.peek().type !== "EOF" && this.peek().value !== "}") {
-      body.push(this.parseRoleBuildingBlock());
+
+    // Check if this is a multi-line block with curly braces or a single-line block
+    if (this.peek().value === "{") {
+      // Multi-line syntax: U: { ... }
+      this.consume("SYMBOL", "{");
+      while (this.peek().type !== "EOF" && this.peek().value !== "}") {
+        body.push(this.parseRoleBuildingBlock());
+      }
+      this.consume("SYMBOL", "}");
+    } else {
+      // Single-line syntax: U: obs.user_query[@i]
+      // Only consume content on the same line
+      const startLine = this.peek().line;
+      body.push(this.parseRoleBuildingBlockSingleLine(startLine));
     }
-    this.consume("SYMBOL", "}");
+
     console.log("got here")
 
     return Create.roleMessage({ role, body });
   }
 
   /* ───────────────── Grammar Rules (Inside Role) ───────────────── */
+
+    /**
+   * Parse a single RoleBuildingBlock that must stay on the same line.
+   * Used for single-line role syntax (e.g., U: obs.user_query[@i])
+   */
+  private parseRoleBuildingBlockSingleLine(startLine: number): AST.RoleBuildingBlock {
+    const tok = this.peek();
+
+    // Check if we've moved to a new line - if so, error
+    if (tok.line !== startLine) {
+      throw new Error(`[${tok.line}:${tok.col}] Single-line role syntax cannot span multiple lines`);
+    }
+
+    const val = tok.value;
+
+    if (tok.type === "KEYWORD") {
+      // Control flow not allowed in single-line syntax
+      if (val === "If" || val === "ForEach" || val === "Switch") {
+        throw new Error(`[${tok.line}:${tok.col}] Control flow statements not allowed in single-line role syntax`);
+      }
+
+      // Context Namespaces
+      const namespaces = ["obs", "mem", "act", "resp", "prompt"];
+      if (namespaces.includes(val as string)) {
+        return this.parseContextVar();
+      }
+    }
+
+    // Handle Templates/Functions (IDENT)
+    if (tok.type === "IDENT") return this.parseTemplateOrFunc();
+
+    throw new Error(`[${tok.line}:${tok.col}] Unexpected ${tok.type} (${val}) in single-line role syntax`);
+  }
+
+
+
 
   /**
    * Gatekeeper for Inside-Role Scope.
@@ -162,15 +209,21 @@ export class Parser {
       if (val === "If") return this.parseConditionalInside();
       if (val === "ForEach") return this.parseLoopInside();
       if (val === "Switch") return this.parseSwitchInside();
-      
-      // 2. Check for Context Namespaces
+
+      // 2. Handle break and continue as template-like keywords
+      if (val === "break" || val === "continue") {
+        const name = this.consume("KEYWORD").value as string;
+        return Create.template({ name, arguments: [], comment: undefined });
+      }
+
+      // 3. Check for Context Namespaces
       const namespaces = ["obs", "mem", "act", "resp", "prompt"];
       if (namespaces.includes(val as string)) {
         return this.parseContextVar();
       }
     }
 
-    // 3. Handle Templates/Functions (IDENT)
+    // 4. Handle Templates/Functions (IDENT)
     if (tok.type === "IDENT") return this.parseTemplateOrFunc();
 
     throw new Error(`[${tok.line}:${tok.col}] Unexpected ${tok.type} (${val}) inside role.`);

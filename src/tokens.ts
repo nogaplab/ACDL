@@ -12,7 +12,9 @@ export type ControlKeyword =
   | "ForEach"
   | "Switch"
   | "Case"
-  | "Default";
+  | "Default"
+  | "break"
+  | "continue";
 
 export type Keyword = NamespaceKeyword | ControlKeyword;
 
