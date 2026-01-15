@@ -10,15 +10,15 @@ Prompt[@t]:{
         obs.calendar
     }
 
-    if i>1 {
+    If t>1 {
         ForEach(i: range(1, t-1)) {
-            if act.tool[@i] == get_clarification {
+            If act.tool[@i] == get_clarification {
                 U: obs.user_input[@i]
             }
             
-            else {
+            Else {
                 A: resp.tool_reasoning[@i]
-                A: obs.tool_response[@i]  not sure what role this should be
+                A: obs.tool_response[@i]  
             }   
         }
     }
