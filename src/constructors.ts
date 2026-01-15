@@ -1,27 +1,28 @@
-import { 
-  Prompt, 
-  PromptTitle, 
-  Index, 
-  TimeIndex, 
-  OtherIndex, 
-  PromptBody, 
-  RoleMessage, 
-  ContextVar, 
-  PathDesc, 
-  Func, 
-  Template, 
-  LoopBlockOutsideRole, 
-  ConditionalBlockOutsideRole, 
-  SwitchBlockOutsideRole, 
-  CaseBlockOutsideRole, 
-  DefaultCaseBlockOutsideRole, 
-  LoopBlockInsideRole, 
-  ConditionalBlockInsideRole, 
-  SwitchBlockInsideRole, 
-  CaseBlockInsideRole, 
+import {
+  Prompt,
+  PromptTitle,
+  Index,
+  TimeIndex,
+  OtherIndex,
+  PromptBody,
+  RoleMessage,
+  ContextVar,
+  PathDesc,
+  Func,
+  Template,
+  LoopBlockOutsideRole,
+  ConditionalBlockOutsideRole,
+  SwitchBlockOutsideRole,
+  CaseBlockOutsideRole,
+  DefaultCaseBlockOutsideRole,
+  LoopBlockInsideRole,
+  ConditionalBlockInsideRole,
+  SwitchBlockInsideRole,
+  CaseBlockInsideRole,
   DefaultCaseBlockInsideRole,
   Iterable,
-  CommentBlock
+  CommentBlock,
+  LabelBlock
 } from "./types";
 
 
@@ -125,4 +126,8 @@ export function Iterable(params: Omit<Iterable, "kind">): Iterable {
 
 export function commentBlock(params: Omit<CommentBlock, "kind">): CommentBlock {
   return { ...params, kind: "comment-block" };
+}
+
+export function labelBlock(params: Omit<LabelBlock, "kind">): LabelBlock {
+  return { ...params, kind: "label-block" };
 }

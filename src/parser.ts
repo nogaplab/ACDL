@@ -81,10 +81,10 @@ export class Parser {
 
   /**
    * Gatekeeper for Top-Level Scope.
-   * Strictly collects PromptBlocks (RoleMessages, Global Loops/Conditionals).
+   * Strictly collects PromptBodyItems (PromptBlocks or LabelBlocks).
    */
   private parsePromptBody(): AST.PromptBody {
-    const body: AST.PromptBlock[] = [];
+    const body: AST.PromptBodyItem[] = [];
     while (this.peek().type !== "EOF" && (this.peek().value !== "}")) {
       // Check for standalone comments
         if (this.peek().type === "COMMENT") {
@@ -92,10 +92,30 @@ export class Parser {
             body.push(Create.commentBlock({ text }));
             continue;
         }
-      body.push(this.parseTopLevelBlock());
+      body.push(this.parsePromptBodyItem());
     }
     const comment = this.parseOptionalComment();
     return Create.promptBody({ body });
+  }
+
+  /**
+   * Parse a PromptBodyItem (either a PromptBlock or a LabelBlock).
+   */
+  private parsePromptBodyItem(): AST.PromptBodyItem {
+    const tok = this.peek();
+
+    // Check for Label syntax: IDENT followed by "{"
+    if (tok.type === "IDENT") {
+      const nextTok = this.peekNext();
+
+      // Label: Any IDENT followed by "{"
+      if (nextTok.value === "{") {
+        return this.parseLabelBlock();
+      }
+    }
+
+    // Otherwise parse as a regular PromptBlock
+    return this.parseTopLevelBlock();
   }
 
   private parseTopLevelBlock(): AST.PromptBlock {
@@ -118,6 +138,38 @@ export class Parser {
 
     throw new Error(`[${tok.line}:${tok.col}] Syntax Error: Unexpected token "${val}" in global scope.`);
   }
+
+  /**
+   * Parse a LabelBlock: LabelName { PromptBlock+ }
+   * Labels can contain one or more PromptBlocks (but not other LabelBlocks).
+   */
+  private parseLabelBlock(): AST.LabelBlock {
+    const labelTok = this.consume("IDENT");
+    const label = labelTok.value as string;
+
+    this.consume("SYMBOL", "{");
+
+    // Parse blocks until we hit closing "}"
+    const blocks: Array<AST.PromptBlock> = [];
+
+    do {
+      // Check for standalone comments inside label blocks
+      if (this.peek().type === "COMMENT") {
+        const text = this.consume("COMMENT").value as string;
+        blocks.push(Create.commentBlock({ text }));
+        continue;
+      }
+
+      // Parse a block (PromptBlock only, not LabelBlock)
+      const innerBlock = this.parseTopLevelBlock();
+      blocks.push(innerBlock);
+    } while (this.peek().value !== "}");
+
+    this.consume("SYMBOL", "}");
+
+    return Create.labelBlock({ label, body: blocks });
+  }
+
   /*
    * RoleMessage = ROLE_ID: { RoleBuildingBlock* } | ROLE_ID: RoleBuildingBlock
    * Supports both multi-line blocks with curly braces and single-line without braces

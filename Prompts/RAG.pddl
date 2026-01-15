@@ -15,7 +15,7 @@ Prompt[t]: {
 		}
 	    Default { 
             U: {ForEach(i: 1…(mem.RAG_resp).len()) { 
-			        mem.RAG_resp[@t,i]}
+			        mem.RAG_resp[@t][i]}
             }
         }
     }

@@ -66,7 +66,7 @@ export type Template = {
 
 export type PromptBody = {
   kind: "prompt-body";
-  body: Array<PromptBlock>; 
+  body: Array<PromptBodyItem>;
 }
 
 export type CommentBlock = {
@@ -74,7 +74,15 @@ export type CommentBlock = {
   text: string;
 }
 
+export type LabelBlock = {
+  kind: "label-block";
+  label: string;
+  body: Array<PromptBlock>;
+}
+
 export type PromptBlock = RoleMessage|ConditionalBlockOutsideRole|LoopBlockOutsideRole|SwitchBlockOutsideRole|CommentBlock;
+
+export type PromptBodyItem = PromptBlock | LabelBlock;
 
 
 export type LoopBlockOutsideRole = {

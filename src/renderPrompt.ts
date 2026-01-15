@@ -1,25 +1,27 @@
 import {
   Prompt,
   PromptTitle,
-  Index, 
-  PromptBody, 
-  RoleMessage, 
+  Index,
+  PromptBody,
+  RoleMessage,
   RoleBuildingBlock,
-  ContextVar, 
-  PathDesc, 
-  Func, 
-  Template, 
-  LoopBlockOutsideRole, 
-  ConditionalBlockOutsideRole, 
-  SwitchBlockOutsideRole, 
-  CaseBlockOutsideRole, 
-  LoopBlockInsideRole, 
-  ConditionalBlockInsideRole, 
-  SwitchBlockInsideRole, 
-  CaseBlockInsideRole, 
+  ContextVar,
+  PathDesc,
+  Func,
+  Template,
+  LoopBlockOutsideRole,
+  ConditionalBlockOutsideRole,
+  SwitchBlockOutsideRole,
+  CaseBlockOutsideRole,
+  LoopBlockInsideRole,
+  ConditionalBlockInsideRole,
+  SwitchBlockInsideRole,
+  CaseBlockInsideRole,
   PromptBlock,
   TextArgs,
-  CommentBlock
+  CommentBlock,
+  LabelBlock,
+  PromptBodyItem
 } from "./types";
 
 
@@ -99,7 +101,17 @@ function renderIndexList(indices: Index[]): string {
  * Render the body of the prompt: an ordered list of blocks.
  */
 function renderPromptBody(body: PromptBody): string {
-  return body.body.map(renderTopLevelBlock).join("\n");
+  return body.body.map(renderPromptBodyItem).join("\n");
+}
+
+/**
+ * Render a PromptBodyItem (either a PromptBlock or a LabelBlock).
+ */
+function renderPromptBodyItem(item: PromptBodyItem): string {
+  if (item.kind === "label-block") {
+    return renderLabelBlock(item);
+  }
+  return renderTopLevelBlock(item);
 }
 
 /**
@@ -127,6 +139,27 @@ function renderTopLevelBlock(block: PromptBlock): string {
 
 function renderCommentBlock(block: CommentBlock): string {
   return `<div class="comment-block">// ${escapeHtml(block.text)}</div>`;
+}
+
+/**
+ * Render a LabelBlock: a labeled section containing multiple PromptBlocks.
+ */
+function renderLabelBlock(block: LabelBlock): string {
+  const labelName = escapeHtml(block.label);
+  const labelStart = `<div class="label-start">╔══ ${labelName} ══╗</div>`;
+  const labelEnd = `<div class="label-end">╚══ End ${labelName} ══╝</div>`;
+
+  // Render all blocks in the body array
+  const bodyHtml = block.body.map(b => renderTopLevelBlock(b)).join("\n");
+
+  return `
+<div class="label-block">
+  ${labelStart}
+  <div class="label-block-body">
+    ${bodyHtml}
+  </div>
+  ${labelEnd}
+</div>`;
 }
 
 /**
