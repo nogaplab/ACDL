@@ -22,7 +22,8 @@ import {
   DefaultCaseBlockInsideRole,
   Iterable,
   CommentBlock,
-  LabelBlock
+  LabelBlock,
+  ArithmeticExpr
 } from "./types";
 
 
@@ -130,4 +131,8 @@ export function commentBlock(params: Omit<CommentBlock, "kind">): CommentBlock {
 
 export function labelBlock(params: Omit<LabelBlock, "kind">): LabelBlock {
   return { ...params, kind: "label-block" };
+}
+
+export function arithmeticExpr(params: Omit<ArithmeticExpr, "kind">): ArithmeticExpr {
+  return { ...params, kind: "arithmetic" };
 }

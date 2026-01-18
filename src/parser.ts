@@ -84,7 +84,7 @@ export class Parser {
    * Strictly collects PromptBodyItems (PromptBlocks or LabelBlocks).
    */
   private parsePromptBody(): AST.PromptBody {
-    const body: AST.PromptBodyItem[] = [];
+    const body: AST.PromptBlock[] = [];
     while (this.peek().type !== "EOF" && (this.peek().value !== "}")) {
       // Check for standalone comments
         if (this.peek().type === "COMMENT") {
@@ -101,7 +101,7 @@ export class Parser {
   /**
    * Parse a PromptBodyItem (either a PromptBlock or a LabelBlock).
    */
-  private parsePromptBodyItem(): AST.PromptBodyItem {
+  private parsePromptBodyItem(): AST.PromptBlock {
     const tok = this.peek();
 
     // Check for Label syntax: IDENT followed by "{"
@@ -120,6 +120,7 @@ export class Parser {
 
   private parseTopLevelBlock(): AST.PromptBlock {
     const tok = this.peek();
+    const nextTok = this.peekNext();
     const val = tok.value;
 
     // Role Message Prefixes: S:, U:, A:
@@ -134,6 +135,15 @@ export class Parser {
         case "ForEach": return this.parseLoopOutside();
         case "Switch": return this.parseSwitchOutside();
       }
+    }
+
+    if (tok.type === "COMMENT") {
+        const text = this.consume("COMMENT").value as string;
+        return Create.commentBlock({ text });
+    }
+
+    if (tok.type === "IDENT" && nextTok.value === "{") {
+      return this.parseLabelBlock();
     }
 
     throw new Error(`[${tok.line}:${tok.col}] Syntax Error: Unexpected token "${val}" in global scope.`);
@@ -284,16 +294,17 @@ export class Parser {
   /* ───────────────── Expressions & Shared Rules ───────────────── */
 
   private parseContextVar(): AST.ContextVar {
-    const baseTok = this.consume("KEYWORD"); 
-    const base = baseTok.value as AST.ContextBase; 
+    const baseTok = this.consume("KEYWORD");
+    const base = baseTok.value as AST.ContextBase;
 
     const indices = this.parseOptionalIndices();
-    
+
     let path: AST.PathDesc;
     this.consume("SYMBOL", ".")
     path = this.parsePathDesc();
-    
-    return Create.contextVar({ base, indices, path });
+
+    const comment = this.peek().type === "COMMENT" ? (this.consume("COMMENT").value as string) : undefined;
+    return Create.contextVar({ base, indices, path, comment });
   }
 
   private parsePathDesc(): AST.PathDesc {
@@ -314,19 +325,21 @@ export class Parser {
 
   private parseTemplateOrFunc(): AST.Template | AST.Func {
     const name = this.consume("IDENT").value as string;
-    const args: AST.TextArgs[] = [];
+    let args: AST.TextArgs[] = [];
     if (this.peek().value === "(") {
       this.consume("SYMBOL", "(");
-      const args = this.parseTextArgs();
+      args = this.parseTextArgs();
       this.consume("SYMBOL", ")");
     }
-    
+
     // Template logic: All caps or specifically handled
     if (name === name.toUpperCase()) {
-      let comment = this.peek().type === "COMMENT" ? (this.consume("COMMENT").value as string) : undefined;
+      const comment = this.peek().type === "COMMENT" ? (this.consume("COMMENT").value as string) : undefined;
       return Create.template({ name, arguments: args, comment });
     }
-    return Create.func({ name, arguments: args, indices: this.parseOptionalIndices() as AST.OtherIndex[] });
+    const indices = this.parseOptionalIndices() as AST.Index[];
+    const comment = this.peek().type === "COMMENT" ? (this.consume("COMMENT").value as string) : undefined;
+    return Create.func({ name, arguments: args, indices, comment });
   }
 
   private parseTextArgs(): AST.TextArgs[] {
@@ -334,25 +347,62 @@ export class Parser {
   if (this.peek().value === ")") return args;
 
   do {
-    const tok = this.peek();
-
-    if (this.match("SYMBOL", "@")) {
-      // Handles @t
-      args.push(Create.timeIndex({ name: this.consume("IDENT").value as string }));
-    } 
-    else if (tok.type === "KEYWORD" && ["obs", "mem", "act", "resp", "prompt"].includes(tok.value as string)) {
-      args.push(this.parseContextVar());
-    } 
-    else if (tok.type === "IDENT") {
-        args.push(this.parseTemplateOrFunc() as AST.Func);
-      }
-    else {
-      throw new Error(`[${tok.line}:${tok.col}] Unexpected token in arguments: ${tok.type} (${tok.value})`);
-    }
+    const arg = this.parseSingleTextArg();
+    args.push(arg);
   } while (this.match("SYMBOL", ","));
 
   return args;
 }
+
+  /** Parse a single argument, which may be an arithmetic expression */
+  private parseSingleTextArg(): AST.TextArgs {
+    let left = this.parseAtom();
+
+    // Check if followed by arithmetic operator(s)
+    if (this.peek().type === "ARITH_OP") {
+      // Collect consecutive operators (e.g., ** for exponentiation)
+      const operators: AST.ArithmeticOperator[] = [];
+      while (this.peek().type === "ARITH_OP") {
+        operators.push(this.consume("ARITH_OP").value as AST.ArithmeticOperator);
+      }
+
+      // Parse the right side
+      const right = this.parseSingleTextArg();
+
+      return Create.arithmeticExpr({ operator: operators, left, right });
+    }
+
+    return left;
+  }
+
+  /** Parse an atomic value: number, time index, context var, or function/identifier */
+  private parseAtom(): AST.TextArgs {
+    const tok = this.peek();
+
+    if (this.match("SYMBOL", "@")) {
+      // Time index like @t
+      return Create.timeIndex({ name: this.consume("IDENT").value as string });
+    }
+
+    if (tok.type === "KEYWORD" && ["obs", "mem", "act", "resp", "prompt"].includes(tok.value as string)) {
+      return this.parseContextVar();
+    }
+
+    if (tok.type === "NUMBER") {
+      // Plain number - treat as OtherIndex
+      return Create.otherIndex({ name: this.consume("NUMBER").value as string });
+    }
+
+    if (tok.type === "IDENT") {
+      // Check if followed by ( - if so, it's a function call; otherwise plain identifier
+      if (this.peekNext().value === "(") {
+        return this.parseTemplateOrFunc() as AST.Func;
+      }
+      // Plain identifier - treat as OtherIndex
+      return Create.otherIndex({ name: this.consume("IDENT").value as string });
+    }
+    throw new Error(`[${tok.line}:${tok.col}] Unexpected token in arguments: ${tok.type} (${tok.value})`);
+  }
 
   private parseOptionalIndices(): AST.Index[] {
     const indices: AST.Index[] = [];

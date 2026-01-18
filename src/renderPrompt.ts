@@ -133,7 +133,10 @@ function renderTopLevelBlock(block: PromptBlock): string {
       return renderSwitchOutsideRole(block);
 
     case "comment-block":
-      return renderCommentBlock(block)
+      return renderCommentBlock(block);
+
+    case "label-block":
+      return renderLabelBlock(block);
   }
 }
 
@@ -243,13 +246,11 @@ function renderFuncBlock(block: Func): string {
     block.indices && block.indices.length > 0
       ? renderIndexList(block.indices) : "";
 
-  return `
-    <span class="func-block">
-      <span class="func-name">${escapeHtml(block.name)}</span>
-      <span class="func-parens">(</span>${argsText}<span class="func-parens">)</span>
-      ${resultIndices}
-    </span>
-  `;
+  const commentHtml = block.comment
+    ? `<span class="inline-comment"> // ${escapeHtml(block.comment)}</span>`
+    : "";
+
+  return `<span class="func-block"><span class="func-name">${escapeHtml(block.name)}</span><span class="func-parens">(</span>${argsText}<span class="func-parens">)</span>${resultIndices}</span>${commentHtml}`;
 }
 
 
@@ -266,6 +267,17 @@ function renderTextArgs(arg: TextArgs): string {
     case "time-index":
       // TimeIndex arguments are simple, just @name
       return `<span class="time-index">@${escapeHtml(arg.name)}</span>`;
+
+    case "other-index":
+      // OtherIndex arguments (plain numbers or identifiers)
+      return `<span class="other-index">${escapeHtml(arg.name)}</span>`;
+
+    case "arithmetic":
+      // Arithmetic expressions: left operator(s) right
+      const left = renderTextArgs(arg.left);
+      const ops = arg.operator.join("");
+      const right = renderTextArgs(arg.right);
+      return `<span class="arithmetic-expr">${left}${escapeHtml(ops)}${right}</span>`;
   }
 }
 
@@ -369,10 +381,11 @@ function renderContextVarBlock(block: ContextVar): string {
   // 3. Join segments with dots.
   const joined = segments.join(".");
 
-  return `
-<span class="context-var">
-  ${joined}
-</span>`;
+  const commentHtml = block.comment
+    ? `<span class="inline-comment"> // ${escapeHtml(block.comment)}</span>`
+    : "";
+
+  return `<span class="context-var">${joined}</span>${commentHtml}`;
 }
 
 

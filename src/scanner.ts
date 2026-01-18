@@ -1,4 +1,5 @@
-import { Token, NamespaceKeyword, ControlKeyword, LogicalOperator, ArithmeticOperator} from "./tokens.js";
+import { Token, NamespaceKeyword, ControlKeyword, LogicalOperator} from "./tokens.js";
+import { ArithmeticOperator } from "./types.js";
 
 /* ───────────────── keywords ───────────────── */
 

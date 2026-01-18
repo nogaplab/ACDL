@@ -33,8 +33,9 @@ export type ContextBase = "obs" | "resp" | "act" | "mem" | "prompt";
 export type ContextVar = {
     kind: "context-var";
     base: ContextBase
-    path: PathDesc; 
-    indices: Array<Index>; // do we want that?
+    path: PathDesc;
+    indices: Array<Index>;
+    comment?: string;
 }
 
 export type PathDesc = {
@@ -44,13 +45,23 @@ export type PathDesc = {
     indices: Array<Index>;
 }
 
-export type TextArgs = ContextVar | TimeIndex | Func;
+export type ArithmeticOperator = "-" | "+" | "%" | "*" | "/";
+
+export type ArithmeticExpr = {
+    kind: "arithmetic";
+    operator: Array<ArithmeticOperator>;
+    left: TextArgs;
+    right: TextArgs;
+}
+
+export type TextArgs = ContextVar | Index | Func | ArithmeticExpr;
 
 export type Func = {
     kind: "function";
     name: FuncName;
-    arguments: Array<TextArgs>; 
-    indices?: Array<OtherIndex>;
+    arguments: Array<TextArgs>;
+    indices?: Array<Index>;
+    comment?: string;
 }
 
 export type FuncName = string; // Must be CamelCase.
@@ -66,7 +77,7 @@ export type Template = {
 
 export type PromptBody = {
   kind: "prompt-body";
-  body: Array<PromptBodyItem>;
+  body: Array<PromptBlock>;
 }
 
 export type CommentBlock = {
@@ -80,9 +91,8 @@ export type LabelBlock = {
   body: Array<PromptBlock>;
 }
 
-export type PromptBlock = RoleMessage|ConditionalBlockOutsideRole|LoopBlockOutsideRole|SwitchBlockOutsideRole|CommentBlock;
+export type PromptBlock = RoleMessage|LabelBlock|ConditionalBlockOutsideRole|LoopBlockOutsideRole|SwitchBlockOutsideRole|CommentBlock;
 
-export type PromptBodyItem = PromptBlock | LabelBlock;
 
 
 export type LoopBlockOutsideRole = {

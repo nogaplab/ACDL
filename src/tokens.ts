@@ -1,3 +1,5 @@
+import { ArithmeticOperator } from "./types";
+
 export type NamespaceKeyword =
   | "prompt"
   | "mem"
@@ -19,13 +21,6 @@ export type ControlKeyword =
 export type Keyword = NamespaceKeyword | ControlKeyword;
 
 export type RangeSymbol = "…" | "...";
-
-export type ArithmeticOperator = 
-  | "*"
-  | "%"
-  | "-"
-  | "+"
-  | "/"
 
 export type LogicalOperator = 
   | "="

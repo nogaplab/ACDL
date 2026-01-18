@@ -1,5 +1,5 @@
 Prompt[@t]: {
-    U: obs.image.HUD // heads up display, a screenshot with things like HP, coordinates of the character on the map and ID codes for items printed on it
+    U: obs.image.hud // heads up display, a screenshot with things like HP, coordinates of the character on the map and ID codes for items printed on it
     S: {
         INTRO // you are playing pokemon blue
         GOAL // beat the game
@@ -7,28 +7,30 @@ Prompt[@t]: {
     } 
 
     History {
-        If t>1 {
-            ForEach(i: range(t-min(t, 100), t-1)) {
+        If @t>1 {
+            ForEach(i: range(@t-min(@t, 100), @t-1)) {
                 A: resp.action[@i]
             }
             
-            If t>100 {
+            If @t>100 {
                 Summary{
-                    A: summarize(t-min(100+t,200),t-100)  // first argument is start and second is stop
+                    A: summarize(range(@t-min(100+@t,200),@t-100)) 
                 }
 
-                Compressed_Summary{
-                    If t > 1000 {
-                        A: compress_summaries(Summary[@t]...Summary[@t-900]) // In jumps of 100 between summary times
+                
+                If @t>1000 {
+                    Compressed_Summary{ 
+                        A: compress_summaries(range(prompt.Summary[@t], prompt.Summary[@t-900], 100)) // In jumps of 100 between summary times
                     }
-                }    
+                }
+                 
             
-                ForEach(i: range(max(100, t-900), t-100, 100)) // in jumps of 100 {  
+                ForEach(i: range(max(100, @t-900), @t-100, 100)) {  
                     A: prompt.Summary[@i]
                 }
                 
-                If t>1000 {
-                    ForEach(i: range(1000, t-100, 1000)) { 
+                If @t>1000 {
+                    ForEach(i: range(1000, @t-100, 1000)) { 
                         A: prompt.Compressed_Summary[@i]
                     } 
                 }
@@ -36,7 +38,7 @@ Prompt[@t]: {
         }
     }    
 
-    If t%25==0 {
+    If @t%25==0 {
         //response from critique agents tracking of subgoals (primary, secondary, tertiary, contingency plants, preparation, exploration, team composition)
         A: critique_performance(prompt.History[@t]) // not sure what it gets, probably action history of some sort but they didnt say
     }
