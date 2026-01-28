@@ -124,7 +124,7 @@ export class Parser {
     const val = tok.value;
 
     // Role Message Prefixes: S:, U:, A:
-    if (tok.type === "IDENT" && (val === "S" || val === "U" || val === "A")) {
+    if (tok.type === "IDENT" && (val === "S" || val === "U" || val === "A" || val === "T")) {
       console.log("parsing role message")
       return this.parseRoleMessage();
     }
@@ -188,7 +188,7 @@ export class Parser {
     const roleId = this.consume("IDENT").value as string;
     this.consume("SYMBOL", ":");
 
-    const roleMap: Record<string, AST.Role> = { "S": "system", "U": "user", "A": "assistant" };
+    const roleMap: Record<string, AST.Role> = { "S": "system", "U": "user", "A": "assistant", "T": "tool" };
     const role = roleMap[roleId];
 
     const body: AST.RoleBuildingBlock[] = [];
@@ -207,8 +207,6 @@ export class Parser {
       const startLine = this.peek().line;
       body.push(this.parseRoleBuildingBlockSingleLine(startLine));
     }
-
-    console.log("got here")
 
     return Create.roleMessage({ role, body });
   }

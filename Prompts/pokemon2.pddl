@@ -41,8 +41,11 @@ Prompt[@t]: {
         A: critique_performance(prompt.History[@t]) // not sure what it gets, probably action history of some sort but they didnt say
     }
 
-    U: obs.xml_map[@t] // unseen coordinates are no viewable until explored
+    U: obs.xml_map[@t] // unseen coordinates are not viewable until explored
     S: INSTRUCTION_TO_EXPLORE
     S: CHOOSE_ACTION // instructions to choose next action and how
 }
+
+
+Compressed
    

@@ -21,7 +21,6 @@ import {
   TextArgs,
   CommentBlock,
   LabelBlock,
-  PromptBodyItem
 } from "./types";
 
 
@@ -107,7 +106,7 @@ function renderPromptBody(body: PromptBody): string {
 /**
  * Render a PromptBodyItem (either a PromptBlock or a LabelBlock).
  */
-function renderPromptBodyItem(item: PromptBodyItem): string {
+function renderPromptBodyItem(item: PromptBlock): string {
   if (item.kind === "label-block") {
     return renderLabelBlock(item);
   }
@@ -172,7 +171,7 @@ function renderLabelBlock(block: LabelBlock): string {
  *   - {foreach ...}
  */
 function renderRoleMessage(msg: RoleMessage): string {
-  const roleClass = escapeHtml(msg.role); // "user" / "assistant" / "system"
+  const roleClass = escapeHtml(msg.role); // "user" / "assistant" / "system" / "tool"
   const bodyHtml = msg.body
     .map((b: RoleBuildingBlock) => {
       return `<div class="role-body-block">${renderRoleBuildingBlock(b)}</div>`;

@@ -1,231 +1,495 @@
 /* ======================================================
+   PDDL PROMPT VISUALIZER - FLOWCHART STYLE
+   ====================================================== */
+
+:root {
+  /* Color palette */
+  --bg-primary: #1a1d23;
+  --bg-secondary: #242830;
+  --bg-tertiary: #2d323c;
+
+  --border-subtle: #3d4451;
+  --border-medium: #4d5461;
+
+  --text-primary: #e8eaed;
+  --text-secondary: #9aa0a6;
+  --text-muted: #6b7280;
+
+  /* Role colors - improved harmony */
+  --system-bg: linear-gradient(135deg, #1e3a5f 0%, #152947 100%);
+  --system-border: #60a5fa;
+  --system-glow: rgba(96, 165, 250, 0.25);
+
+  --user-bg: linear-gradient(135deg, #4a3f1a 0%, #332d12 100%);
+  --user-border: #fbbf24;
+  --user-glow: rgba(251, 191, 36, 0.25);
+
+  --assistant-bg: linear-gradient(135deg, #1a3d2e 0%, #0f2318 100%);
+  --assistant-border: #34d399;
+  --assistant-glow: rgba(52, 211, 153, 0.25);
+
+  --tool-bg: linear-gradient(135deg, #3d1a4a 0%, #2a1233 100%);
+  --tool-border: #a855f7;
+  --tool-glow: rgba(168, 85, 247, 0.25);
+
+  /* Control flow colors - all grey */
+  --loop-border: #6b7280;
+  --loop-bg: rgba(107, 114, 128, 0.08);
+
+  --condition-border: #6b7280;
+  --condition-bg: rgba(107, 114, 128, 0.08);
+
+  --switch-border: #6b7280;
+  --switch-bg: rgba(107, 114, 128, 0.08);
+
+  /* Accent colors - better contrast and harmony */
+  --accent-template: #24fb39;
+  --accent-function: #c084fc;
+  --accent-context: #22d3ee;
+  --accent-time-index: #60a5fa;
+  --accent-comment: #6b7280;
+
+  /* Connector line */
+  --connector-color: #4d5461;
+}
+
+/* ======================================================
    GLOBAL STYLES
    ====================================================== */
 
 body {
-  font-family: system-ui, sans-serif;
-  padding: 20px;
-  background: #f8f8f8;
+  font-family: 'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+  padding: 40px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.6;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* ======================================================
+   PROMPT CONTAINER - THE FLOWCHART CANVAS
+   ====================================================== */
+
+.prompt-container {
+  max-width: 900px;
+  margin: 0 auto;
+  position: relative;
+  padding-left: 30px;
+}
+
+/* Vertical connector line */
+.prompt-container::before {
+  content: '';
+  position: absolute;
+  left: 14px;
+  top: 80px;
+  bottom: 20px;
+  width: 2px;
+  background: linear-gradient(to bottom, var(--connector-color), transparent);
+  border-radius: 1px;
+}
+
+/* ======================================================
+   PROMPT TITLE - THE START NODE
+   ====================================================== */
+
+.prompt-title {
+  background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
+  border: 2px solid var(--border-medium);
+  border-radius: 12px;
+  padding: 20px 28px;
+  margin-bottom: 32px;
+  position: relative;
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.3),
+    0 2px 4px -1px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.prompt-title::before {
+  content: 'START';
+  position: absolute;
+  top: -10px;
+  left: 20px;
+  background: var(--bg-primary);
+  padding: 0 8px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  color: var(--text-muted);
+  text-transform: uppercase;
 }
 
 .prompt-title h1 {
   margin: 0;
-  font-size: 24px;
-}
-
-
-/* ======================================================
-   COLLAPSIBLE BLOCK HEADERS
-   (STRUCTURE — NOT BOLD)
-   ====================================================== */
-
-.collapsible-header {
-  cursor: pointer;
-  user-select: none;
-  position: relative;
-  padding-left: 16px;
-  font-weight: normal;
-  opacity: 0.8;
-}
-
-.collapsible-header::before {
-  content: "▼";
-  position: absolute;
-  left: 0;
-  top: 0;
-  font-size: 12px;
-  color: #444;
-}
-
-.collapsed .collapsible-header::before {
-  content: "▶";
-}
-
-.collapsed .block-children {
-  display: none;
-}
-
-
-/* 1. Ensure the header indicates it can be clicked */
-.collapsible-header {
-  cursor: pointer;
-  user-select: none;
-}
-
-/* 2. Target the children containers and hide them when parent is collapsed */
-/* This covers 'block-children' from wrapBlock and 'role-body-block' from role messages */
-.collapsed > .block-children,
-.collapsed > .role-body-block,
-.collapsed > .role-loop-child,
-.collapsed > .role-switch-child,
-.collapsed > .role-condition-child,
-.collapsed > .loop-child,
-.collapsed > .switch-child {
-  display: none !important;
-}
-
-/* 3. Handle the arrow rotation */
-/* If you are using a span with a triangle inside the header */
-.collapsed .collapsible-toggle {
-  transform: rotate(-90deg);
-  display: inline-block;
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
 }
 
 /* ======================================================
-   ROLE MESSAGE STYLING
+   ROLE MESSAGES - THE MAIN NODES
    ====================================================== */
 
 .role-message {
-  padding: 10px;
-  margin: 12px 0;
-  border-radius: 6px;
-  border-left: 5px solid #ccc;
-  background: #fff;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  padding: 0;
+  margin: 8px 0;
+  position: relative;
+  overflow-x: auto;
+  overflow-y: hidden;
+  box-shadow:
+    0 2px 4px -1px rgba(0, 0, 0, 0.2),
+    0 1px 2px -1px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
+.role-message:hover {
+  transform: translateX(4px);
+  box-shadow:
+    0 10px 15px -3px rgba(0, 0, 0, 0.3),
+    0 4px 6px -2px rgba(0, 0, 0, 0.2);
+}
+
+/* Node connector dot */
+.role-message::before {
+  content: '';
+  position: absolute;
+  left: -24px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--connector-color);
+  border: 2px solid var(--bg-primary);
+  z-index: 1;
+}
+
+/* Role-specific styling */
 .role-message.system {
-  background: #e4f0ff;
-  border-color: #7ab4ff;
+  background: var(--system-bg);
+  border-color: var(--system-border);
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.2),
+    0 0 20px var(--system-glow);
+}
+.role-message.system::before {
+  background: var(--system-border);
 }
 
 .role-message.user {
-  background: #fff2e4;
-  border-color: #ffb47a;
+  background: var(--user-bg);
+  border-color: var(--user-border);
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.2),
+    0 0 20px var(--user-glow);
+}
+.role-message.user::before {
+  background: var(--user-border);
 }
 
 .role-message.assistant {
-  background: #e7ffe4;
-  border-color: #71d86d;
+  background: var(--assistant-bg);
+  border-color: var(--assistant-border);
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.2),
+    0 0 20px var(--assistant-glow);
+}
+.role-message.assistant::before {
+  background: var(--assistant-border);
 }
 
-/* Role header = STRUCTURE */
+.role-message.tool {
+  background: var(--tool-bg);
+  border-color: var(--tool-border);
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.2),
+    0 0 20px var(--tool-glow);
+}
+.role-message.tool::before {
+  background: var(--tool-border);
+}
+
+/* Role header badge */
 .role-message-header {
-  font-weight: normal;
-  margin-bottom: 6px;
-  font-size: 14px;
-  opacity: 0.8;
+  display: inline-block;
+  padding: 4px 10px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  border-radius: 0 0 6px 0;
+  margin-bottom: 4px;
+}
+
+.role-message.system .role-message-header {
+  background: rgba(96, 165, 250, 0.25);
+  color: #93c5fd;
+}
+
+.role-message.user .role-message-header {
+  background: rgba(251, 191, 36, 0.25);
+  color: #fcd34d;
+}
+
+.role-message.assistant .role-message-header {
+  background: rgba(52, 211, 153, 0.25);
+  color: #6ee7b7;
+}
+
+.role-message.tool .role-message-header {
+  background: rgba(168, 85, 247, 0.25);
+  color: #c4b5fd;
 }
 
 .role-body-block {
-  margin-left: 15px;
-  margin-top: 4px;
+  padding: 6px 16px 10px;
+  overflow-x: auto;
+  white-space: nowrap;
 }
 
-
 /* ======================================================
-   TEMPLATE, FUNC, CONTEXT VAR
+   TEMPLATE, FUNC, CONTEXT VAR - INLINE ELEMENTS
    ====================================================== */
 
-.template-block,
-.func-block,
-.context-var {
-  font-weight: bold;
-  background: #eee;
-  padding: 2px 5px;
-  border-radius: 4px;
-  font-family: monospace;
-  display: inline-block;
+.template-block {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(251, 191, 36, 0.15);
+  border: 1px solid rgba(251, 191, 36, 0.4);
+  color: var(--accent-template);
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.template-block::before {
+  content: '◆';
+  font-size: 8px;
+  opacity: 0.7;
 }
 
 .func-block {
-  background: none;
-  padding: 0;
-  border-radius: 0;
-  font-weight: bold;
-  display: inline;
+  display: inline-flex;
+  align-items: center;
+  color: var(--accent-function);
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 13px;
 }
 
-.func-block .other-index {
-  font-weight: normal;
-  opacity: 0.85;
+.func-name {
+  font-weight: 600;
 }
 
+.func-parens {
+  color: var(--text-muted);
+}
 
 .context-var {
-  background: #fff8cc;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  background: rgba(52, 211, 153, 0.12);
+  border: 1px solid rgba(52, 211, 153, 0.3);
+  color: var(--accent-context);
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 13px;
+  font-weight: 500;
 }
 
-/* Indices are NOT semantic content */
-.time-index,
-.other-index {
-  font-weight: normal;
-  font-family: monospace;
+.context-var .segment {
+  color: var(--accent-context);
 }
 
+.context-var .segment.base {
+  font-weight: 600;
+}
+
+/* Indices */
 .time-index {
-  color: #0066cc;
+  color: var(--accent-time-index);
+  font-weight: 500;
 }
 
 .other-index {
-  color: #444;
+  color: var(--text-secondary);
 }
 
+/* Comments */
+.comment,
+.inline-comment {
+  color: var(--accent-comment);
+  font-style: italic;
+  font-size: 12px;
+  margin-left: 8px;
+}
+
+.comment-block {
+  color: var(--accent-comment);
+  font-style: italic;
+  padding: 8px 16px;
+  margin: 8px 0;
+  border-left: 2px solid var(--accent-comment);
+  font-size: 13px;
+}
 
 /* ======================================================
-   LOOP BLOCKS
+   CONTROL FLOW BLOCKS - STRUCTURED NODES
    ====================================================== */
 
+/* Shared control block styling */
+.loop-block-outside-role,
+.loop-block-inside-role,
+.switch-block-outside-role,
+.switch-block-inside-role,
+.conditional-block-outside-role,
+.conditional-block-inside-role,
+.conditional-section {
+  position: relative;
+  margin: 8px 0;
+  background: transparent;
+  border: none;
+}
+
+/* Loop blocks - No background box, just vertical line */
 .loop-block-outside-role,
 .loop-block-inside-role {
-  border-left: 3px solid #aaa;
-  padding-left: 10px;
-  margin: 14px 0;
-  font-family: monospace;
+  position: relative;
+  padding-left: 20px;
+  border-left: 2px solid var(--loop-border);
 }
 
-.loop-header {
-  font-weight: normal;
+.loop-block-outside-role-header,
+.loop-block-inside-role-header {
+  background: rgba(107, 114, 128, 0.12);
+  padding: 6px 12px;
+  margin-left: -20px;
   margin-bottom: 4px;
-  opacity: 0.8;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 12px;
+  font-weight: 500;
+  color: #9ca3af;
+  border: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
-
-/* ======================================================
-   SWITCH BLOCKS
-   ====================================================== */
-
-.switch-block-outside-role,
-.switch-block-inside-role {
-  border-left: 3px solid #777;
-  padding-left: 10px;
-  margin: 14px 0;
-  font-family: monospace;
+.loop-block-outside-role-header::before,
+.loop-block-inside-role-header::before {
+  content: '↻';
+  font-size: 16px;
+  color: var(--loop-border);
 }
 
-.switch-header,
-.switch-case-header,
-.switch-default-header {
-  font-weight: normal;
-  margin-bottom: 4px;
-  opacity: 0.8;
-}
-
-
-/* ======================================================
-   CONDITIONAL BLOCKS
-   ====================================================== */
-
+/* Conditional blocks - No background box, just vertical line */
 .conditional-block-outside-role,
 .conditional-block-inside-role {
-  border-left: 3px solid #555;
-  padding-left: 10px;
-  margin: 14px 0;
-  font-family: monospace;
+  position: relative;
+  padding-left: 20px;
+  border-left: 2px solid var(--condition-border);
 }
 
-.conditional-header {
-  font-weight: normal;
+.conditional-section {
+  background: transparent;
+  border: none;
+  margin: 0;
+}
+
+.conditional-section-header {
+  background: rgba(107, 114, 128, 0.12);
+  padding: 6px 12px;
+  margin-left: -20px;
   margin-bottom: 4px;
-  opacity: 0.8;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 12px;
+  font-weight: 500;
+  color: #9ca3af;
+  border: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
+.conditional-section-header::before {
+  content: '◇';
+  font-size: 14px;
+  color: var(--condition-border);
+}
+
+/* Switch blocks - No background box, just vertical line */
+.switch-block-outside-role,
+.switch-block-inside-role {
+  position: relative;
+  padding-left: 20px;
+  border-left: 2px solid var(--switch-border);
+}
+
+.switch-block-outside-role-header,
+.switch-block-inside-role-header {
+  background: rgba(107, 114, 128, 0.12);
+  padding: 6px 12px;
+  margin-left: -20px;
+  margin-bottom: 4px;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 12px;
+  font-weight: 500;
+  color: #9ca3af;
+  border: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.switch-block-outside-role-header::before,
+.switch-block-inside-role-header::before {
+  content: '⎇';
+  font-size: 16px;
+  color: var(--switch-border);
+}
+
+.switch-case,
+.switch-default {
+  margin: 0;
+  border: none;
+  border-radius: 0;
+}
+
+.switch-case-header,
+.switch-default-header {
+  background: rgba(107, 114, 128, 0.08);
+  padding: 5px 12px;
+  margin-left: -20px;
+  margin-bottom: 3px;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 11px;
+  color: #9ca3af;
+  border: none;
+}
 
 /* ======================================================
-   BLOCK CHILDREN INDENTATION
+   BLOCK CHILDREN - NESTED CONTENT
    ====================================================== */
 
 .block-children {
-  margin-left: 15px;
+  padding: 0;
+  margin: 4px 0;
 }
 
 .conditional-child,
@@ -234,104 +498,254 @@ body {
 .role-switch-child,
 .loop-child,
 .role-loop-child {
-  margin-left: 12px;
+  margin: 0;
+  padding: 0;
 }
-
 
 /* ======================================================
-   UPLOAD ZONE STYLES
+   LABEL BLOCKS - SECTION MARKERS
    ====================================================== */
 
-.upload-container {
-  border: 2px dashed #ccc;
-  padding: 30px;
-  text-align: center;
-  margin: 20px 0;
-  transition: all 0.3s ease;
+.label-block {
+  margin: 24px 0;
+  position: relative;
 }
 
-.upload-container.hover {
-  background-color: #f0f8ff;
-  border-color: #007bff;
+.label-start,
+.label-end {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 11px;
+  color: var(--text-muted);
+  letter-spacing: 1px;
+  padding: 4px 0;
+}
+
+.label-block-body {
+  border-left: 2px solid var(--border-subtle);
+  margin-left: 8px;
+  padding-left: 16px;
+}
+
+/* ======================================================
+   COLLAPSIBLE BEHAVIOR
+   ====================================================== */
+
+.collapsible-header {
+  cursor: pointer;
+  user-select: none;
+  transition: opacity 0.2s ease;
+}
+
+.collapsible-header:hover {
+  opacity: 0.8;
+}
+
+.collapsed .block-children,
+.collapsed .label-block-body,
+.collapsed > .role-body-block {
+  display: none;
+}
+
+.collapsed .collapsible-header::after {
+  content: ' ▸';
+  font-size: 10px;
+  opacity: 0.6;
+}
+
+/* ======================================================
+   UPLOAD ZONE - FILE DROP AREA
+   ====================================================== */
+
+#drop-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed var(--border-medium);
+  border-radius: 16px;
+  padding: 60px 40px;
+  margin: 40px auto;
+  max-width: 500px;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-weight: 500;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+#drop-zone:hover,
+#drop-zone.hover {
+  background: var(--bg-tertiary);
+  border-color: var(--system-border);
+  color: var(--text-primary);
+  transform: scale(1.02);
+  box-shadow: 0 0 30px var(--system-glow);
 }
 
 .upload-button {
   display: inline-block;
-  padding: 10px 20px;
-  background-color: #007bff;
+  padding: 12px 28px;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
   color: white;
-  border-radius: 5px;
+  border-radius: 8px;
   cursor: pointer;
-  margin-top: 10px;
+  margin-top: 16px;
+  font-weight: 600;
+  font-size: 14px;
+  border: none;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 6px rgba(37, 99, 235, 0.3);
 }
 
 .upload-button:hover {
-  background-color: #0056b3;
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(37, 99, 235, 0.4);
 }
-
-#drop-zone {
-  display: flex;            /* Fixes the collapsed layout shown in the image */
-  flex-direction: column;   /* Stacks text and button vertically */
-  align-items: center;      /* Centers items horizontally */
-  justify-content: center;  /* Centers items vertically */
-  border: 3px dashed #4A90E2;
-  border-radius: 12px;
-  padding: 50px;
-  margin: 20px auto;
-  max-width: 600px;
-  background: #f0f7ff;
-  color: #4A90E2;
-  font-family: sans-serif;
-  font-weight: bold;
-  transition: all 0.2s ease;
-  cursor: pointer;
-}
-
-#drop-zone.hover { 
-  background: #d0e7ff; 
-  border-color: #007AFF; 
-  transform: scale(1.02); 
-}
-
 
 /* ======================================================
    MAIN APP LAYOUT
    ====================================================== */
+
 #app {
   display: flex;
-  height: 100vh;
+  min-height: 100vh;
+  background: var(--bg-primary);
 }
 
 #sidebar {
-  width: 350px;
-  background: #f4f4f4;
-  padding: 20px;
+  width: 400px;
+  background: var(--bg-secondary);
+  padding: 24px;
   display: flex;
   flex-direction: column;
-  border-right: 1px solid #ccc;
+  border-right: 1px solid var(--border-subtle);
 }
 
 #pddl-editor {
   width: 100%;
-  flex-grow: 1; /* Makes it fill the available space in the sidebar */
-  font-family: 'Courier New', monospace;
-  font-size: 14px;
-  padding: 10px;
-  margin: 10px 0;
-  border: 1px solid #999;
-  border-radius: 4px;
+  flex-grow: 1;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 13px;
+  padding: 16px;
+  margin: 16px 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
   resize: none;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+
+#pddl-editor:focus {
+  outline: none;
+  border-color: var(--system-border);
+  box-shadow: 0 0 0 3px var(--system-glow);
 }
 
 #render-btn {
   width: 100%;
-  padding: 10px;
-  background-color: #007bff;
+  padding: 14px;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
   color: white;
   border: none;
+  border-radius: 8px;
   cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.2s ease;
 }
 
 #render-btn:hover {
-  background-color: #0056b3;
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  transform: translateY(-1px);
+}
+
+/* ======================================================
+   STATIC EXPORT PAGE
+   ====================================================== */
+
+.prompt-section {
+  background: var(--bg-secondary);
+  padding: 32px;
+  border-radius: 16px;
+  box-shadow:
+    0 10px 15px -3px rgba(0, 0, 0, 0.3),
+    0 4px 6px -2px rgba(0, 0, 0, 0.2);
+  margin-bottom: 48px;
+  border: 1px solid var(--border-subtle);
+}
+
+.prompt-section h3 {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin: 0 0 20px 0;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.error-msg {
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.15);
+  padding: 16px 20px;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 8px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 13px;
+}
+
+/* ======================================================
+   SCROLLBAR STYLING
+   ====================================================== */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-medium);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* ======================================================
+   EXPORT PAGE HEADER
+   ====================================================== */
+
+.export-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px 40px;
+  margin-bottom: 32px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.export-header h1 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.style-badge {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: var(--bg-tertiary);
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border-subtle);
 }

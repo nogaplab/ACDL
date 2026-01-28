@@ -10,7 +10,7 @@ export type PromptTitle = {
   indices: Array<Index>;
 }
 
-export type Role = "user" | "assistant" | "system";
+export type Role = "user" | "assistant" | "system" | "tool";
 
 // Index types:
 export type Index = TimeIndex | OtherIndex;
@@ -92,8 +92,6 @@ export type LabelBlock = {
 }
 
 export type PromptBlock = RoleMessage|LabelBlock|ConditionalBlockOutsideRole|LoopBlockOutsideRole|SwitchBlockOutsideRole|CommentBlock;
-
-
 
 export type LoopBlockOutsideRole = {
   kind: "loop-block-outside-role";
