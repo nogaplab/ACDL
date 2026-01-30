@@ -418,7 +418,12 @@ export class Parser {
   private parseIndex(): AST.Index {
     let time: boolean = this.match("SYMBOL", "@");
     let idx: string = ""
-    while (this.peek().type === "IDENT" || this.peek().type === "ARITH_OP" || this.peek().type === "NUMBER") {
+    while (
+      this.peek().type === "IDENT" ||
+      this.peek().type === "ARITH_OP" ||
+      this.peek().type === "NUMBER" ||
+      (this.peek().type === "SYMBOL" && this.peek().value === "." && this.peekNext()?.type === "IDENT")
+    ) {
         idx += this.consume().value as string
     }
     // Return the correct AST node based on the 'time' flag

@@ -16,9 +16,9 @@
   --text-muted: #6b7280;
 
   /* Role colors - improved harmony */
-  --system-bg: linear-gradient(135deg, #1e3a5f 0%, #152947 100%);
-  --system-border: #60a5fa;
-  --system-glow: rgba(96, 165, 250, 0.25);
+  --system-bg: linear-gradient(135deg, #164e63 0%, #0e3a47 100%);
+  --system-border: #22d3ee;
+  --system-glow: rgba(34, 211, 238, 0.25);
 
   --user-bg: linear-gradient(135deg, #4a3f1a 0%, #332d12 100%);
   --user-border: #fbbf24;
@@ -32,15 +32,24 @@
   --tool-border: #a855f7;
   --tool-glow: rgba(168, 85, 247, 0.25);
 
-  /* Control flow colors - all grey */
-  --loop-border: #6b7280;
-  --loop-bg: rgba(107, 114, 128, 0.08);
+  /* Control flow colors - unified blue theme */
+  --control-border: #60a5fa;
+  --control-bg: rgba(96, 165, 250, 0.08);
+  --control-header-bg: rgba(96, 165, 250, 0.15);
+  --control-text: #93c5fd;
 
-  --condition-border: #6b7280;
-  --condition-bg: rgba(107, 114, 128, 0.08);
+  /* Aliases for backwards compatibility */
+  --loop-border: var(--control-border);
+  --loop-bg: var(--control-bg);
+  --loop-header-bg: var(--control-header-bg);
 
-  --switch-border: #6b7280;
-  --switch-bg: rgba(107, 114, 128, 0.08);
+  --condition-border: var(--control-border);
+  --condition-bg: var(--control-bg);
+  --condition-header-bg: var(--control-header-bg);
+
+  --switch-border: var(--control-border);
+  --switch-bg: var(--control-bg);
+  --switch-header-bg: var(--control-header-bg);
 
   /* Accent colors - better contrast and harmony */
   --accent-template: #24fb39;
@@ -74,6 +83,8 @@ body {
    ====================================================== */
 
 .prompt-container {
+  width: fit-content;
+  min-width: 500px;
   max-width: 900px;
   margin: 0 auto;
   position: relative;
@@ -109,19 +120,6 @@ body {
     inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
-.prompt-title::before {
-  content: 'START';
-  position: absolute;
-  top: -10px;
-  left: 20px;
-  background: var(--bg-primary);
-  padding: 0 8px;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 1.5px;
-  color: var(--text-muted);
-  text-transform: uppercase;
-}
 
 .prompt-title h1 {
   margin: 0;
@@ -230,8 +228,8 @@ body {
 }
 
 .role-message.system .role-message-header {
-  background: rgba(96, 165, 250, 0.25);
-  color: #93c5fd;
+  background: rgba(34, 211, 238, 0.25);
+  color: #67e8f9;
 }
 
 .role-message.user .role-message-header {
@@ -355,132 +353,168 @@ body {
 .switch-block-outside-role,
 .switch-block-inside-role,
 .conditional-block-outside-role,
-.conditional-block-inside-role,
+.conditional-block-inside-role {
+  position: relative;
+  margin: 12px 0;
+  border-radius: 8px;
+}
+
 .conditional-section {
   position: relative;
   margin: 8px 0;
-  background: transparent;
-  border: none;
 }
 
-/* Loop blocks - No background box, just vertical line */
+/* Loop blocks */
 .loop-block-outside-role,
 .loop-block-inside-role {
   position: relative;
-  padding-left: 20px;
-  border-left: 2px solid var(--loop-border);
+  padding: 12px 16px 12px 24px;
+  border-left: 3px solid var(--control-border);
+  background: var(--control-bg);
+  border-radius: 0 8px 8px 0;
+  box-shadow: inset 0 0 0 1px rgba(96, 165, 250, 0.1);
 }
 
 .loop-block-outside-role-header,
 .loop-block-inside-role-header {
-  background: rgba(107, 114, 128, 0.12);
-  padding: 6px 12px;
-  margin-left: -20px;
-  margin-bottom: 4px;
-  border-radius: 4px;
+  background: var(--control-header-bg);
+  padding: 8px 14px;
+  margin: -12px -16px 12px -24px;
+  border-radius: 0 8px 0 0;
   font-family: 'JetBrains Mono', 'Fira Code', monospace;
   font-size: 12px;
-  font-weight: 500;
-  color: #9ca3af;
-  border: none;
+  font-weight: 600;
+  color: var(--control-text);
+  border-bottom: 1px solid rgba(96, 165, 250, 0.2);
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 
 .loop-block-outside-role-header::before,
 .loop-block-inside-role-header::before {
   content: '↻';
   font-size: 16px;
-  color: var(--loop-border);
+  color: var(--control-border);
 }
 
-/* Conditional blocks - No background box, just vertical line */
+/* Conditional blocks */
 .conditional-block-outside-role,
 .conditional-block-inside-role {
   position: relative;
-  padding-left: 20px;
-  border-left: 2px solid var(--condition-border);
+  padding: 12px 16px 12px 24px;
+  border-left: 3px solid var(--control-border);
+  background: var(--control-bg);
+  border-radius: 0 8px 8px 0;
+  box-shadow: inset 0 0 0 1px rgba(96, 165, 250, 0.1);
 }
 
 .conditional-section {
-  background: transparent;
-  border: none;
-  margin: 0;
+  background: rgba(96, 165, 250, 0.05);
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin: 8px 0;
+  border-left: 2px solid rgba(96, 165, 250, 0.3);
 }
 
 .conditional-section-header {
-  background: rgba(107, 114, 128, 0.12);
-  padding: 6px 12px;
-  margin-left: -20px;
-  margin-bottom: 4px;
-  border-radius: 4px;
+  background: var(--control-header-bg);
+  padding: 8px 14px;
+  margin: -8px -12px 10px -12px;
+  border-radius: 6px 6px 0 0;
   font-family: 'JetBrains Mono', 'Fira Code', monospace;
   font-size: 12px;
-  font-weight: 500;
-  color: #9ca3af;
-  border: none;
+  font-weight: 600;
+  color: var(--control-text);
+  border-bottom: 1px solid rgba(96, 165, 250, 0.2);
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 
 .conditional-section-header::before {
   content: '◇';
   font-size: 14px;
-  color: var(--condition-border);
+  color: var(--control-border);
 }
 
-/* Switch blocks - No background box, just vertical line */
+/* Switch blocks */
 .switch-block-outside-role,
 .switch-block-inside-role {
   position: relative;
-  padding-left: 20px;
-  border-left: 2px solid var(--switch-border);
+  padding: 12px 16px 12px 24px;
+  border-left: 3px solid var(--control-border);
+  background: var(--control-bg);
+  border-radius: 0 8px 8px 0;
+  box-shadow: inset 0 0 0 1px rgba(96, 165, 250, 0.1);
 }
 
 .switch-block-outside-role-header,
 .switch-block-inside-role-header {
-  background: rgba(107, 114, 128, 0.12);
-  padding: 6px 12px;
-  margin-left: -20px;
-  margin-bottom: 4px;
-  border-radius: 4px;
+  background: var(--control-header-bg);
+  padding: 8px 14px;
+  margin: -12px -16px 12px -24px;
+  border-radius: 0 8px 0 0;
   font-family: 'JetBrains Mono', 'Fira Code', monospace;
   font-size: 12px;
-  font-weight: 500;
-  color: #9ca3af;
-  border: none;
+  font-weight: 600;
+  color: var(--control-text);
+  border-bottom: 1px solid rgba(96, 165, 250, 0.2);
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 
 .switch-block-outside-role-header::before,
 .switch-block-inside-role-header::before {
   content: '⎇';
   font-size: 16px;
-  color: var(--switch-border);
+  color: var(--control-border);
 }
 
 .switch-case,
 .switch-default {
-  margin: 0;
-  border: none;
-  border-radius: 0;
+  margin: 8px 0;
+  padding: 8px 12px;
+  background: rgba(96, 165, 250, 0.05);
+  border-radius: 6px;
+  border-left: 2px solid rgba(96, 165, 250, 0.3);
 }
 
 .switch-case-header,
 .switch-default-header {
-  background: rgba(107, 114, 128, 0.08);
-  padding: 5px 12px;
-  margin-left: -20px;
-  margin-bottom: 3px;
-  border-radius: 4px;
+  background: rgba(96, 165, 250, 0.12);
+  padding: 6px 12px;
+  margin: -8px -12px 10px -12px;
+  border-radius: 6px 6px 0 0;
   font-family: 'JetBrains Mono', 'Fira Code', monospace;
   font-size: 11px;
-  color: #9ca3af;
-  border: none;
+  font-weight: 600;
+  color: var(--control-text);
+  border-bottom: 1px solid rgba(96, 165, 250, 0.15);
+}
+
+/* Nesting depth indicators - increase visual distinction for nested blocks */
+.loop-block-outside-role .loop-block-outside-role,
+.loop-block-outside-role .loop-block-inside-role,
+.loop-block-inside-role .loop-block-outside-role,
+.loop-block-inside-role .loop-block-inside-role,
+.conditional-block-outside-role .conditional-block-outside-role,
+.conditional-block-outside-role .conditional-block-inside-role,
+.conditional-block-inside-role .conditional-block-outside-role,
+.conditional-block-inside-role .conditional-block-inside-role,
+.switch-block-outside-role .switch-block-outside-role,
+.switch-block-outside-role .switch-block-inside-role,
+.switch-block-inside-role .switch-block-outside-role,
+.switch-block-inside-role .switch-block-inside-role,
+/* Cross-type nesting */
+.loop-block-outside-role .conditional-block-outside-role,
+.loop-block-outside-role .switch-block-outside-role,
+.conditional-block-outside-role .loop-block-outside-role,
+.conditional-block-outside-role .switch-block-outside-role,
+.switch-block-outside-role .loop-block-outside-role,
+.switch-block-outside-role .conditional-block-outside-role {
+  background: rgba(96, 165, 250, 0.12);
 }
 
 /* ======================================================
@@ -488,18 +522,74 @@ body {
    ====================================================== */
 
 .block-children {
-  padding: 0;
-  margin: 4px 0;
+  padding: 4px 0;
+  margin: 8px 0;
 }
 
 .conditional-child,
-.role-condition-child,
+.role-condition-child {
+  margin: 6px 0;
+  padding: 4px 0;
+}
+
 .switch-child,
-.role-switch-child,
+.role-switch-child {
+  margin: 6px 0;
+  padding: 4px 0;
+}
+
 .loop-child,
 .role-loop-child {
-  margin: 0;
-  padding: 0;
+  margin: 6px 0;
+  padding: 4px 0;
+}
+
+/* Ensure role messages inside control blocks have proper spacing */
+.loop-block-outside-role .role-message,
+.loop-block-inside-role .role-message,
+.conditional-block-outside-role .role-message,
+.conditional-block-inside-role .role-message,
+.switch-block-outside-role .role-message,
+.switch-block-inside-role .role-message,
+.conditional-section .role-message,
+.switch-case .role-message,
+.switch-default .role-message {
+  margin: 8px 0;
+}
+
+/* Nested control blocks spacing */
+.loop-block-outside-role .loop-block-outside-role,
+.loop-block-outside-role .conditional-block-outside-role,
+.loop-block-outside-role .switch-block-outside-role,
+.conditional-block-outside-role .loop-block-outside-role,
+.conditional-block-outside-role .conditional-block-outside-role,
+.conditional-block-outside-role .switch-block-outside-role,
+.switch-block-outside-role .loop-block-outside-role,
+.switch-block-outside-role .conditional-block-outside-role,
+.switch-block-outside-role .switch-block-outside-role {
+  margin: 12px 0;
+}
+
+/* Hover effects for control blocks */
+.loop-block-outside-role:hover,
+.loop-block-inside-role:hover,
+.conditional-block-outside-role:hover,
+.conditional-block-inside-role:hover,
+.switch-block-outside-role:hover,
+.switch-block-inside-role:hover {
+  box-shadow:
+    inset 0 0 0 1px rgba(96, 165, 250, 0.2),
+    0 0 20px rgba(96, 165, 250, 0.1);
+}
+
+/* Control block transitions */
+.loop-block-outside-role,
+.loop-block-inside-role,
+.conditional-block-outside-role,
+.conditional-block-inside-role,
+.switch-block-outside-role,
+.switch-block-inside-role {
+  transition: box-shadow 0.2s ease;
 }
 
 /* ======================================================
@@ -748,4 +838,275 @@ body {
   padding: 6px 12px;
   border-radius: 6px;
   border: 1px solid var(--border-subtle);
+}
+
+/* ======================================================
+   COMPACT MODE - FOR RESEARCH PAPERS
+   ====================================================== */
+
+.compact .prompt-container {
+  width: fit-content;
+  min-width: 350px;
+  max-width: 600px;
+  padding-left: 14px;
+}
+
+.compact .prompt-container::before {
+  left: 6px;
+  top: 30px;
+  width: 1px;
+}
+
+/* Compact prompt title */
+.compact .prompt-title {
+  padding: 6px 10px;
+  margin-bottom: 8px;
+  border-radius: 4px;
+  border-width: 1px;
+}
+
+
+.compact .prompt-title h1 {
+  font-size: 11px;
+}
+
+/* Compact role messages */
+.compact .role-message {
+  margin: 2px 0;
+  border-radius: 4px;
+}
+
+.compact .role-message:hover {
+  transform: none;
+}
+
+.compact .role-message::before {
+  left: -11px;
+  width: 4px;
+  height: 4px;
+  border-width: 1px;
+}
+
+.compact .role-message-header {
+  padding: 1px 5px;
+  font-size: 7px;
+  letter-spacing: 0.2px;
+  border-radius: 0 0 3px 0;
+  margin-bottom: 0;
+}
+
+.compact .role-body-block {
+  padding: 1px 6px 2px;
+  line-height: 1 !important;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1px 4px;
+  align-items: center;
+}
+
+/* Compact inline elements */
+.compact .template-block {
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 9px;
+  gap: 2px;
+}
+
+.compact .template-block::before {
+  font-size: 5px;
+}
+
+.compact .func-block {
+  font-size: 9px;
+}
+
+.compact .context-var {
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 9px;
+  gap: 1px;
+}
+
+.compact .time-index,
+.compact .other-index {
+  font-size: 9px;
+}
+
+.compact .comment,
+.compact .inline-comment {
+  font-size: 8px;
+  margin-left: 3px;
+}
+
+.compact .comment-block {
+  padding: 2px 6px;
+  margin: 2px 0;
+  font-size: 8px;
+  border-left-width: 1px;
+}
+
+/* Compact control flow blocks */
+.compact .loop-block-outside-role,
+.compact .loop-block-inside-role,
+.compact .conditional-block-outside-role,
+.compact .conditional-block-inside-role,
+.compact .switch-block-outside-role,
+.compact .switch-block-inside-role {
+  margin: 2px 0;
+  padding: 3px 6px 3px 10px;
+  border-left-width: 2px;
+  border-radius: 0 4px 4px 0;
+}
+
+.compact .loop-block-outside-role-header,
+.compact .loop-block-inside-role-header,
+.compact .switch-block-outside-role-header,
+.compact .switch-block-inside-role-header {
+  padding: 2px 6px;
+  margin: -3px -6px 3px -10px;
+  border-radius: 0 4px 0 0;
+  font-size: 8px;
+  gap: 3px;
+}
+
+.compact .loop-block-outside-role-header::before,
+.compact .loop-block-inside-role-header::before {
+  font-size: 9px;
+}
+
+.compact .switch-block-outside-role-header::before,
+.compact .switch-block-inside-role-header::before {
+  font-size: 9px;
+}
+
+.compact .conditional-section {
+  padding: 2px 6px;
+  margin: 2px 0;
+  border-radius: 3px;
+}
+
+.compact .conditional-section-header {
+  padding: 2px 6px;
+  margin: -2px -6px 3px -6px;
+  border-radius: 3px 3px 0 0;
+  font-size: 8px;
+  gap: 3px;
+}
+
+.compact .conditional-section-header::before {
+  font-size: 8px;
+}
+
+.compact .switch-case,
+.compact .switch-default {
+  margin: 2px 0;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+.compact .switch-case-header,
+.compact .switch-default-header {
+  padding: 2px 6px;
+  margin: -2px -6px 3px -6px;
+  border-radius: 3px 3px 0 0;
+  font-size: 7px;
+}
+
+/* Compact block children */
+.compact .block-children {
+  padding: 0;
+  margin: 2px 0;
+}
+
+.compact .conditional-child,
+.compact .role-condition-child,
+.compact .switch-child,
+.compact .role-switch-child,
+.compact .loop-child,
+.compact .role-loop-child {
+  margin: 1px 0;
+  padding: 0;
+}
+
+/* Compact label blocks */
+.compact .label-block {
+  margin: 6px 0;
+}
+
+.compact .label-start,
+.compact .label-end {
+  font-size: 8px;
+  padding: 1px 0;
+}
+
+.compact .label-block-body {
+  margin-left: 3px;
+  padding-left: 8px;
+  border-left-width: 1px;
+}
+
+/* Compact nested spacing */
+.compact .loop-block-outside-role .role-message,
+.compact .loop-block-inside-role .role-message,
+.compact .conditional-block-outside-role .role-message,
+.compact .conditional-block-inside-role .role-message,
+.compact .switch-block-outside-role .role-message,
+.compact .switch-block-inside-role .role-message,
+.compact .conditional-section .role-message,
+.compact .switch-case .role-message,
+.compact .switch-default .role-message {
+  margin: 2px 0;
+}
+
+/* Compact nested control blocks */
+.compact .loop-block-outside-role .loop-block-outside-role,
+.compact .loop-block-outside-role .conditional-block-outside-role,
+.compact .loop-block-outside-role .switch-block-outside-role,
+.compact .conditional-block-outside-role .loop-block-outside-role,
+.compact .conditional-block-outside-role .conditional-block-outside-role,
+.compact .conditional-block-outside-role .switch-block-outside-role,
+.compact .switch-block-outside-role .loop-block-outside-role,
+.compact .switch-block-outside-role .conditional-block-outside-role,
+.compact .switch-block-outside-role .switch-block-outside-role {
+  margin: 2px 0;
+}
+
+/* Remove glow effects and hover in compact mode */
+.compact .role-message.system,
+.compact .role-message.user,
+.compact .role-message.assistant,
+.compact .role-message.tool {
+  box-shadow: none;
+}
+
+.compact .loop-block-outside-role:hover,
+.compact .loop-block-inside-role:hover,
+.compact .conditional-block-outside-role:hover,
+.compact .conditional-block-inside-role:hover,
+.compact .switch-block-outside-role:hover,
+.compact .switch-block-inside-role:hover {
+  box-shadow: none;
+}
+
+/* Tighter line height for compact mode */
+.compact,
+.compact * {
+  line-height: 1 !important;
+}
+
+/* Remove any margins on inline elements in compact mode */
+.compact .template-block,
+.compact .func-block,
+.compact .context-var,
+.compact .time-index,
+.compact .other-index,
+.compact .text-block {
+  margin: 0;
+  display: inline-flex;
+  vertical-align: middle;
+}
+
+/* Ensure text nodes wrap tightly */
+.compact .role-body-block > * {
+  margin: 0;
 }
