@@ -3,6 +3,9 @@ import {
   PromptTitle,
   Index,
   PromptBody,
+  ChatPromptBody,
+  CompletionPromptBody,
+  NoneMessage,
   RoleMessage,
   RoleBuildingBlock,
   ContextVar,
@@ -97,10 +100,31 @@ function renderIndexList(indices: Index[]): string {
 
 
 /**
- * Render the body of the prompt: an ordered list of blocks.
+ * Render the body of the prompt: either a chat prompt or a completion prompt.
  */
 function renderPromptBody(body: PromptBody): string {
-  return body.body.map(renderPromptBodyItem).join("\n");
+  if (body.kind === "chat-prompt-body") {
+    return body.body.map(renderPromptBodyItem).join("\n");
+  } else {
+    return renderNoneMessage(body.message);
+  }
+}
+
+/**
+ * Render a NoneMessage (completion prompt - no role structure).
+ */
+function renderNoneMessage(msg: NoneMessage): string {
+  const bodyHtml = msg.body
+    .map((b: RoleBuildingBlock) => {
+      return `<div class="role-body-block">${renderRoleBuildingBlock(b)}</div>`;
+    })
+    .join("\n");
+
+  return `
+<div class="none-message completion-prompt">
+  <div class="none-message-header">Completion Prompt (no role)</div>
+  ${bodyHtml}
+</div>`;
 }
 
 /**
@@ -325,7 +349,7 @@ function renderTemplateBlock(block: Template): string {
  * Render a ContextVar reference using the DSL path structure.
  *
  * ContextVar:
- *   - base: ContextBase          // "obs", "resp", "act", "mem", "prompt"
+ *   - base: ContextBase          // "env", "resp", "sys", "prompt"
  *   - indices: Index[]           // (optional) indices directly on the root
  *   - path: PathDesc             // linked list of path segments
  *
@@ -335,9 +359,8 @@ function renderTemplateBlock(block: Template): string {
  *   - next?: PathDesc            // next segment
  *
  * This supports expressions like:
- *   obs.user_question[@t].line[k]
- *   mem.summary[@t].tokens[@i][agent]
- *   act.action_name
+ *   env.user_question[@t].line[k]
+ *   sys.action_name[@t]
  *
  * IMPORTANT RULE:
  *   - If a segment has *no indices*, render only its name:
@@ -352,7 +375,7 @@ function renderTemplateBlock(block: Template): string {
 function renderContextVarBlock(block: ContextVar): string {
   const segments: Array<string> = [];
 
-  // 1. Render the ROOT segment (obs, resp, mem, etc.)
+  // 1. Render the ROOT segment (sys, resp, env, etc.)
   //    If there are indices on the root, append them directly.
   const rootIndices = block.indices;
   const rootIndexText = rootIndices.length > 0

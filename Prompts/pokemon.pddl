@@ -1,5 +1,5 @@
 Prompt[@t]: {
-    U: obs.image.hud // heads up display, a screenshot with things like HP, coordinates of the character on the map and ID codes for items printed on it
+    U: env.image.hud // heads up display, a screenshot with things like HP, coordinates of the character on the map and ID codes for items printed on it
     S: {
         INTRO // you are playing pokemon blue
         GOAL // beat the game
@@ -43,7 +43,7 @@ Prompt[@t]: {
         A: critique_performance(prompt.History[@t]) // not sure what it gets, probably action history of some sort but they didnt say
     }
 
-    U: obs.xml_map[@t] // unseen coordinates are not viewable until explored
+    U: env.xml_map[@t] // unseen coordinates are not viewable until explored
     S: INSTRUCTION_TO_EXPLORE
     S: CHOOSE_ACTION // instructions to choose next action and how
 }

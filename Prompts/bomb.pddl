@@ -6,26 +6,26 @@ Prompt[@t]: {
 	    TOOLS // tools to be used in the task
 	    ACTIONS	// available actions in each round
 	    COMMUNICATION INSTRUCTIONS	// explanation for how to communicate with the other 2 agents
-	    OBSERVATION INSTRUCTIONS      // explanation of what will be given in each observation
+	    envERVATION INSTRUCTIONS      // explanation of what will be given in each envervation
 	    BELIEF INTRO // telling the agent this section will inform it about its current beliefs
 	    ROLE	// telling the agent which player it is playing as
 	}
 	U: {
-        obs.round_number[@t]
-	   	obs.team_score[@t]
-	    obs.general[@t]
-        ForEach(teammate: obs.teammates){
-	 		mem.teammate_locations[@t].teammate
+        env.round_number[@t]
+	   	env.team_score[@t]
+	    env.general[@t]
+        ForEach(teammate: env.teammates){
+	 		sys.teammate_locations[@t].teammate
         }
-        obs.room_connectivity
-	    ForEach(bomb: obs.bombs) {
-	     	obs.bomb_location[@t, bomb]
-	     	obs.bomb_details[@t, bomb]
+        env.room_connectivity
+	    ForEach(bomb: env.bombs) {
+	     	env.bomb_location[@t, bomb]
+	     	env.bomb_details[@t, bomb]
         }
 	
-		ForEach(agent: obs.agents) {
-	    	obs.agent_inventory[@t, agent]
+		ForEach(agent: env.agents) {
+	    	env.agent_inventory[@t, agent]
         }
-        obs.available_actions[@t]
+        env.available_actions[@t]
        }
 }

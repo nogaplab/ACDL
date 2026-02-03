@@ -10,8 +10,8 @@ Prompt[@t]: {
         If mem.code_blocks is not None {
             ForEach(k: range(1,act.code_block[@i].len)){
                 U: {
-                    act.code_block[@i.k] 
-                    act.code_block[@i.k].response 
+                    sys.code_block[@i.k] 
+                    sys.code_block[@i.k].response 
                 }
             }
         }
@@ -23,7 +23,7 @@ Prompt[@t]: {
     }
 
     // next action prompt
-    If mem.final_answer[@t] {
+    If sys.final_answer[@t] {
         U: PROVIDE_FINAL_ANSWER
     }
     ElseIf @t == 1 {
@@ -35,7 +35,7 @@ Prompt[@t]: {
     Else {
         U: {
             HIST_EXPLANATION    // the history before is your previous interactions with the REPL env
-            REPL(query)     // use the REPL to answer the query
+            REPL(sys.query)     // use the REPL to answer the query
         }
     }
 

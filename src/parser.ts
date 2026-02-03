@@ -81,9 +81,27 @@ export class Parser {
 
   /**
    * Gatekeeper for Top-Level Scope.
-   * Strictly collects PromptBodyItems (PromptBlocks or LabelBlocks).
+   * Detects whether this is a chat prompt (multiple roles) or completion prompt (single N: message).
    */
   private parsePromptBody(): AST.PromptBody {
+    // Check if first non-comment token is N: (completion/none prompt)
+    const savedPos = this.pos;
+    while (this.peek().type === "COMMENT") {
+      this.pos++;
+    }
+    const isCompletionPrompt = this.peek().type === "IDENT" && this.peek().value === "N";
+    this.pos = savedPos;
+
+    if (isCompletionPrompt) {
+      return this.parseCompletionPromptBody();
+    }
+    return this.parseChatPromptBody();
+  }
+
+  /**
+   * Parse a chat prompt body (standard multi-role format).
+   */
+  private parseChatPromptBody(): AST.ChatPromptBody {
     const body: AST.PromptBlock[] = [];
     while (this.peek().type !== "EOF" && (this.peek().value !== "}")) {
       // Check for standalone comments
@@ -95,7 +113,56 @@ export class Parser {
       body.push(this.parsePromptBodyItem());
     }
     const comment = this.parseOptionalComment();
-    return Create.promptBody({ body });
+    return Create.chatPromptBody({ body });
+  }
+
+  /**
+   * Parse a completion prompt body (single N: message, no other roles allowed).
+   */
+  private parseCompletionPromptBody(): AST.CompletionPromptBody {
+    // Skip any leading comments
+    while (this.peek().type === "COMMENT") {
+      this.consume("COMMENT");
+    }
+
+    // Parse the none message
+    const message = this.parseNoneMessage();
+
+    // Verify nothing else follows (except comments and closing brace)
+    while (this.peek().type === "COMMENT") {
+      this.consume("COMMENT");
+    }
+
+    if (this.peek().type !== "EOF" && this.peek().value !== "}") {
+      const tok = this.peek();
+      throw new Error(`[${tok.line}:${tok.col}] Completion prompts (N:) can only have a single message. Found unexpected token "${tok.value}"`);
+    }
+
+    return Create.completionPromptBody({ message });
+  }
+
+  /**
+   * Parse a NoneMessage: N: { RoleBuildingBlock* }
+   */
+  private parseNoneMessage(): AST.NoneMessage {
+    this.consume("IDENT", "N");
+    this.consume("SYMBOL", ":");
+
+    const body: AST.RoleBuildingBlock[] = [];
+
+    if (this.peek().value === "{") {
+      this.consume("SYMBOL", "{");
+      while (this.peek().type !== "EOF" && this.peek().value !== "}") {
+        body.push(this.parseRoleBuildingBlock());
+      }
+      this.consume("SYMBOL", "}");
+    } else {
+      // Single-line syntax
+      const startLine = this.peek().line;
+      body.push(this.parseRoleBuildingBlockSingleLine(startLine));
+    }
+
+    return Create.noneMessage({ body });
   }
 
   /**
@@ -234,7 +301,7 @@ export class Parser {
       }
 
       // Context Namespaces
-      const namespaces = ["obs", "mem", "act", "resp", "prompt"];
+      const namespaces = ["env", "sys", "resp", "prompt"];
       if (namespaces.includes(val as string)) {
         return this.parseContextVar();
       }
@@ -277,7 +344,7 @@ export class Parser {
       }
 
       // 3. Check for Context Namespaces
-      const namespaces = ["obs", "mem", "act", "resp", "prompt"];
+      const namespaces = ["env", "sys", "resp", "prompt"];
       if (namespaces.includes(val as string)) {
         return this.parseContextVar();
       }
@@ -382,7 +449,7 @@ export class Parser {
       return Create.timeIndex({ name: this.consume("IDENT").value as string });
     }
 
-    if (tok.type === "KEYWORD" && ["obs", "mem", "act", "resp", "prompt"].includes(tok.value as string)) {
+    if (tok.type === "KEYWORD" && ["env", "sys", "resp", "prompt"].includes(tok.value as string)) {
       return this.parseContextVar();
     }
 
@@ -617,7 +684,7 @@ export class Parser {
   private parseSwitchOutside(): AST.SwitchBlockOutsideRole {
     this.consume("KEYWORD", "Switch");
 
-    // 1. Capture the expression (e.g., obs.user_input[@t])
+    // 1. Capture the expression (e.g., env.user_input[@t])
     let expression = "";
     while (this.peek().value !== "{") {
       if (this.isEOF()) throw new Error("Expected '{' after Switch expression");
@@ -668,7 +735,7 @@ export class Parser {
   private parseSwitchInside(): AST.SwitchBlockInsideRole {
     this.consume("KEYWORD", "Switch");
 
-    // 1. Capture the expression (e.g., obs.user_input[@t])
+    // 1. Capture the expression (e.g., env.user_input[@t])
     let expression = "";
     while (this.peek().value !== "{") {
       if (this.isEOF()) throw new Error("Expected '{' after Switch expression");

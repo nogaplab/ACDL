@@ -5,20 +5,20 @@ Prompt[@t]:{
     }
     
     U: {
-        obs.user_input
-        obs.user_document
-        obs.calendar
+        env.user_input
+        env.user_document
+        env.calendar
     }
 
     If t>1 {
         ForEach(i: range(1, t-1)) {
-            If act.tool[@i] == get_clarification {
-                U: obs.user_input[@i]
+            If sys.tool_used[@i] == get_clarification {
+                U: env.user_input[@i]
             }
             
             Else {
                 A: resp.tool_reasoning[@i]
-                A: obs.tool_response[@i]  
+                A: env.tool_response[@i]  
             }   
         }
     }

@@ -28,7 +28,7 @@ export type OtherIndex = {
 // Template text and function types
 // might want to add types for all context bases later, if we need tham to behave differently
 
-export type ContextBase = "obs" | "resp" | "act" | "mem" | "prompt";
+export type ContextBase = "sys" | "resp" | "env" | "prompt";
 
 export type ContextVar = {
     kind: "context-var";
@@ -75,9 +75,21 @@ export type Template = {
 
 // Prompt Body and Building Blocks, Outside Role Blocks
 
-export type PromptBody = {
-  kind: "prompt-body";
+export type PromptBody = ChatPromptBody | CompletionPromptBody;
+
+export type ChatPromptBody = {
+  kind: "chat-prompt-body";
   body: Array<PromptBlock>;
+}
+
+export type CompletionPromptBody = {
+  kind: "completion-prompt-body";
+  message: NoneMessage;
+}
+
+export type NoneMessage = {
+  kind: "none-message";
+  body: Array<RoleBuildingBlock>;
 }
 
 export type CommentBlock = {

@@ -454,6 +454,44 @@
       to { transform: rotate(360deg); }
     }
 
+    /* Editor bracket highlighting */
+    .editor-wrapper {
+      position: relative;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .editor-wrapper #pddl-editor {
+      flex: 1;
+      margin: 0;
+    }
+
+    .bracket-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    .bracket-highlight {
+      position: absolute;
+      border-radius: 2px;
+    }
+
+    .bracket-highlight.matched {
+      background: rgba(9, 105, 218, 0.25);
+      border: 1px solid rgba(9, 105, 218, 0.5);
+    }
+
+    .bracket-highlight.unmatched {
+      background: rgba(207, 34, 46, 0.25);
+      border: 1px solid rgba(207, 34, 46, 0.6);
+    }
+
     /* Compact mode toggle */
     .compact-toggle {
       display: flex;
@@ -641,6 +679,178 @@
         restoreOutput.style.display = "none";
       });
 
+      // Editor enhancements
+      const pddlEditor = document.getElementById("pddl-editor");
+      const bracketPairs = { '(': ')', '{': '}', '[': ']' };
+      const closingBrackets = { ')': '(', '}': '{', ']': '[' };
+
+      // Tab key handling
+      pddlEditor.addEventListener("keydown", (e) => {
+        if (e.key === "Tab") {
+          e.preventDefault();
+          const start = pddlEditor.selectionStart;
+          const end = pddlEditor.selectionEnd;
+          const spaces = "    ";
+          pddlEditor.value = pddlEditor.value.substring(0, start) + spaces + pddlEditor.value.substring(end);
+          pddlEditor.selectionStart = pddlEditor.selectionEnd = start + spaces.length;
+          updateBracketHighlights();
+        }
+
+        // Auto-close brackets
+        if (bracketPairs[e.key]) {
+          e.preventDefault();
+          const start = pddlEditor.selectionStart;
+          const end = pddlEditor.selectionEnd;
+          const closing = bracketPairs[e.key];
+          pddlEditor.value = pddlEditor.value.substring(0, start) + e.key + pddlEditor.value.substring(start, end) + closing + pddlEditor.value.substring(end);
+          pddlEditor.selectionStart = pddlEditor.selectionEnd = start + 1;
+          updateBracketHighlights();
+        }
+
+        // Skip over closing bracket if typed when already there
+        if (closingBrackets[e.key]) {
+          const pos = pddlEditor.selectionStart;
+          if (pddlEditor.value[pos] === e.key) {
+            e.preventDefault();
+            pddlEditor.selectionStart = pddlEditor.selectionEnd = pos + 1;
+          }
+        }
+      });
+
+      // Create bracket highlight overlay
+      const editorWrapper = document.createElement("div");
+      editorWrapper.className = "editor-wrapper";
+      pddlEditor.parentNode.insertBefore(editorWrapper, pddlEditor);
+      editorWrapper.appendChild(pddlEditor);
+
+      const highlightOverlay = document.createElement("div");
+      highlightOverlay.className = "bracket-overlay";
+      editorWrapper.appendChild(highlightOverlay);
+
+      // Find all brackets and their pairs
+      function findBracketPairs(text) {
+        const brackets = [];
+        const stack = { '(': [], '{': [], '[': [] };
+        const pairs = [];
+        const unmatched = [];
+
+        for (let i = 0; i < text.length; i++) {
+          const char = text[i];
+          if (bracketPairs[char]) {
+            stack[char].push(i);
+            brackets.push({ pos: i, char, type: 'open' });
+          } else if (closingBrackets[char]) {
+            const opener = closingBrackets[char];
+            if (stack[opener].length > 0) {
+              const openPos = stack[opener].pop();
+              pairs.push({ open: openPos, close: i });
+            } else {
+              unmatched.push(i);
+            }
+          }
+        }
+
+        // Remaining unclosed brackets
+        Object.values(stack).forEach(arr => {
+          arr.forEach(pos => unmatched.push(pos));
+        });
+
+        return { pairs, unmatched };
+      }
+
+      // Get character position in textarea
+      function getCharPosition(textarea, index) {
+        const text = textarea.value.substring(0, index);
+        const lines = text.split('\n');
+        const lineNumber = lines.length - 1;
+        const charInLine = lines[lines.length - 1].length;
+
+        const style = getComputedStyle(textarea);
+        const lineHeight = parseFloat(style.lineHeight) || parseFloat(style.fontSize) * 1.5;
+        const paddingTop = parseFloat(style.paddingTop);
+        const paddingLeft = parseFloat(style.paddingLeft);
+        const fontSize = parseFloat(style.fontSize);
+
+        // Create measurement element
+        const measure = document.createElement('span');
+        measure.style.font = style.font;
+        measure.style.visibility = 'hidden';
+        measure.style.position = 'absolute';
+        measure.style.whiteSpace = 'pre';
+        measure.textContent = lines[lines.length - 1].substring(0, charInLine);
+        document.body.appendChild(measure);
+        const charWidth = measure.offsetWidth;
+        document.body.removeChild(measure);
+
+        return {
+          top: paddingTop + lineNumber * lineHeight - textarea.scrollTop,
+          left: paddingLeft + charWidth - textarea.scrollLeft,
+          width: fontSize * 0.6,
+          height: lineHeight
+        };
+      }
+
+      function updateBracketHighlights() {
+        const text = pddlEditor.value;
+        const cursorPos = pddlEditor.selectionStart;
+        const { pairs, unmatched } = findBracketPairs(text);
+
+        highlightOverlay.innerHTML = '';
+
+        // Highlight unmatched brackets in red
+        unmatched.forEach(pos => {
+          const position = getCharPosition(pddlEditor, pos);
+          if (position.top >= 0 && position.top < pddlEditor.clientHeight) {
+            const highlight = document.createElement('div');
+            highlight.className = 'bracket-highlight unmatched';
+            highlight.style.top = position.top + 'px';
+            highlight.style.left = position.left + 'px';
+            highlight.style.width = position.width + 'px';
+            highlight.style.height = position.height + 'px';
+            highlightOverlay.appendChild(highlight);
+          }
+        });
+
+        // Find if cursor is on a bracket
+        const charAtCursor = text[cursorPos];
+        const charBeforeCursor = text[cursorPos - 1];
+
+        let bracketPos = -1;
+        if (bracketPairs[charAtCursor] || closingBrackets[charAtCursor]) {
+          bracketPos = cursorPos;
+        } else if (bracketPairs[charBeforeCursor] || closingBrackets[charBeforeCursor]) {
+          bracketPos = cursorPos - 1;
+        }
+
+        if (bracketPos >= 0) {
+          // Find matching pair
+          const pair = pairs.find(p => p.open === bracketPos || p.close === bracketPos);
+          if (pair) {
+            [pair.open, pair.close].forEach(pos => {
+              const position = getCharPosition(pddlEditor, pos);
+              if (position.top >= 0 && position.top < pddlEditor.clientHeight) {
+                const highlight = document.createElement('div');
+                highlight.className = 'bracket-highlight matched';
+                highlight.style.top = position.top + 'px';
+                highlight.style.left = position.left + 'px';
+                highlight.style.width = position.width + 'px';
+                highlight.style.height = position.height + 'px';
+                highlightOverlay.appendChild(highlight);
+              }
+            });
+          }
+        }
+      }
+
+      // Update highlights on various events
+      pddlEditor.addEventListener('input', updateBracketHighlights);
+      pddlEditor.addEventListener('click', updateBracketHighlights);
+      pddlEditor.addEventListener('keyup', updateBracketHighlights);
+      pddlEditor.addEventListener('scroll', updateBracketHighlights);
+
+      // Initial highlight
+      setTimeout(updateBracketHighlights, 100);
+
       // Compact mode toggle
       const compactToggle = document.getElementById("compact-toggle");
       const output = document.getElementById("output");
@@ -687,6 +897,16 @@
         outputWrapper.style.height = "auto";
         document.body.style.overflow = "visible";
 
+        // html2canvas doesn't render text inside inline-flex elements properly
+        // in certain nesting contexts (e.g. context-vars inside ForEach loops).
+        // Temporarily switch to inline-block for the capture.
+        const inlineFlexEls = content.querySelectorAll(".context-var, .template-block, .func-block");
+        const savedDisplays = [];
+        inlineFlexEls.forEach(el => {
+          savedDisplays.push(el.style.display);
+          el.style.display = "inline-block";
+        });
+
         // Force layout recalculation
         content.offsetHeight;
 
@@ -707,7 +927,7 @@
 
         try {
           const canvas = await html2canvas(content, {
-            backgroundColor: "#1a1d23",
+            backgroundColor: "#ffffff",
             scale: window.devicePixelRatio * 2 || 3,
             useCORS: true,
             logging: false,
@@ -724,6 +944,11 @@
           });
           return canvas;
         } finally {
+          // Restore inline-flex display on captured elements
+          inlineFlexEls.forEach((el, i) => {
+            el.style.display = savedDisplays[i];
+          });
+
           // Restore original styles
           output.style.cssText = originalOutputStyle;
           content.style.cssText = originalContentStyle;

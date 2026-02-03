@@ -2,9 +2,8 @@ import { ArithmeticOperator } from "./types";
 
 export type NamespaceKeyword =
   | "prompt"
-  | "mem"
-  | "obs"
-  | "act"
+  | "sys"
+  | "env"
   | "resp";
 
 export type ControlKeyword =

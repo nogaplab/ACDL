@@ -4,7 +4,9 @@ import {
   Index,
   TimeIndex,
   OtherIndex,
-  PromptBody,
+  ChatPromptBody,
+  CompletionPromptBody,
+  NoneMessage,
   RoleMessage,
   ContextVar,
   PathDesc,
@@ -57,8 +59,16 @@ export function otherIndex(params: Omit<OtherIndex, "kind">): OtherIndex {
   return { ...params, kind: "other-index" };
 }
 
-export function promptBody(params: Omit<PromptBody, "kind">): PromptBody {
-  return { ...params, kind: "prompt-body" };
+export function chatPromptBody(params: Omit<ChatPromptBody, "kind">): ChatPromptBody {
+  return { ...params, kind: "chat-prompt-body" };
+}
+
+export function completionPromptBody(params: Omit<CompletionPromptBody, "kind">): CompletionPromptBody {
+  return { ...params, kind: "completion-prompt-body" };
+}
+
+export function noneMessage(params: Omit<NoneMessage, "kind">): NoneMessage {
+  return { ...params, kind: "none-message" };
 }
 
 export function roleMessage(params: Omit<RoleMessage, "kind">): RoleMessage {

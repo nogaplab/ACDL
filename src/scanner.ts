@@ -5,9 +5,8 @@ import { ArithmeticOperator } from "./types.js";
 
 // change the name to context var keywords
 const NAMESPACE_KEYWORDS = new Set<NamespaceKeyword>([
-  "obs",
-  "mem",
-  "act",
+  "env",
+  "sys",
   "resp",
   "prompt",
 ]);

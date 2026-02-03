@@ -1,65 +1,58 @@
 /* ======================================================
-   PDDL PROMPT VISUALIZER - FLOWCHART STYLE
+   PDDL PROMPT VISUALIZER - ACADEMIC PAPER STYLE
+   Clean, professional design for research publications
    ====================================================== */
 
 :root {
-  /* Color palette */
-  --bg-primary: #1a1d23;
-  --bg-secondary: #242830;
-  --bg-tertiary: #2d323c;
+  /* Light, professional color palette */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8f9fa;
+  --bg-tertiary: #f1f3f4;
 
-  --border-subtle: #3d4451;
-  --border-medium: #4d5461;
+  --border-light: #e1e4e8;
+  --border-medium: #d0d7de;
+  --border-dark: #b0b8c1;
 
-  --text-primary: #e8eaed;
-  --text-secondary: #9aa0a6;
-  --text-muted: #6b7280;
+  --text-primary: #1f2328;
+  --text-secondary: #57606a;
+  --text-muted: #8b949e;
 
-  /* Role colors - improved harmony */
-  --system-bg: linear-gradient(135deg, #164e63 0%, #0e3a47 100%);
-  --system-border: #22d3ee;
-  --system-glow: rgba(34, 211, 238, 0.25);
+  /* Role colors - professional, muted tones */
+  --system-bg: #f0f7ff;
+  --system-border: #0969da;
+  --system-text: #0550ae;
 
-  --user-bg: linear-gradient(135deg, #4a3f1a 0%, #332d12 100%);
-  --user-border: #fbbf24;
-  --user-glow: rgba(251, 191, 36, 0.25);
+  --user-bg: #fff8e6;
+  --user-border: #bf8700;
+  --user-text: #805600;
 
-  --assistant-bg: linear-gradient(135deg, #1a3d2e 0%, #0f2318 100%);
-  --assistant-border: #34d399;
-  --assistant-glow: rgba(52, 211, 153, 0.25);
+  --assistant-bg: #f0fff4;
+  --assistant-border: #1a7f37;
+  --assistant-text: #116329;
 
-  --tool-bg: linear-gradient(135deg, #3d1a4a 0%, #2a1233 100%);
-  --tool-border: #a855f7;
-  --tool-glow: rgba(168, 85, 247, 0.25);
+  --tool-bg: #faf0ff;
+  --tool-border: #8250df;
+  --tool-text: #6639ba;
 
-  /* Control flow colors - unified blue theme */
-  --control-border: #60a5fa;
-  --control-bg: rgba(96, 165, 250, 0.08);
-  --control-header-bg: rgba(96, 165, 250, 0.15);
-  --control-text: #93c5fd;
+  --none-bg: #f5f5f5;
+  --none-border: #6e7781;
+  --none-text: #57606a;
 
-  /* Aliases for backwards compatibility */
-  --loop-border: var(--control-border);
-  --loop-bg: var(--control-bg);
-  --loop-header-bg: var(--control-header-bg);
+  /* Control flow colors - subtle blue-gray */
+  --control-bg: #f6f8fa;
+  --control-border: #6e7781;
+  --control-text: #57606a;
+  --control-header-bg: #eaeef2;
 
-  --condition-border: var(--control-border);
-  --condition-bg: var(--control-bg);
-  --condition-header-bg: var(--control-header-bg);
-
-  --switch-border: var(--control-border);
-  --switch-bg: var(--control-bg);
-  --switch-header-bg: var(--control-header-bg);
-
-  /* Accent colors - better contrast and harmony */
-  --accent-template: #24fb39;
-  --accent-function: #c084fc;
-  --accent-context: #22d3ee;
-  --accent-time-index: #60a5fa;
-  --accent-comment: #6b7280;
-
-  /* Connector line */
-  --connector-color: #4d5461;
+  /* Accent colors for inline elements */
+  --accent-template: #0550ae;
+  --accent-template-bg: #ddf4ff;
+  --accent-function: #8250df;
+  --accent-function-bg: #fbefff;
+  --accent-context: #1a7f37;
+  --accent-context-bg: #dafbe1;
+  --accent-index: #0969da;
+  --accent-comment: #6e7781;
 }
 
 /* ======================================================
@@ -67,11 +60,11 @@
    ====================================================== */
 
 body {
-  font-family: 'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   padding: 40px;
   background: var(--bg-primary);
   color: var(--text-primary);
-  line-height: 1.6;
+  line-height: 1.5;
 }
 
 * {
@@ -79,201 +72,165 @@ body {
 }
 
 /* ======================================================
-   PROMPT CONTAINER - THE FLOWCHART CANVAS
+   PROMPT CONTAINER
    ====================================================== */
 
 .prompt-container {
   width: fit-content;
-  min-width: 500px;
   max-width: 900px;
   margin: 0 auto;
   position: relative;
-  padding-left: 30px;
-}
-
-/* Vertical connector line */
-.prompt-container::before {
-  content: '';
-  position: absolute;
-  left: 14px;
-  top: 80px;
-  bottom: 20px;
-  width: 2px;
-  background: linear-gradient(to bottom, var(--connector-color), transparent);
-  border-radius: 1px;
+  padding-left: 24px;
+  border-left: 2px solid var(--border-medium);
 }
 
 /* ======================================================
-   PROMPT TITLE - THE START NODE
+   PROMPT TITLE
    ====================================================== */
 
 .prompt-title {
-  background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
-  border: 2px solid var(--border-medium);
-  border-radius: 12px;
-  padding: 20px 28px;
-  margin-bottom: 32px;
-  position: relative;
-  box-shadow:
-    0 4px 6px -1px rgba(0, 0, 0, 0.3),
-    0 2px 4px -1px rgba(0, 0, 0, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-medium);
+  border-radius: 6px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  margin-left: -24px;
+  padding-left: 24px;
 }
-
 
 .prompt-title h1 {
   margin: 0;
-  font-size: 22px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--text-primary);
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-family: 'JetBrains Mono', 'SF Mono', 'Consolas', monospace;
 }
 
 /* ======================================================
-   ROLE MESSAGES - THE MAIN NODES
+   ROLE MESSAGES
    ====================================================== */
 
 .role-message {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-subtle);
-  border-radius: 10px;
-  padding: 0;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-medium);
+  border-radius: 6px;
   margin: 8px 0;
   position: relative;
-  overflow-x: auto;
-  overflow-y: hidden;
-  box-shadow:
-    0 2px 4px -1px rgba(0, 0, 0, 0.2),
-    0 1px 2px -1px rgba(0, 0, 0, 0.1);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  overflow: hidden;
 }
 
 .role-message:hover {
-  transform: translateX(4px);
-  box-shadow:
-    0 10px 15px -3px rgba(0, 0, 0, 0.3),
-    0 4px 6px -2px rgba(0, 0, 0, 0.2);
-}
-
-/* Node connector dot */
-.role-message::before {
-  content: '';
-  position: absolute;
-  left: -24px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--connector-color);
-  border: 2px solid var(--bg-primary);
-  z-index: 1;
+  border-color: var(--border-dark);
 }
 
 /* Role-specific styling */
 .role-message.system {
   background: var(--system-bg);
   border-color: var(--system-border);
-  box-shadow:
-    0 4px 6px -1px rgba(0, 0, 0, 0.2),
-    0 0 20px var(--system-glow);
-}
-.role-message.system::before {
-  background: var(--system-border);
 }
 
 .role-message.user {
   background: var(--user-bg);
   border-color: var(--user-border);
-  box-shadow:
-    0 4px 6px -1px rgba(0, 0, 0, 0.2),
-    0 0 20px var(--user-glow);
-}
-.role-message.user::before {
-  background: var(--user-border);
 }
 
 .role-message.assistant {
   background: var(--assistant-bg);
   border-color: var(--assistant-border);
-  box-shadow:
-    0 4px 6px -1px rgba(0, 0, 0, 0.2),
-    0 0 20px var(--assistant-glow);
-}
-.role-message.assistant::before {
-  background: var(--assistant-border);
 }
 
 .role-message.tool {
   background: var(--tool-bg);
   border-color: var(--tool-border);
-  box-shadow:
-    0 4px 6px -1px rgba(0, 0, 0, 0.2),
-    0 0 20px var(--tool-glow);
-}
-.role-message.tool::before {
-  background: var(--tool-border);
 }
 
 /* Role header badge */
 .role-message-header {
   display: inline-block;
-  padding: 4px 10px;
+  padding: 2px 8px;
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.5px;
   text-transform: uppercase;
-  border-radius: 0 0 6px 0;
-  margin-bottom: 4px;
+  border-radius: 0 0 4px 0;
 }
 
 .role-message.system .role-message-header {
-  background: rgba(34, 211, 238, 0.25);
-  color: #67e8f9;
+  background: var(--system-border);
+  color: white;
 }
 
 .role-message.user .role-message-header {
-  background: rgba(251, 191, 36, 0.25);
-  color: #fcd34d;
+  background: var(--user-border);
+  color: white;
 }
 
 .role-message.assistant .role-message-header {
-  background: rgba(52, 211, 153, 0.25);
-  color: #6ee7b7;
+  background: var(--assistant-border);
+  color: white;
 }
 
 .role-message.tool .role-message-header {
-  background: rgba(168, 85, 247, 0.25);
-  color: #c4b5fd;
+  background: var(--tool-border);
+  color: white;
+}
+
+/* ======================================================
+   NONE/COMPLETION PROMPT MESSAGE
+   ====================================================== */
+
+.none-message {
+  background: var(--none-bg);
+  border: 1px solid var(--none-border);
+  border-radius: 6px;
+  margin: 8px 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.none-message:hover {
+  border-color: var(--border-dark);
+}
+
+.none-message-header {
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  border-radius: 0 0 4px 0;
+  background: var(--none-border);
+  color: white;
 }
 
 .role-body-block {
-  padding: 6px 16px 10px;
+  padding: 8px 12px;
   overflow-x: auto;
   white-space: nowrap;
 }
 
 /* ======================================================
-   TEMPLATE, FUNC, CONTEXT VAR - INLINE ELEMENTS
+   INLINE ELEMENTS - Templates, Functions, Variables
    ====================================================== */
 
 .template-block {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  background: rgba(251, 191, 36, 0.15);
-  border: 1px solid rgba(251, 191, 36, 0.4);
+  background: var(--accent-template-bg);
+  border: 1px solid var(--accent-template);
   color: var(--accent-template);
-  padding: 4px 10px;
-  border-radius: 6px;
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
-  font-size: 13px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-size: 12px;
   font-weight: 500;
 }
 
 .template-block::before {
   content: '◆';
-  font-size: 8px;
+  font-size: 6px;
   opacity: 0.7;
 }
 
@@ -281,8 +238,8 @@ body {
   display: inline-flex;
   align-items: center;
   color: var(--accent-function);
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
-  font-size: 13px;
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-size: 12px;
 }
 
 .func-name {
@@ -297,13 +254,13 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 2px;
-  background: rgba(52, 211, 153, 0.12);
-  border: 1px solid rgba(52, 211, 153, 0.3);
+  background: var(--accent-context-bg);
+  border: 1px solid var(--accent-context);
   color: var(--accent-context);
-  padding: 4px 10px;
-  border-radius: 6px;
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
-  font-size: 13px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-size: 12px;
   font-weight: 500;
 }
 
@@ -317,12 +274,16 @@ body {
 
 /* Indices */
 .time-index {
-  color: var(--accent-time-index);
-  font-weight: 500;
+  color: var(--accent-index);
+  font-weight: 600;
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-size: 12px;
 }
 
 .other-index {
   color: var(--text-secondary);
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-size: 12px;
 }
 
 /* Comments */
@@ -330,24 +291,24 @@ body {
 .inline-comment {
   color: var(--accent-comment);
   font-style: italic;
-  font-size: 12px;
+  font-size: 11px;
   margin-left: 8px;
 }
 
 .comment-block {
   color: var(--accent-comment);
   font-style: italic;
-  padding: 8px 16px;
-  margin: 8px 0;
+  padding: 6px 12px;
+  margin: 6px 0;
   border-left: 2px solid var(--accent-comment);
-  font-size: 13px;
+  background: var(--bg-tertiary);
+  font-size: 12px;
 }
 
 /* ======================================================
-   CONTROL FLOW BLOCKS - STRUCTURED NODES
+   CONTROL FLOW BLOCKS
    ====================================================== */
 
-/* Shared control block styling */
 .loop-block-outside-role,
 .loop-block-inside-role,
 .switch-block-outside-role,
@@ -355,209 +316,115 @@ body {
 .conditional-block-outside-role,
 .conditional-block-inside-role {
   position: relative;
-  margin: 12px 0;
-  border-radius: 8px;
+  margin: 10px 0;
+  border-radius: 4px;
+  padding: 8px 12px 8px 16px;
+  border-left: 3px solid var(--control-border);
+  background: var(--control-bg);
 }
 
 .conditional-section {
   position: relative;
-  margin: 8px 0;
+  margin: 6px 0;
+  padding: 6px 10px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
 }
 
-/* Loop blocks */
-.loop-block-outside-role,
-.loop-block-inside-role {
-  position: relative;
-  padding: 12px 16px 12px 24px;
-  border-left: 3px solid var(--control-border);
-  background: var(--control-bg);
-  border-radius: 0 8px 8px 0;
-  box-shadow: inset 0 0 0 1px rgba(96, 165, 250, 0.1);
-}
-
+/* Loop headers */
 .loop-block-outside-role-header,
 .loop-block-inside-role-header {
   background: var(--control-header-bg);
-  padding: 8px 14px;
-  margin: -12px -16px 12px -24px;
-  border-radius: 0 8px 0 0;
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
-  font-size: 12px;
+  padding: 4px 10px;
+  margin: -8px -12px 8px -16px;
+  border-radius: 0 4px 0 0;
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-size: 11px;
   font-weight: 600;
   color: var(--control-text);
-  border-bottom: 1px solid rgba(96, 165, 250, 0.2);
+  border-bottom: 1px solid var(--border-light);
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .loop-block-outside-role-header::before,
 .loop-block-inside-role-header::before {
   content: '↻';
-  font-size: 16px;
+  font-size: 12px;
   color: var(--control-border);
 }
 
-/* Conditional blocks */
-.conditional-block-outside-role,
-.conditional-block-inside-role {
-  position: relative;
-  padding: 12px 16px 12px 24px;
-  border-left: 3px solid var(--control-border);
-  background: var(--control-bg);
-  border-radius: 0 8px 8px 0;
-  box-shadow: inset 0 0 0 1px rgba(96, 165, 250, 0.1);
-}
-
-.conditional-section {
-  background: rgba(96, 165, 250, 0.05);
-  border-radius: 6px;
-  padding: 8px 12px;
-  margin: 8px 0;
-  border-left: 2px solid rgba(96, 165, 250, 0.3);
-}
-
+/* Conditional headers */
 .conditional-section-header {
   background: var(--control-header-bg);
-  padding: 8px 14px;
-  margin: -8px -12px 10px -12px;
-  border-radius: 6px 6px 0 0;
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
-  font-size: 12px;
+  padding: 4px 10px;
+  margin: -6px -10px 6px -10px;
+  border-radius: 4px 4px 0 0;
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-size: 11px;
   font-weight: 600;
   color: var(--control-text);
-  border-bottom: 1px solid rgba(96, 165, 250, 0.2);
+  border-bottom: 1px solid var(--border-light);
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .conditional-section-header::before {
   content: '◇';
-  font-size: 14px;
+  font-size: 10px;
   color: var(--control-border);
 }
 
-/* Switch blocks */
-.switch-block-outside-role,
-.switch-block-inside-role {
-  position: relative;
-  padding: 12px 16px 12px 24px;
-  border-left: 3px solid var(--control-border);
-  background: var(--control-bg);
-  border-radius: 0 8px 8px 0;
-  box-shadow: inset 0 0 0 1px rgba(96, 165, 250, 0.1);
-}
-
+/* Switch headers */
 .switch-block-outside-role-header,
 .switch-block-inside-role-header {
   background: var(--control-header-bg);
-  padding: 8px 14px;
-  margin: -12px -16px 12px -24px;
-  border-radius: 0 8px 0 0;
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
-  font-size: 12px;
+  padding: 4px 10px;
+  margin: -8px -12px 8px -16px;
+  border-radius: 0 4px 0 0;
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-size: 11px;
   font-weight: 600;
   color: var(--control-text);
-  border-bottom: 1px solid rgba(96, 165, 250, 0.2);
+  border-bottom: 1px solid var(--border-light);
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .switch-block-outside-role-header::before,
 .switch-block-inside-role-header::before {
   content: '⎇';
-  font-size: 16px;
+  font-size: 12px;
   color: var(--control-border);
 }
 
 .switch-case,
 .switch-default {
-  margin: 8px 0;
-  padding: 8px 12px;
-  background: rgba(96, 165, 250, 0.05);
-  border-radius: 6px;
-  border-left: 2px solid rgba(96, 165, 250, 0.3);
+  margin: 6px 0;
+  padding: 6px 10px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
 }
 
 .switch-case-header,
 .switch-default-header {
-  background: rgba(96, 165, 250, 0.12);
-  padding: 6px 12px;
-  margin: -8px -12px 10px -12px;
-  border-radius: 6px 6px 0 0;
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
-  font-size: 11px;
+  background: var(--control-header-bg);
+  padding: 3px 8px;
+  margin: -6px -10px 6px -10px;
+  border-radius: 4px 4px 0 0;
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-size: 10px;
   font-weight: 600;
   color: var(--control-text);
-  border-bottom: 1px solid rgba(96, 165, 250, 0.15);
+  border-bottom: 1px solid var(--border-light);
 }
 
-/* Nesting depth indicators - increase visual distinction for nested blocks */
-.loop-block-outside-role .loop-block-outside-role,
-.loop-block-outside-role .loop-block-inside-role,
-.loop-block-inside-role .loop-block-outside-role,
-.loop-block-inside-role .loop-block-inside-role,
-.conditional-block-outside-role .conditional-block-outside-role,
-.conditional-block-outside-role .conditional-block-inside-role,
-.conditional-block-inside-role .conditional-block-outside-role,
-.conditional-block-inside-role .conditional-block-inside-role,
-.switch-block-outside-role .switch-block-outside-role,
-.switch-block-outside-role .switch-block-inside-role,
-.switch-block-inside-role .switch-block-outside-role,
-.switch-block-inside-role .switch-block-inside-role,
-/* Cross-type nesting */
-.loop-block-outside-role .conditional-block-outside-role,
-.loop-block-outside-role .switch-block-outside-role,
-.conditional-block-outside-role .loop-block-outside-role,
-.conditional-block-outside-role .switch-block-outside-role,
-.switch-block-outside-role .loop-block-outside-role,
-.switch-block-outside-role .conditional-block-outside-role {
-  background: rgba(96, 165, 250, 0.12);
-}
-
-/* ======================================================
-   BLOCK CHILDREN - NESTED CONTENT
-   ====================================================== */
-
-.block-children {
-  padding: 4px 0;
-  margin: 8px 0;
-}
-
-.conditional-child,
-.role-condition-child {
-  margin: 6px 0;
-  padding: 4px 0;
-}
-
-.switch-child,
-.role-switch-child {
-  margin: 6px 0;
-  padding: 4px 0;
-}
-
-.loop-child,
-.role-loop-child {
-  margin: 6px 0;
-  padding: 4px 0;
-}
-
-/* Ensure role messages inside control blocks have proper spacing */
-.loop-block-outside-role .role-message,
-.loop-block-inside-role .role-message,
-.conditional-block-outside-role .role-message,
-.conditional-block-inside-role .role-message,
-.switch-block-outside-role .role-message,
-.switch-block-inside-role .role-message,
-.conditional-section .role-message,
-.switch-case .role-message,
-.switch-default .role-message {
-  margin: 8px 0;
-}
-
-/* Nested control blocks spacing */
+/* Nested control blocks - slightly darker background */
 .loop-block-outside-role .loop-block-outside-role,
 .loop-block-outside-role .conditional-block-outside-role,
 .loop-block-outside-role .switch-block-outside-role,
@@ -567,53 +434,50 @@ body {
 .switch-block-outside-role .loop-block-outside-role,
 .switch-block-outside-role .conditional-block-outside-role,
 .switch-block-outside-role .switch-block-outside-role {
-  margin: 12px 0;
-}
-
-/* Hover effects for control blocks */
-.loop-block-outside-role:hover,
-.loop-block-inside-role:hover,
-.conditional-block-outside-role:hover,
-.conditional-block-inside-role:hover,
-.switch-block-outside-role:hover,
-.switch-block-inside-role:hover {
-  box-shadow:
-    inset 0 0 0 1px rgba(96, 165, 250, 0.2),
-    0 0 20px rgba(96, 165, 250, 0.1);
-}
-
-/* Control block transitions */
-.loop-block-outside-role,
-.loop-block-inside-role,
-.conditional-block-outside-role,
-.conditional-block-inside-role,
-.switch-block-outside-role,
-.switch-block-inside-role {
-  transition: box-shadow 0.2s ease;
+  background: var(--bg-tertiary);
 }
 
 /* ======================================================
-   LABEL BLOCKS - SECTION MARKERS
+   BLOCK CHILDREN
+   ====================================================== */
+
+.block-children {
+  padding: 4px 0;
+  margin: 4px 0;
+}
+
+.conditional-child,
+.role-condition-child,
+.switch-child,
+.role-switch-child,
+.loop-child,
+.role-loop-child {
+  margin: 4px 0;
+  padding: 2px 0;
+}
+
+/* ======================================================
+   LABEL BLOCKS
    ====================================================== */
 
 .label-block {
-  margin: 24px 0;
+  margin: 16px 0;
   position: relative;
 }
 
 .label-start,
 .label-end {
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
-  font-size: 11px;
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-size: 10px;
   color: var(--text-muted);
-  letter-spacing: 1px;
-  padding: 4px 0;
+  letter-spacing: 0.5px;
+  padding: 2px 0;
 }
 
 .label-block-body {
-  border-left: 2px solid var(--border-subtle);
-  margin-left: 8px;
-  padding-left: 16px;
+  border-left: 2px solid var(--border-light);
+  margin-left: 6px;
+  padding-left: 12px;
 }
 
 /* ======================================================
@@ -623,7 +487,6 @@ body {
 .collapsible-header {
   cursor: pointer;
   user-select: none;
-  transition: opacity 0.2s ease;
 }
 
 .collapsible-header:hover {
@@ -643,7 +506,7 @@ body {
 }
 
 /* ======================================================
-   UPLOAD ZONE - FILE DROP AREA
+   UPLOAD ZONE
    ====================================================== */
 
 #drop-zone {
@@ -652,14 +515,14 @@ body {
   align-items: center;
   justify-content: center;
   border: 2px dashed var(--border-medium);
-  border-radius: 16px;
-  padding: 60px 40px;
+  border-radius: 8px;
+  padding: 40px;
   margin: 40px auto;
-  max-width: 500px;
+  max-width: 400px;
   background: var(--bg-secondary);
   color: var(--text-secondary);
   font-weight: 500;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
   cursor: pointer;
 }
 
@@ -668,33 +531,28 @@ body {
   background: var(--bg-tertiary);
   border-color: var(--system-border);
   color: var(--text-primary);
-  transform: scale(1.02);
-  box-shadow: 0 0 30px var(--system-glow);
 }
 
 .upload-button {
   display: inline-block;
-  padding: 12px 28px;
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  padding: 10px 20px;
+  background: var(--system-border);
   color: white;
-  border-radius: 8px;
+  border-radius: 6px;
   cursor: pointer;
-  margin-top: 16px;
+  margin-top: 12px;
   font-weight: 600;
-  font-size: 14px;
+  font-size: 13px;
   border: none;
   transition: all 0.2s ease;
-  box-shadow: 0 4px 6px rgba(37, 99, 235, 0.3);
 }
 
 .upload-button:hover {
-  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 12px rgba(37, 99, 235, 0.4);
+  background: var(--system-text);
 }
 
 /* ======================================================
-   MAIN APP LAYOUT
+   APP LAYOUT
    ====================================================== */
 
 #app {
@@ -709,18 +567,18 @@ body {
   padding: 24px;
   display: flex;
   flex-direction: column;
-  border-right: 1px solid var(--border-subtle);
+  border-right: 1px solid var(--border-light);
 }
 
 #pddl-editor {
   width: 100%;
   flex-grow: 1;
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
-  font-size: 13px;
-  padding: 16px;
-  margin: 16px 0;
-  border: 1px solid var(--border-subtle);
-  border-radius: 8px;
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-size: 12px;
+  padding: 12px;
+  margin: 12px 0;
+  border: 1px solid var(--border-medium);
+  border-radius: 6px;
   resize: none;
   background: var(--bg-primary);
   color: var(--text-primary);
@@ -730,61 +588,24 @@ body {
 #pddl-editor:focus {
   outline: none;
   border-color: var(--system-border);
-  box-shadow: 0 0 0 3px var(--system-glow);
+  box-shadow: 0 0 0 2px rgba(9, 105, 218, 0.15);
 }
 
 #render-btn {
   width: 100%;
-  padding: 14px;
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  padding: 12px;
+  background: var(--system-border);
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: 6px;
   cursor: pointer;
   font-weight: 600;
-  font-size: 14px;
+  font-size: 13px;
   transition: all 0.2s ease;
 }
 
 #render-btn:hover {
-  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-  transform: translateY(-1px);
-}
-
-/* ======================================================
-   STATIC EXPORT PAGE
-   ====================================================== */
-
-.prompt-section {
-  background: var(--bg-secondary);
-  padding: 32px;
-  border-radius: 16px;
-  box-shadow:
-    0 10px 15px -3px rgba(0, 0, 0, 0.3),
-    0 4px 6px -2px rgba(0, 0, 0, 0.2);
-  margin-bottom: 48px;
-  border: 1px solid var(--border-subtle);
-}
-
-.prompt-section h3 {
-  color: var(--text-secondary);
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  margin: 0 0 20px 0;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--border-subtle);
-}
-
-.error-msg {
-  color: #fca5a5;
-  background: rgba(239, 68, 68, 0.15);
-  padding: 16px 20px;
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  border-radius: 8px;
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
-  font-size: 13px;
+  background: var(--system-text);
 }
 
 /* ======================================================
@@ -797,7 +618,7 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--bg-primary);
+  background: var(--bg-secondary);
 }
 
 ::-webkit-scrollbar-thumb {
@@ -806,38 +627,21 @@ body {
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--text-muted);
+  background: var(--border-dark);
 }
 
 /* ======================================================
-   EXPORT PAGE HEADER
+   ERROR MESSAGES
    ====================================================== */
 
-.export-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 24px 40px;
-  margin-bottom: 32px;
-  background: var(--bg-secondary);
-  border-bottom: 1px solid var(--border-subtle);
-}
-
-.export-header h1 {
-  margin: 0;
-  font-size: 24px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.style-badge {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text-secondary);
-  background: var(--bg-tertiary);
-  padding: 6px 12px;
+.error-msg {
+  color: #cf222e;
+  background: #ffebe9;
+  padding: 12px 16px;
+  border: 1px solid #ff8182;
   border-radius: 6px;
-  border: 1px solid var(--border-subtle);
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-size: 12px;
 }
 
 /* ======================================================
@@ -846,67 +650,49 @@ body {
 
 .compact .prompt-container {
   width: fit-content;
-  min-width: 350px;
   max-width: 600px;
-  padding-left: 14px;
+  padding-left: 12px;
+  border-left-width: 1px;
 }
 
-.compact .prompt-container::before {
-  left: 6px;
-  top: 30px;
-  width: 1px;
-}
-
-/* Compact prompt title */
 .compact .prompt-title {
   padding: 6px 10px;
   margin-bottom: 8px;
+  margin-left: -12px;
+  padding-left: 12px;
   border-radius: 4px;
-  border-width: 1px;
 }
-
 
 .compact .prompt-title h1 {
   font-size: 11px;
 }
 
 /* Compact role messages */
-.compact .role-message {
-  margin: 2px 0;
+.compact .role-message,
+.compact .none-message {
+  margin: 3px 0;
   border-radius: 4px;
 }
 
-.compact .role-message:hover {
-  transform: none;
-}
-
-.compact .role-message::before {
-  left: -11px;
-  width: 4px;
-  height: 4px;
-  border-width: 1px;
-}
-
-.compact .role-message-header {
-  padding: 1px 5px;
-  font-size: 7px;
-  letter-spacing: 0.2px;
+.compact .role-message-header,
+.compact .none-message-header {
+  padding: 1px 6px;
+  font-size: 8px;
+  letter-spacing: 0.3px;
   border-radius: 0 0 3px 0;
-  margin-bottom: 0;
 }
 
 .compact .role-body-block {
-  padding: 1px 6px 2px;
-  line-height: 1 !important;
+  padding: 4px 8px;
   display: flex;
   flex-wrap: wrap;
-  gap: 1px 4px;
+  gap: 2px 4px;
   align-items: center;
 }
 
 /* Compact inline elements */
 .compact .template-block {
-  padding: 1px 4px;
+  padding: 1px 5px;
   border-radius: 3px;
   font-size: 9px;
   gap: 2px;
@@ -921,7 +707,7 @@ body {
 }
 
 .compact .context-var {
-  padding: 1px 4px;
+  padding: 1px 5px;
   border-radius: 3px;
   font-size: 9px;
   gap: 1px;
@@ -935,12 +721,12 @@ body {
 .compact .comment,
 .compact .inline-comment {
   font-size: 8px;
-  margin-left: 3px;
+  margin-left: 4px;
 }
 
 .compact .comment-block {
-  padding: 2px 6px;
-  margin: 2px 0;
+  padding: 3px 8px;
+  margin: 3px 0;
   font-size: 8px;
   border-left-width: 1px;
 }
@@ -952,10 +738,10 @@ body {
 .compact .conditional-block-inside-role,
 .compact .switch-block-outside-role,
 .compact .switch-block-inside-role {
-  margin: 2px 0;
-  padding: 3px 6px 3px 10px;
+  margin: 4px 0;
+  padding: 4px 8px 4px 10px;
   border-left-width: 2px;
-  border-radius: 0 4px 4px 0;
+  border-radius: 3px;
 }
 
 .compact .loop-block-outside-role-header,
@@ -963,31 +749,28 @@ body {
 .compact .switch-block-outside-role-header,
 .compact .switch-block-inside-role-header {
   padding: 2px 6px;
-  margin: -3px -6px 3px -10px;
-  border-radius: 0 4px 0 0;
+  margin: -4px -8px 4px -10px;
+  border-radius: 0 3px 0 0;
   font-size: 8px;
-  gap: 3px;
+  gap: 4px;
 }
 
 .compact .loop-block-outside-role-header::before,
-.compact .loop-block-inside-role-header::before {
-  font-size: 9px;
-}
-
+.compact .loop-block-inside-role-header::before,
 .compact .switch-block-outside-role-header::before,
 .compact .switch-block-inside-role-header::before {
   font-size: 9px;
 }
 
 .compact .conditional-section {
-  padding: 2px 6px;
-  margin: 2px 0;
+  padding: 3px 6px;
+  margin: 3px 0;
   border-radius: 3px;
 }
 
 .compact .conditional-section-header {
   padding: 2px 6px;
-  margin: -2px -6px 3px -6px;
+  margin: -3px -6px 3px -6px;
   border-radius: 3px 3px 0 0;
   font-size: 8px;
   gap: 3px;
@@ -999,15 +782,15 @@ body {
 
 .compact .switch-case,
 .compact .switch-default {
-  margin: 2px 0;
-  padding: 2px 6px;
+  margin: 3px 0;
+  padding: 3px 6px;
   border-radius: 3px;
 }
 
 .compact .switch-case-header,
 .compact .switch-default-header {
   padding: 2px 6px;
-  margin: -2px -6px 3px -6px;
+  margin: -3px -6px 3px -6px;
   border-radius: 3px 3px 0 0;
   font-size: 7px;
 }
@@ -1024,13 +807,13 @@ body {
 .compact .role-switch-child,
 .compact .loop-child,
 .compact .role-loop-child {
-  margin: 1px 0;
+  margin: 2px 0;
   padding: 0;
 }
 
 /* Compact label blocks */
 .compact .label-block {
-  margin: 6px 0;
+  margin: 8px 0;
 }
 
 .compact .label-start,
@@ -1040,61 +823,18 @@ body {
 }
 
 .compact .label-block-body {
-  margin-left: 3px;
+  margin-left: 4px;
   padding-left: 8px;
   border-left-width: 1px;
 }
 
-/* Compact nested spacing */
-.compact .loop-block-outside-role .role-message,
-.compact .loop-block-inside-role .role-message,
-.compact .conditional-block-outside-role .role-message,
-.compact .conditional-block-inside-role .role-message,
-.compact .switch-block-outside-role .role-message,
-.compact .switch-block-inside-role .role-message,
-.compact .conditional-section .role-message,
-.compact .switch-case .role-message,
-.compact .switch-default .role-message {
-  margin: 2px 0;
-}
-
-/* Compact nested control blocks */
-.compact .loop-block-outside-role .loop-block-outside-role,
-.compact .loop-block-outside-role .conditional-block-outside-role,
-.compact .loop-block-outside-role .switch-block-outside-role,
-.compact .conditional-block-outside-role .loop-block-outside-role,
-.compact .conditional-block-outside-role .conditional-block-outside-role,
-.compact .conditional-block-outside-role .switch-block-outside-role,
-.compact .switch-block-outside-role .loop-block-outside-role,
-.compact .switch-block-outside-role .conditional-block-outside-role,
-.compact .switch-block-outside-role .switch-block-outside-role {
-  margin: 2px 0;
-}
-
-/* Remove glow effects and hover in compact mode */
-.compact .role-message.system,
-.compact .role-message.user,
-.compact .role-message.assistant,
-.compact .role-message.tool {
-  box-shadow: none;
-}
-
-.compact .loop-block-outside-role:hover,
-.compact .loop-block-inside-role:hover,
-.compact .conditional-block-outside-role:hover,
-.compact .conditional-block-inside-role:hover,
-.compact .switch-block-outside-role:hover,
-.compact .switch-block-inside-role:hover {
-  box-shadow: none;
-}
-
-/* Tighter line height for compact mode */
+/* Compact line height */
 .compact,
 .compact * {
-  line-height: 1 !important;
+  line-height: 1.2 !important;
 }
 
-/* Remove any margins on inline elements in compact mode */
+/* Remove margins on inline elements in compact mode */
 .compact .template-block,
 .compact .func-block,
 .compact .context-var,
@@ -1106,7 +846,20 @@ body {
   vertical-align: middle;
 }
 
-/* Ensure text nodes wrap tightly */
 .compact .role-body-block > * {
   margin: 0;
+}
+
+/* Compact nested spacing */
+.compact .loop-block-outside-role .role-message,
+.compact .loop-block-inside-role .role-message,
+.compact .conditional-block-outside-role .role-message,
+.compact .conditional-block-inside-role .role-message,
+.compact .switch-block-outside-role .role-message,
+.compact .switch-block-inside-role .role-message,
+.compact .conditional-section .role-message,
+.compact .switch-case .role-message,
+.compact .switch-default .role-message,
+.compact .none-message {
+  margin: 2px 0;
 }
