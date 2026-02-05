@@ -1,17 +1,13 @@
-React1[@t]: {
+ReactBase[@t]: {
     S: TASK_DESC  // you are an assistant who's job is...
     S: AVAILABLE_TOOLS
     U: {env.user_question}
-    ForEach(i: range(1,t-2)) {
+    ForEach(i: range(1,t-1)) {
+        A: resp.tool_reasoning[@t-1]
         T: {
             sys.tool_used[@i]
             sys.tool_used[@i].tool_response[@i]
-        } 
-    }
-    A: resp.tool_reasoning[@t-1]
-    T: {
-        sys.tool_used[@t-1]
-        sys.tool_used[@t-1].tool_response[@t-1]
+        }
     }
     S: INSTRUCTION   // choose an action, use ReACT
 }

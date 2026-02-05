@@ -907,6 +907,21 @@
           el.style.display = "inline-block";
         });
 
+        // html2canvas misrenders ::before pseudo-elements when display is
+        // inline-block instead of inline-flex (the diamond loses flex
+        // alignment and appears as a misplaced dot). Inject a temporary
+        // style that corrects the positioning for the capture.
+        const exportFixStyle = document.createElement("style");
+        exportFixStyle.textContent = `
+          .template-block::before {
+            vertical-align: middle;
+            line-height: 1;
+            position: relative;
+            top: -1px;
+          }
+        `;
+        document.head.appendChild(exportFixStyle);
+
         // Force layout recalculation
         content.offsetHeight;
 
@@ -948,6 +963,9 @@
           inlineFlexEls.forEach((el, i) => {
             el.style.display = savedDisplays[i];
           });
+
+          // Remove the temporary export fix style
+          exportFixStyle.remove();
 
           // Restore original styles
           output.style.cssText = originalOutputStyle;

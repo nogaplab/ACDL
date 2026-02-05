@@ -1,6 +1,6 @@
 Prompt[@t]: {
     U: {
-        TASK_DESCRIPTION(mem.max_total_steps)
+        TASK_DESCRIPTION(sys.max_total_steps)
         env.tool_desc
         env.in_context_example
         env.task_prompt
@@ -15,7 +15,7 @@ Prompt[@t]: {
     U: env.user_input[@t]
 
     // all the tool calls and reponses from the current turn
-    ForEach(i: range(1, sys.steps[@t].len)){
+    ForEach(i: range(1, sys.steps[@t])){
         T: { 
             sys.tool_used[@t.i]
             sys.tool_used[@t.i].tool_response[@t.i]
