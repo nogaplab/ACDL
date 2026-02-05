@@ -5,7 +5,7 @@ import * as Create from "./constructors";
 
 
 /**
- * Recursive Descent Parser for the PDDL-style Prompt DSL.
+ * Recursive Descent Parser for the CSDL (Context Structure Description Language) Prompt DSL.
  * * This parser distinguishes between "Top-Level" scope (Global blocks and Role Messages)
  * and "Inside-Role" scope (Context variables and role-specific logic).
  */

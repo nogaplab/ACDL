@@ -1,0 +1,65 @@
+{
+  "name": "csdl-language",
+  "displayName": "CSDL Language Support",
+  "description": "Syntax highlighting, diagnostics, preview, and go-to-definition for CSDL (Chat-Structured Definition Language)",
+  "version": "0.1.0",
+  "publisher": "csdl-research",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "activationEvents": [
+    "onLanguage:csdl"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "csdl",
+        "aliases": [
+          "CSDL",
+          "Chat-Structured Definition Language"
+        ],
+        "extensions": [
+          ".csdl"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "csdl",
+        "scopeName": "source.csdl",
+        "path": "./syntaxes/csdl.tmLanguage.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "csdl.showPreview",
+        "title": "CSDL: Show Preview",
+        "icon": "$(open-preview)"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "when": "resourceLangId == csdl",
+          "command": "csdl.showPreview",
+          "group": "navigation"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "build": "node esbuild.mjs",
+    "watch": "node esbuild.mjs --watch",
+    "package": "npx vsce package"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.80.0",
+    "esbuild": "^0.20.0",
+    "typescript": "^5.0.0"
+  }
+}

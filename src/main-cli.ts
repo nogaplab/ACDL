@@ -28,7 +28,7 @@ async function main() {
     inputFiles.forEach(fileName => {
         let filePath = fileName;
         if (!fs.existsSync(filePath)) {
-            filePath = path.join('Prompts', fileName.endsWith('.pddl') ? fileName : `${fileName}.pddl`);
+            filePath = path.join('Prompts', fileName.endsWith('.csdl') ? fileName : `${fileName}.csdl`);
         }
 
         if (fs.existsSync(filePath)) {
@@ -64,7 +64,7 @@ async function main() {
 </head>
 <body class="style-${style}">
     <header class="export-header">
-        <h1>PDDL Prompt Visualization</h1>
+        <h1>CSDL Prompt Visualization</h1>
         <span class="style-badge">Style: ${style}</span>
     </header>
     ${combinedBody}
