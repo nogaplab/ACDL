@@ -293,6 +293,18 @@ body {
   font-style: italic;
   font-size: 11px;
   margin-left: 8px;
+  white-space: normal;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 350px;
+}
+
+/* Wrapper for blocks with comments - keeps them together when wrapping */
+.block-with-comment {
+  display: inline-flex;
+  align-items: flex-start;
+  vertical-align: top;
+  max-width: 100%;
 }
 
 .comment-block {

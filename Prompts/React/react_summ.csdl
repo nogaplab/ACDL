@@ -1,16 +1,16 @@
 Prompt[@t]: {
-    U: {obs.user_question}
+    U: {env.user_question}
     S: {
         SUMMARY_INTRO // here is a summary of the history
         summarize_hist(@t-k)
     }
-    ForEach(i: t-k...t-1) {
+    ForEach(i: range(1, @t-k)) {
         A: {
             AVAILABLE_TOOLS
             resp.tool_reasoning[@i]
-            act.tool[@i]
+            sys.tool_used[@i]
         }
-        U: {obs.tool_resp[@i]}
+        U: {sys.tool_used[@i].tool_response[@i]}
     }
     S: {INSTRUCTION // choose an action or declare done}
 }

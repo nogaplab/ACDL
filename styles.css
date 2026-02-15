@@ -52,6 +52,12 @@
   --accent-context: #1a7f37;
   --accent-context-bg: #dafbe1;
   --accent-index: #0969da;
+  --accent-index-bg: rgba(9, 105, 218, 0.12);
+  --accent-other-index: #7c3aed;
+  --accent-other-index-bg: rgba(124, 58, 237, 0.1);
+  --accent-expr: #c2410c;
+  --accent-expr-bg: rgba(251, 146, 60, 0.15);
+  --accent-expr-border: #ea580c;
   --accent-comment: #6e7781;
 }
 
@@ -114,7 +120,7 @@ body {
   background: var(--bg-primary);
   border: 1px solid var(--border-medium);
   border-radius: 6px;
-  margin: 8px 0;
+  margin: 4px 0;
   position: relative;
   overflow: hidden;
 }
@@ -183,7 +189,7 @@ body {
   background: var(--none-bg);
   border: 1px solid var(--none-border);
   border-radius: 6px;
-  margin: 8px 0;
+  margin: 4px 0;
   position: relative;
   overflow: hidden;
 }
@@ -205,7 +211,7 @@ body {
 }
 
 .role-body-block {
-  padding: 8px 12px;
+  padding: 2px 12px;
   overflow-x: auto;
   white-space: nowrap;
 }
@@ -272,18 +278,56 @@ body {
   font-weight: 600;
 }
 
-/* Indices */
+/* Indices - Variables need high salience */
 .time-index {
   color: var(--accent-index);
-  font-weight: 600;
+  font-weight: 700;
   font-family: 'JetBrains Mono', 'SF Mono', monospace;
   font-size: 12px;
+  background: var(--accent-index-bg);
+  padding: 0 3px;
+  border-radius: 3px;
+  border-bottom: 2px solid var(--accent-index);
 }
 
 .other-index {
-  color: var(--text-secondary);
+  color: var(--accent-other-index);
+  font-weight: 700;
   font-family: 'JetBrains Mono', 'SF Mono', monospace;
   font-size: 12px;
+  background: var(--accent-other-index-bg);
+  padding: 0 3px;
+  border-radius: 3px;
+  border-bottom: 2px solid var(--accent-other-index);
+}
+
+/* Control flow keywords - bold and prominent */
+.keyword {
+  color: #000000;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+}
+
+/* Control flow expressions - high visibility */
+.loop-var {
+  color: var(--accent-other-index);
+  font-weight: 700;
+  background: var(--accent-other-index-bg);
+  padding: 1px 4px;
+  border-radius: 3px;
+  border-bottom: 2px solid var(--accent-other-index);
+}
+
+.loop-iterable,
+.condition-expr,
+.switch-expr,
+.case-match {
+  color: var(--accent-expr);
+  font-weight: 700;
+  background: var(--accent-expr-bg);
+  padding: 1px 4px;
+  border-radius: 3px;
+  border-bottom: 2px solid var(--accent-expr-border);
 }
 
 /* Comments */
@@ -293,13 +337,25 @@ body {
   font-style: italic;
   font-size: 11px;
   margin-left: 8px;
+  white-space: normal;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 350px;
+}
+
+/* Wrapper for blocks with comments - keeps them together when wrapping */
+.block-with-comment {
+  display: inline-flex;
+  align-items: flex-start;
+  vertical-align: top;
+  max-width: 100%;
 }
 
 .comment-block {
   color: var(--accent-comment);
   font-style: italic;
-  padding: 6px 12px;
-  margin: 6px 0;
+  padding: 2px 12px;
+  margin: 1px 0;
   border-left: 2px solid var(--accent-comment);
   background: var(--bg-tertiary);
   font-size: 12px;
@@ -316,17 +372,17 @@ body {
 .conditional-block-outside-role,
 .conditional-block-inside-role {
   position: relative;
-  margin: 10px 0;
+  margin: 5px 0;
   border-radius: 4px;
-  padding: 8px 12px 8px 16px;
+  padding: 6px 12px 6px 16px;
   border-left: 3px solid var(--control-border);
   background: var(--control-bg);
 }
 
 .conditional-section {
   position: relative;
-  margin: 6px 0;
-  padding: 6px 10px;
+  margin: 3px 0;
+  padding: 4px 10px;
   background: var(--bg-primary);
   border: 1px solid var(--border-light);
   border-radius: 4px;
@@ -336,8 +392,8 @@ body {
 .loop-block-outside-role-header,
 .loop-block-inside-role-header {
   background: var(--control-header-bg);
-  padding: 4px 10px;
-  margin: -8px -12px 8px -16px;
+  padding: 3px 10px;
+  margin: -6px -12px 4px -16px;
   border-radius: 0 4px 0 0;
   font-family: 'JetBrains Mono', 'SF Mono', monospace;
   font-size: 11px;
@@ -359,8 +415,8 @@ body {
 /* Conditional headers */
 .conditional-section-header {
   background: var(--control-header-bg);
-  padding: 4px 10px;
-  margin: -6px -10px 6px -10px;
+  padding: 3px 10px;
+  margin: -4px -10px 3px -10px;
   border-radius: 4px 4px 0 0;
   font-family: 'JetBrains Mono', 'SF Mono', monospace;
   font-size: 11px;
@@ -382,8 +438,8 @@ body {
 .switch-block-outside-role-header,
 .switch-block-inside-role-header {
   background: var(--control-header-bg);
-  padding: 4px 10px;
-  margin: -8px -12px 8px -16px;
+  padding: 3px 10px;
+  margin: -6px -12px 4px -16px;
   border-radius: 0 4px 0 0;
   font-family: 'JetBrains Mono', 'SF Mono', monospace;
   font-size: 11px;
@@ -404,8 +460,8 @@ body {
 
 .switch-case,
 .switch-default {
-  margin: 6px 0;
-  padding: 6px 10px;
+  margin: 3px 0;
+  padding: 4px 10px;
   background: var(--bg-primary);
   border: 1px solid var(--border-light);
   border-radius: 4px;
@@ -414,8 +470,8 @@ body {
 .switch-case-header,
 .switch-default-header {
   background: var(--control-header-bg);
-  padding: 3px 8px;
-  margin: -6px -10px 6px -10px;
+  padding: 2px 8px;
+  margin: -4px -10px 3px -10px;
   border-radius: 4px 4px 0 0;
   font-family: 'JetBrains Mono', 'SF Mono', monospace;
   font-size: 10px;
@@ -442,8 +498,8 @@ body {
    ====================================================== */
 
 .block-children {
-  padding: 4px 0;
-  margin: 4px 0;
+  padding: 2px 0 2px 12px;
+  margin: 2px 0;
 }
 
 .conditional-child,
@@ -452,8 +508,8 @@ body {
 .role-switch-child,
 .loop-child,
 .role-loop-child {
-  margin: 4px 0;
-  padding: 2px 0;
+  margin: 2px 0;
+  padding: 1px 0;
 }
 
 /* ======================================================
@@ -651,42 +707,46 @@ body {
 .compact .prompt-container {
   width: fit-content;
   max-width: 600px;
-  padding-left: 12px;
+  padding-left: 10px;
   border-left-width: 1px;
 }
 
 .compact .prompt-title {
-  padding: 6px 10px;
-  margin-bottom: 8px;
-  margin-left: -12px;
-  padding-left: 12px;
-  border-radius: 4px;
+  padding: 3px 8px;
+  margin-bottom: 4px;
+  margin-left: -10px;
+  padding-left: 10px;
+  border-radius: 3px;
 }
 
 .compact .prompt-title h1 {
-  font-size: 11px;
+  font-size: 10px;
 }
 
 /* Compact role messages */
 .compact .role-message,
 .compact .none-message {
-  margin: 3px 0;
-  border-radius: 4px;
+  margin: 1px 0;
+  padding: 0;
+  border-radius: 3px;
 }
 
 .compact .role-message-header,
 .compact .none-message-header {
-  padding: 1px 6px;
-  font-size: 8px;
-  letter-spacing: 0.3px;
-  border-radius: 0 0 3px 0;
+  padding: 0 4px;
+  margin: 0;
+  font-size: 7px;
+  letter-spacing: 0.2px;
+  border-radius: 0 0 2px 0;
+  line-height: 1;
+  display: block;
 }
 
 .compact .role-body-block {
-  padding: 4px 8px;
+  padding: 2px 6px;
   display: flex;
   flex-wrap: wrap;
-  gap: 2px 4px;
+  gap: 1px 3px;
   align-items: center;
 }
 
@@ -714,20 +774,36 @@ body {
 }
 
 .compact .time-index,
-.compact .other-index {
+.compact .other-index,
+.compact .loop-var {
+  font-size: 9px;
+  padding: 0 2px;
+  border-bottom-width: 1px;
+}
+
+.compact .loop-iterable,
+.compact .condition-expr,
+.compact .switch-expr,
+.compact .case-match {
+  font-size: 9px;
+  padding: 0 2px;
+  border-bottom-width: 1px;
+}
+
+.compact .keyword {
   font-size: 9px;
 }
 
 .compact .comment,
 .compact .inline-comment {
-  font-size: 8px;
-  margin-left: 4px;
+  font-size: 7px;
+  margin-left: 2px;
 }
 
 .compact .comment-block {
-  padding: 3px 8px;
-  margin: 3px 0;
-  font-size: 8px;
+  padding: 1px 6px;
+  margin: 1px 0;
+  font-size: 7px;
   border-left-width: 1px;
 }
 
@@ -738,67 +814,67 @@ body {
 .compact .conditional-block-inside-role,
 .compact .switch-block-outside-role,
 .compact .switch-block-inside-role {
-  margin: 4px 0;
-  padding: 4px 8px 4px 10px;
+  margin: 2px 0;
+  padding: 2px 6px 2px 8px;
   border-left-width: 2px;
-  border-radius: 3px;
+  border-radius: 2px;
 }
 
 .compact .loop-block-outside-role-header,
 .compact .loop-block-inside-role-header,
 .compact .switch-block-outside-role-header,
 .compact .switch-block-inside-role-header {
-  padding: 2px 6px;
-  margin: -4px -8px 4px -10px;
-  border-radius: 0 3px 0 0;
-  font-size: 8px;
-  gap: 4px;
+  padding: 1px 4px;
+  margin: -2px -6px 2px -8px;
+  border-radius: 0 2px 0 0;
+  font-size: 7px;
+  gap: 3px;
 }
 
 .compact .loop-block-outside-role-header::before,
 .compact .loop-block-inside-role-header::before,
 .compact .switch-block-outside-role-header::before,
 .compact .switch-block-inside-role-header::before {
-  font-size: 9px;
+  font-size: 8px;
 }
 
 .compact .conditional-section {
-  padding: 3px 6px;
-  margin: 3px 0;
-  border-radius: 3px;
+  padding: 2px 5px;
+  margin: 1px 0;
+  border-radius: 2px;
 }
 
 .compact .conditional-section-header {
-  padding: 2px 6px;
-  margin: -3px -6px 3px -6px;
-  border-radius: 3px 3px 0 0;
-  font-size: 8px;
-  gap: 3px;
+  padding: 1px 4px;
+  margin: -2px -5px 2px -5px;
+  border-radius: 2px 2px 0 0;
+  font-size: 7px;
+  gap: 2px;
 }
 
 .compact .conditional-section-header::before {
-  font-size: 8px;
+  font-size: 7px;
 }
 
 .compact .switch-case,
 .compact .switch-default {
-  margin: 3px 0;
-  padding: 3px 6px;
-  border-radius: 3px;
+  margin: 1px 0;
+  padding: 2px 5px;
+  border-radius: 2px;
 }
 
 .compact .switch-case-header,
 .compact .switch-default-header {
-  padding: 2px 6px;
-  margin: -3px -6px 3px -6px;
-  border-radius: 3px 3px 0 0;
+  padding: 1px 4px;
+  margin: -2px -5px 2px -5px;
+  border-radius: 2px 2px 0 0;
   font-size: 7px;
 }
 
 /* Compact block children */
 .compact .block-children {
-  padding: 0;
-  margin: 2px 0;
+  padding: 0 0 0 6px;
+  margin: 1px 0;
 }
 
 .compact .conditional-child,
@@ -807,31 +883,31 @@ body {
 .compact .role-switch-child,
 .compact .loop-child,
 .compact .role-loop-child {
-  margin: 2px 0;
+  margin: 1px 0;
   padding: 0;
 }
 
 /* Compact label blocks */
 .compact .label-block {
-  margin: 8px 0;
+  margin: 4px 0;
 }
 
 .compact .label-start,
 .compact .label-end {
-  font-size: 8px;
-  padding: 1px 0;
+  font-size: 7px;
+  padding: 0;
 }
 
 .compact .label-block-body {
-  margin-left: 4px;
-  padding-left: 8px;
+  margin-left: 3px;
+  padding-left: 6px;
   border-left-width: 1px;
 }
 
 /* Compact line height */
 .compact,
 .compact * {
-  line-height: 1.2 !important;
+  line-height: 1.1 !important;
 }
 
 /* Remove margins on inline elements in compact mode */
@@ -861,5 +937,5 @@ body {
 .compact .switch-case .role-message,
 .compact .switch-default .role-message,
 .compact .none-message {
-  margin: 2px 0;
+  margin: 1px 0;
 }

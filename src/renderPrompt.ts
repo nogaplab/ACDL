@@ -88,8 +88,8 @@ function renderPromptTitle(title: PromptTitle): string {
 
 function renderIndexValue(index: Index): string {
   return index.kind === "time-index"
-    ? `@${escapeHtml(index.name)}`
-    : escapeHtml(index.name);
+    ? `<span class="time-index">@${escapeHtml(index.name)}</span>`
+    : `<span class="other-index">${escapeHtml(index.name)}</span>`;
 }
 
 function renderIndexList(indices: Index[]): string {
@@ -269,11 +269,13 @@ function renderFuncBlock(block: Func): string {
     block.indices && block.indices.length > 0
       ? renderIndexList(block.indices) : "";
 
-  const commentHtml = block.comment
-    ? `<span class="inline-comment"> // ${escapeHtml(block.comment)}</span>`
-    : "";
+  const funcCore = `<span class="func-block"><span class="func-name">${escapeHtml(block.name)}</span><span class="func-parens">(</span>${argsText}<span class="func-parens">)</span>${resultIndices}</span>`;
 
-  return `<span class="func-block"><span class="func-name">${escapeHtml(block.name)}</span><span class="func-parens">(</span>${argsText}<span class="func-parens">)</span>${resultIndices}</span>${commentHtml}`;
+  if (block.comment) {
+    return `<span class="block-with-comment">${funcCore}<span class="inline-comment"> // ${escapeHtml(block.comment)}</span></span>`;
+  }
+
+  return funcCore;
 }
 
 
@@ -337,7 +339,7 @@ function renderTemplateBlock(block: Template): string {
   )}${argsText}</span>`;
 
   if (block.comment) {
-    return `${core}<span class="comment"> // ${escapeHtml(block.comment)}</span>`;
+    return `<span class="block-with-comment">${core}<span class="comment"> // ${escapeHtml(block.comment)}</span></span>`;
   }
 
   return core;
@@ -403,11 +405,11 @@ function renderContextVarBlock(block: ContextVar): string {
   // 3. Join segments with dots.
   const joined = segments.join(".");
 
-  const commentHtml = block.comment
-    ? `<span class="inline-comment"> // ${escapeHtml(block.comment)}</span>`
-    : "";
+  if (block.comment) {
+    return `<span class="block-with-comment"><span class="context-var">${joined}</span><span class="inline-comment"> // ${escapeHtml(block.comment)}</span></span>`;
+  }
 
-  return `<span class="context-var">${joined}</span>${commentHtml}`;
+  return `<span class="context-var">${joined}</span>`;
 }
 
 
@@ -440,7 +442,9 @@ function renderContextVarBlock(block: ContextVar): string {
  *   - escapes all text safely
  */
 function renderLoopOutsideRole(block: LoopBlockOutsideRole): string {
-  const header = `ForEach(${escapeHtml(block.index.name)}: ${escapeHtml(block.iterable.value)}):`;
+  const indexHtml = `<span class="loop-var">${escapeHtml(block.index.name)}</span>`;
+  const iterableHtml = `<span class="loop-iterable">${escapeHtml(block.iterable.value)}</span>`;
+  const header = `<span class="keyword">ForEach</span>(${indexHtml}: ${iterableHtml}):`;
 
   const bodyHtml = block.body
     .map(child =>
@@ -479,10 +483,9 @@ function renderLoopOutsideRole(block: LoopBlockOutsideRole): string {
  *   - escapes all text for safety
  */
 function renderLoopInsideRole(block: LoopBlockInsideRole): string {
-  const indexText = block.index.name;
-  const iterableText = block.iterable.value;
-
-  const header = `ForEach(${escapeHtml(indexText)}: ${escapeHtml(iterableText)}):`;
+  const indexHtml = `<span class="loop-var">${escapeHtml(block.index.name)}</span>`;
+  const iterableHtml = `<span class="loop-iterable">${escapeHtml(block.iterable.value)}</span>`;
+  const header = `<span class="keyword">ForEach</span>(${indexHtml}: ${iterableHtml}):`;
   const bodyHtml = block.body
     .map((child: any) =>
       `<div class="role-loop-child">${renderRoleBuildingBlock(child)}</div>`
@@ -505,7 +508,7 @@ function renderLoopInsideRole(block: LoopBlockInsideRole): string {
  *       Case "other":
  *           <top-level-block>
  *
- *       Default:
+ *       `<span class="keyword">Default</span>:`
  *           <top-level-block>
  *
  * This block appears *outside* a role, so the body elements inside
@@ -517,7 +520,8 @@ function renderLoopInsideRole(block: LoopBlockInsideRole): string {
  *   - defaultCase?: DefaultCaseBlockOutsideRole
  */
 function renderSwitchOutsideRole(block: SwitchBlockOutsideRole): string {
-  const header = `Switch(${escapeHtml(block.expression)}):`;
+  const exprHtml = `<span class="switch-expr">${escapeHtml(block.expression)}</span>`;
+  const header = `<span class="keyword">Switch</span>(${exprHtml}):`;
 
   const casesHtml = block.cases
     .map((c: CaseBlockOutsideRole) => {
@@ -529,7 +533,7 @@ function renderSwitchOutsideRole(block: SwitchBlockOutsideRole): string {
 
       return wrapBlock(
         "switch-case",
-        `Case "${escapeHtml(c.match)}":`,
+        `<span class="keyword">Case</span> <span class="case-match">"${escapeHtml(c.match)}"</span>:`,
         bodyHtml
       );
     })
@@ -545,7 +549,7 @@ function renderSwitchOutsideRole(block: SwitchBlockOutsideRole): string {
 
         return wrapBlock(
           "switch-default",
-          "Default:",
+          `<span class="keyword">Default</span>:`,
           bodyHtml
         );
       })()
@@ -572,7 +576,7 @@ function renderSwitchOutsideRole(block: SwitchBlockOutsideRole): string {
  *       Case "other":
  *           <role-building-block>
  *
- *       Default:
+ *       `<span class="keyword">Default</span>:`
  *           <role-building-block>
  *
  * Because this switch appears *inside a role message*, its body elements
@@ -584,7 +588,8 @@ function renderSwitchOutsideRole(block: SwitchBlockOutsideRole): string {
  *   - defaultCase?: DefaultCaseBlockInsideRole
  */
 function renderSwitchInsideRole(block: SwitchBlockInsideRole): string {
-  const header = `Switch(${escapeHtml(block.expression)}):`;
+  const exprHtml = `<span class="switch-expr">${escapeHtml(block.expression)}</span>`;
+  const header = `<span class="keyword">Switch</span>(${exprHtml}):`;
 
   const casesHtml = block.cases
     .map((c: CaseBlockInsideRole) => {
@@ -596,7 +601,7 @@ function renderSwitchInsideRole(block: SwitchBlockInsideRole): string {
 
       return wrapBlock(
         "switch-case",
-        `Case "${escapeHtml(c.match)}":`,
+        `<span class="keyword">Case</span> <span class="case-match">"${escapeHtml(c.match)}"</span>:`,
         bodyHtml
       );
     })
@@ -612,7 +617,7 @@ function renderSwitchInsideRole(block: SwitchBlockInsideRole): string {
 
         return wrapBlock(
           "switch-default",
-          "Default:",
+          `<span class="keyword">Default</span>:`,
           bodyHtml
         );
       })()
@@ -665,7 +670,7 @@ function renderConditionalInsideRole(block: ConditionalBlockInsideRole): string 
   parts.push(
     wrapBlock(
       "conditional-section",
-      `If (${escapeHtml(block.Ifcondition)}):`,
+      `<span class="keyword">If</span> (<span class="condition-expr">${escapeHtml(block.Ifcondition)}</span>):`,
       renderBody(block.IfBody)
     )
   );
@@ -675,7 +680,7 @@ function renderConditionalInsideRole(block: ConditionalBlockInsideRole): string 
     parts.push(
       wrapBlock(
         "conditional-section",
-        `ElseIf (${escapeHtml(block.elseif[i])}):`,
+        `<span class="keyword">ElseIf</span> (<span class="condition-expr">${escapeHtml(block.elseif[i])}</span>):`,
         renderBody(block.elseifBody[i])
       )
     );
@@ -686,7 +691,7 @@ function renderConditionalInsideRole(block: ConditionalBlockInsideRole): string 
     parts.push(
       wrapBlock(
         "conditional-section",
-        "Else:",
+        `<span class="keyword">Else</span>:`,
         renderBody(block.elseBody)
       )
     );
@@ -743,7 +748,7 @@ function renderConditionalOutsideRole(block: ConditionalBlockOutsideRole): strin
   parts.push(
     wrapBlock(
       "conditional-section",
-      `If (${escapeHtml(block.Ifcondition)}):`,
+      `<span class="keyword">If</span> (<span class="condition-expr">${escapeHtml(block.Ifcondition)}</span>):`,
       renderBody(block.IfBody)
     )
   );
@@ -753,7 +758,7 @@ function renderConditionalOutsideRole(block: ConditionalBlockOutsideRole): strin
     parts.push(
       wrapBlock(
         "conditional-section",
-        `ElseIf (${escapeHtml(block.elseif[i])}):`,
+        `<span class="keyword">ElseIf</span> (<span class="condition-expr">${escapeHtml(block.elseif[i])}</span>):`,
         renderBody(block.elseifBody[i])
       )
     );
@@ -764,7 +769,7 @@ function renderConditionalOutsideRole(block: ConditionalBlockOutsideRole): strin
     parts.push(
       wrapBlock(
         "conditional-section",
-        "Else:",
+        `<span class="keyword">Else</span>:`,
         renderBody(block.elseBody)
       )
     );
