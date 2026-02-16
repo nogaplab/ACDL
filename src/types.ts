@@ -164,10 +164,17 @@ export type LoopBlockInsideRole = {
   body: Array<RoleBuildingBlock>;
 };
 
+export type RangeExpr = {
+  kind: "range-expr";
+  start: ExpressionToken[];
+  end: ExpressionToken[];
+  step?: ExpressionToken[];  // optional step/variable
+}
+
 export type Iterable = {
   kind: "iterable";
   tokens: ExpressionToken[]; // preserves token info for syntax highlighting
-}
+} | RangeExpr;
 
 export type ConditionalBlockInsideRole = {
   kind: "conditional-block-inside-role";

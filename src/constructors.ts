@@ -22,10 +22,11 @@ import {
   SwitchBlockInsideRole,
   CaseBlockInsideRole,
   DefaultCaseBlockInsideRole,
-  Iterable,
   CommentBlock,
   LabelBlock,
-  ArithmeticExpr
+  ArithmeticExpr,
+  RangeExpr,
+  ExpressionToken
 } from "./types";
 
 
@@ -131,8 +132,12 @@ export function defaultCaseBlockInsideRole(params: Omit<DefaultCaseBlockInsideRo
     return { ...params, kind: "default-case-block-inside-role" };
 }
 
-export function Iterable(params: Omit<Iterable, "kind">): Iterable {
-  return {... params, kind: "iterable" };
+export function Iterable(params: { tokens: ExpressionToken[] }): { kind: "iterable"; tokens: ExpressionToken[] } {
+  return { ...params, kind: "iterable" };
+}
+
+export function rangeExpr(params: Omit<RangeExpr, "kind">): RangeExpr {
+  return { ...params, kind: "range-expr" };
 }
 
 export function commentBlock(params: Omit<CommentBlock, "kind">): CommentBlock {

@@ -364,6 +364,7 @@ body {
   color: var(--text-primary);
   font-weight: 700;
   font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-variant-ligatures: none;
   padding: 0 2px;
 }
 
@@ -403,6 +404,23 @@ body {
   font-weight: 700;
 }
 
+/* Range expressions */
+.range-expr {
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-size: 12px;
+}
+
+.range-dots {
+  color: var(--text-secondary);
+  font-weight: 600;
+  padding: 0 2px;
+}
+
+.range-keyword {
+  color: var(--accent-function);
+  font-weight: 600;
+}
+
 /* Comments */
 .comment,
 .inline-comment {
@@ -419,7 +437,7 @@ body {
 /* Wrapper for blocks with comments - keeps them together when wrapping */
 .block-with-comment {
   display: inline-flex;
-  align-items: flex-start;
+  align-items: center;
   vertical-align: top;
   max-width: 100%;
 }
@@ -427,10 +445,8 @@ body {
 .comment-block {
   color: var(--accent-comment);
   font-style: italic;
-  padding: 2px 12px;
+  padding: 2px 0;
   margin: 1px 0;
-  border-left: 2px solid var(--accent-comment);
-  background: var(--bg-tertiary);
   font-size: 12px;
 }
 
@@ -482,6 +498,28 @@ body {
 .loop-block-inside-role-header::before {
   content: '↻';
   font-size: 12px;
+  color: var(--control-border);
+}
+
+/* Conditional headers (outside role) */
+.conditional-block-outside-role-header {
+  background: var(--control-header-bg);
+  padding: 3px 10px;
+  margin: -6px -12px 4px -16px;
+  border-radius: 0 4px 0 0;
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--control-text);
+  border-bottom: 1px solid var(--border-light);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.conditional-block-outside-role-header::before {
+  content: '◇';
+  font-size: 10px;
   color: var(--control-border);
 }
 

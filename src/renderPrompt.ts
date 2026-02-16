@@ -25,6 +25,8 @@ import {
   CommentBlock,
   LabelBlock,
   ExpressionToken,
+  Iterable,
+  RangeExpr,
 } from "./types";
 
 
@@ -149,6 +151,77 @@ function renderExpressionTokens(tokens: ExpressionToken[]): string {
       continue;
     }
 
+    // Check for range pattern: range(start, end) or range(start, end, step)
+    if (tok.type === "IDENT" &&
+        tok.value === "range" &&
+        i + 1 < tokens.length &&
+        tokens[i + 1].value === "(") {
+
+      i++; // skip "range"
+      i++; // skip "("
+
+      // Parse start tokens (until comma at depth 0)
+      const startTokens: ExpressionToken[] = [];
+      let depth = 0;
+      while (i < tokens.length && !(tokens[i].value === "," && depth === 0)) {
+        const t = tokens[i];
+        if (t.value === "(") depth++;
+        if (t.value === ")") depth--;
+        startTokens.push(t);
+        i++;
+      }
+      i++; // skip ","
+
+      // Parse end tokens (until comma or closing paren at depth 0)
+      const endTokens: ExpressionToken[] = [];
+      depth = 0;
+      while (i < tokens.length && !((tokens[i].value === "," || tokens[i].value === ")") && depth === 0)) {
+        const t = tokens[i];
+        if (t.value === "(") depth++;
+        if (t.value === ")") depth--;
+        endTokens.push(t);
+        i++;
+      }
+
+      // Check for optional step
+      let stepTokens: ExpressionToken[] | undefined;
+      if (i < tokens.length && tokens[i].value === ",") {
+        i++; // skip ","
+        stepTokens = [];
+        depth = 0;
+        while (i < tokens.length && !(tokens[i].value === ")" && depth === 0)) {
+          const t = tokens[i];
+          if (t.value === "(") depth++;
+          if (t.value === ")") depth--;
+          stepTokens.push(t);
+          i++;
+        }
+      }
+      i++; // skip closing ")"
+
+      // Render as start...end or start...end every step
+      const startHtml = renderExpressionTokens(startTokens);
+      const endHtml = renderExpressionTokens(endTokens);
+      const stepHtml = stepTokens
+        ? ` <span class="range-keyword">every</span> ${renderExpressionTokens(stepTokens)}`
+        : "";
+
+      result.push(`<span class="range-expr">${startHtml}<span class="range-dots">...</span>${endHtml}${stepHtml}</span>`);
+      continue;
+    }
+
+    // Combine consecutive logical operators (e.g., !=, <=, >=, ==)
+    if (tok.type === "LOGIC_OP") {
+      let combined = tok.value;
+      i++;
+      while (i < tokens.length && tokens[i].type === "LOGIC_OP") {
+        combined += tokens[i].value;
+        i++;
+      }
+      result.push(`<span class="expr-logic-op">${escapeHtml(combined)}</span>`);
+      continue;
+    }
+
     // Regular token rendering
     const escaped = escapeHtml(tok.value);
 
@@ -171,10 +244,6 @@ function renderExpressionTokens(tokens: ExpressionToken[]): string {
         } else {
           result.push(`<span class="expr-symbol">${escaped}</span>`);
         }
-        break;
-
-      case "LOGIC_OP":
-        result.push(`<span class="expr-logic-op">${escaped}</span>`);
         break;
 
       case "ARITH_OP":
@@ -385,6 +454,22 @@ function renderRoleBuildingBlock(block: RoleBuildingBlock): string {
  *    can be styled differently from templates, context vars, etc.
  */
 function renderFuncBlock(block: Func): string {
+  // Special handling for range() function - render as start...end or start...end every step
+  if (block.name === "range" && block.arguments.length >= 2) {
+    const startHtml = renderTextArgs(block.arguments[0]);
+    const endHtml = renderTextArgs(block.arguments[1]);
+    const stepHtml = block.arguments.length >= 3
+      ? ` <span class="range-keyword">every</span> ${renderTextArgs(block.arguments[2])}`
+      : "";
+
+    const rangeCore = `<span class="range-expr">${startHtml}<span class="range-dots">...</span>${endHtml}${stepHtml}</span>`;
+
+    if (block.comment) {
+      return `<span class="block-with-comment">${rangeCore}<span class="inline-comment"> // ${escapeHtml(block.comment)}</span></span>`;
+    }
+    return rangeCore;
+  }
+
   const argsText = block.arguments
     .map(renderTextArgs)
     .join(", ");
@@ -565,9 +650,33 @@ function renderContextVarBlock(block: ContextVar): string {
  *   - nests all children visually under the loop header
  *   - escapes all text safely
  */
+/**
+ * Render an Iterable (either a RangeExpr or token-based iterable).
+ */
+function renderIterable(iterable: Iterable): string {
+  if (iterable.kind === "range-expr") {
+    return renderRangeExpr(iterable);
+  } else {
+    return renderExpressionTokens(iterable.tokens);
+  }
+}
+
+/**
+ * Render a RangeExpr: start...stop or start...stop every step
+ */
+function renderRangeExpr(range: RangeExpr): string {
+  const startHtml = renderExpressionTokens(range.start);
+  const endHtml = renderExpressionTokens(range.end);
+  const stepHtml = range.step
+    ? ` <span class="range-keyword">every</span> ${renderExpressionTokens(range.step)}`
+    : "";
+
+  return `<span class="range-expr">${startHtml}<span class="range-dots">...</span>${endHtml}${stepHtml}</span>`;
+}
+
 function renderLoopOutsideRole(block: LoopBlockOutsideRole): string {
   const indexHtml = `<span class="loop-var">${escapeHtml(block.index.name)}</span>`;
-  const iterableHtml = `<span class="loop-iterable">${renderExpressionTokens(block.iterable.tokens)}</span>`;
+  const iterableHtml = `<span class="loop-iterable">${renderIterable(block.iterable)}</span>`;
   const header = `<span class="keyword">ForEach</span>(${indexHtml}: ${iterableHtml}):`;
 
   const bodyHtml = block.body
@@ -608,7 +717,7 @@ function renderLoopOutsideRole(block: LoopBlockOutsideRole): string {
  */
 function renderLoopInsideRole(block: LoopBlockInsideRole): string {
   const indexHtml = `<span class="loop-var">${escapeHtml(block.index.name)}</span>`;
-  const iterableHtml = `<span class="loop-iterable">${renderExpressionTokens(block.iterable.tokens)}</span>`;
+  const iterableHtml = `<span class="loop-iterable">${renderIterable(block.iterable)}</span>`;
   const header = `<span class="keyword">ForEach</span>(${indexHtml}: ${iterableHtml}):`;
   const bodyHtml = block.body
     .map((child: any) =>
@@ -862,46 +971,26 @@ function renderConditionalOutsideRole(block: ConditionalBlockOutsideRole): strin
   const renderBody = (body: PromptBlock[]) =>
     body
       .map(child =>
-        `<div class="role-condition-child">${renderTopLevelBlock(child)}</div>`
+        `<div class="conditional-child">${renderTopLevelBlock(child)}</div>`
       )
       .join("\n");
 
-  const parts: string[] = [];
-
-  // IF
-  parts.push(
-    wrapBlock(
-      "conditional-section",
-      `<span class="keyword">If</span> (<span class="condition-expr">${renderExpressionTokens(block.Ifcondition)}</span>):`,
-      renderBody(block.IfBody)
-    )
-  );
+  // IF block
+  const ifHeader = `<span class="keyword">If</span> (<span class="condition-expr">${renderExpressionTokens(block.Ifcondition)}</span>):`;
+  let result = wrapBlock("conditional-block-outside-role", ifHeader, renderBody(block.IfBody));
 
   // ELSEIFs
   for (let i = 0; i < block.elseif.length; i++) {
-    parts.push(
-      wrapBlock(
-        "conditional-section",
-        `<span class="keyword">ElseIf</span> (<span class="condition-expr">${renderExpressionTokens(block.elseif[i])}</span>):`,
-        renderBody(block.elseifBody[i])
-      )
-    );
+    const elseifHeader = `<span class="keyword">ElseIf</span> (<span class="condition-expr">${renderExpressionTokens(block.elseif[i])}</span>):`;
+    result += wrapBlock("conditional-block-outside-role", elseifHeader, renderBody(block.elseifBody[i]));
   }
 
   // ELSE
   if (block.elseBody && block.elseBody.length > 0) {
-    parts.push(
-      wrapBlock(
-        "conditional-section",
-        `<span class="keyword">Else</span>:`,
-        renderBody(block.elseBody)
-      )
-    );
+    const elseHeader = `<span class="keyword">Else</span>:`;
+    result += wrapBlock("conditional-block-outside-role", elseHeader, renderBody(block.elseBody));
   }
 
-  return `
-<div class="conditional-block-inside-role">
-  ${parts.join("\n")}
-</div>`;
+  return result;
 }
 

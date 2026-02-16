@@ -302,7 +302,7 @@ body {
 /* Wrapper for blocks with comments - keeps them together when wrapping */
 .block-with-comment {
   display: inline-flex;
-  align-items: flex-start;
+  align-items: center;
   vertical-align: top;
   max-width: 100%;
 }

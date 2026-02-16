@@ -554,14 +554,20 @@ export class Parser {
     this.consume("SYMBOL", "(");
     let idx: string = this.peek().value === "@" ? "@" : "";
     const index = Create.index( "other-index", idx + this.parseIndex().name)
-    console.log("got here")
     this.consume("SYMBOL", ":");
 
-    // Capture iterable tokens (e.g., "t - k ... t - 1")
-    const iterTokens: AST.ExpressionToken[] = [];
-    while (!(this.peek().value === ")" && this.peekNext().value === "{")) {
-      if (this.isEOF()) throw new Error("Unterminated ForEach iterable");
-      iterTokens.push(toExprToken(this.consume()));
+    // Check if iterable is a range expression: range(start, end, optionalStep)
+    let iterable: AST.Iterable;
+    if (this.peek().value === "range" && this.peekNext().value === "(") {
+      iterable = this.parseRangeExpr();
+    } else {
+      // Capture iterable tokens (e.g., "t - k ... t - 1")
+      const iterTokens: AST.ExpressionToken[] = [];
+      while (!(this.peek().value === ")" && this.peekNext().value === "{")) {
+        if (this.isEOF()) throw new Error("Unterminated ForEach iterable");
+        iterTokens.push(toExprToken(this.consume()));
+      }
+      iterable = Create.Iterable({ tokens: iterTokens });
     }
     this.consume("SYMBOL", ")");
     this.consume("SYMBOL", "{");
@@ -572,7 +578,53 @@ export class Parser {
     }
     this.consume("SYMBOL", "}");
 
-    return Create.loopBlockOutsideRole({ index, iterable: Create.Iterable({ tokens: iterTokens }), body });
+    return Create.loopBlockOutsideRole({ index, iterable, body });
+  }
+
+  private parseRangeExpr(): AST.RangeExpr {
+    this.consume("IDENT", "range");
+    this.consume("SYMBOL", "(");
+
+    // Parse start expression (tokens until comma at depth 0)
+    const start: AST.ExpressionToken[] = [];
+    let depth = 0;
+    while (!(this.peek().value === "," && depth === 0)) {
+      if (this.isEOF()) throw new Error("Unterminated range expression");
+      const tok = this.consume();
+      if (tok.value === "(") depth++;
+      if (tok.value === ")") depth--;
+      start.push(toExprToken(tok));
+    }
+    this.consume("SYMBOL", ",");
+
+    // Parse end expression (tokens until comma or closing paren at depth 0)
+    const end: AST.ExpressionToken[] = [];
+    depth = 0;
+    while (!((this.peek().value === "," || this.peek().value === ")") && depth === 0)) {
+      if (this.isEOF()) throw new Error("Unterminated range expression");
+      const tok = this.consume();
+      if (tok.value === "(") depth++;
+      if (tok.value === ")") depth--;
+      end.push(toExprToken(tok));
+    }
+
+    // Check for optional step
+    let step: AST.ExpressionToken[] | undefined;
+    if (this.peek().value === ",") {
+      this.consume("SYMBOL", ",");
+      step = [];
+      depth = 0;
+      while (!(this.peek().value === ")" && depth === 0)) {
+        if (this.isEOF()) throw new Error("Unterminated range expression");
+        const tok = this.consume();
+        if (tok.value === "(") depth++;
+        if (tok.value === ")") depth--;
+        step.push(toExprToken(tok));
+      }
+    }
+    this.consume("SYMBOL", ")");
+
+    return Create.rangeExpr({ start, end, step });
   }
 
   private parseConditionalOutside(): AST.ConditionalBlockOutsideRole {
@@ -645,11 +697,18 @@ export class Parser {
     const index = Create.index( "other-index", idx + this.parseIndex().name)
     this.consume("SYMBOL", ":");
 
-    // Capture iterable tokens
-    const iterTokens: AST.ExpressionToken[] = [];
-    while (!(this.peek().value === ")" && this.peekNext().value === "{")) {
-      if (this.isEOF()) throw new Error("Unterminated ForEach iterable");
-      iterTokens.push(toExprToken(this.consume()));
+    // Check if iterable is a range expression: range(start, end, optionalStep)
+    let iterable: AST.Iterable;
+    if (this.peek().value === "range" && this.peekNext().value === "(") {
+      iterable = this.parseRangeExpr();
+    } else {
+      // Capture iterable tokens
+      const iterTokens: AST.ExpressionToken[] = [];
+      while (!(this.peek().value === ")" && this.peekNext().value === "{")) {
+        if (this.isEOF()) throw new Error("Unterminated ForEach iterable");
+        iterTokens.push(toExprToken(this.consume()));
+      }
+      iterable = Create.Iterable({ tokens: iterTokens });
     }
     this.consume("SYMBOL", ")");
     this.consume("SYMBOL", "{");
@@ -658,7 +717,7 @@ export class Parser {
     while ((this.peek() as any).value !== "}") body.push(this.parseRoleBuildingBlock()); // RECURSIVE: Inside loops contain role blocks
     this.consume("SYMBOL", "}");
 
-    return Create.loopBlockInsideRole({ index, iterable: Create.Iterable({ tokens: iterTokens }), body });
+    return Create.loopBlockInsideRole({ index, iterable, body });
   }
 
   private parseConditionalInside(): AST.ConditionalBlockInsideRole {
