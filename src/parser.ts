@@ -3,6 +3,14 @@ import { Token } from "./tokens";
 import * as AST from "./types";
 import * as Create from "./constructors";
 
+// Helper to convert Token to ExpressionToken (strips line/col info)
+function toExprToken(tok: Token): AST.ExpressionToken {
+  return {
+    type: tok.type as AST.ExpressionToken["type"],
+    value: tok.value as string
+  };
+}
+
 
 /**
  * Recursive Descent Parser for the CSDL (Context Structure Description Language) Prompt DSL.
@@ -374,17 +382,21 @@ export class Parser {
 
   private parsePathDesc(): AST.PathDesc {
     const tok = this.peek();
+    console.log(`parsePathDesc: tok=${tok.type}:${tok.value} at ${tok.line}:${tok.col}`);
 
     if (tok.type !== "IDENT" && tok.type !== "KEYWORD") {
         throw new Error(`[${tok.line}:${tok.col}] Expected identifier in path, got ${tok.type}`);
     }
 
     const base = this.consume().value as string;
+    console.log(`parsePathDesc: base=${base}, about to parse indices`);
     const indices = this.parseOptionalIndices();
+    console.log(`parsePathDesc: after indices, peek=${this.peek().type}:${this.peek().value}`);
     let next: AST.PathDesc | undefined;
     if (this.match("SYMBOL", ".")) {
+      console.log(`parsePathDesc: matched dot, recursing`);
       next = this.parsePathDesc();
-    } 
+    }
     return Create.pathDesc({ base, indices, next });
   }
 
@@ -471,29 +483,62 @@ export class Parser {
 
   private parseOptionalIndices(): AST.Index[] {
     const indices: AST.Index[] = [];
+    console.log(`parseOptionalIndices: peek=${this.peek().type}:${this.peek().value}`);
     if (this.match("SYMBOL", "[")){
+      console.log(`parseOptionalIndices: found [, parsing index`);
       indices.push(this.parseIndex());
+      console.log(`parseOptionalIndices: after parseIndex, peek=${this.peek().type}:${this.peek().value}`);
       while (this.match("SYMBOL", ",")) {
         indices.push(this.parseIndex());
-      console.log(`indices: ${indices}`)
       }
     }
-    if (this.peek().value === "]") this.consume("SYMBOL", "]");
+    if (this.peek().value === "]") {
+      console.log(`parseOptionalIndices: consuming ]`);
+      this.consume("SYMBOL", "]");
+    }
+    console.log(`parseOptionalIndices: returning ${indices.length} indices, peek=${this.peek().type}:${this.peek().value}`);
     return indices;
   }
 
   private parseIndex(): AST.Index {
+    console.log(`parseIndex: starting, peek=${this.peek().type}:${this.peek().value}`);
     let time: boolean = this.match("SYMBOL", "@");
+    console.log(`parseIndex: time=${time}, peek after @check=${this.peek().type}:${this.peek().value}`);
     let idx: string = ""
-    while (
-      this.peek().type === "IDENT" ||
-      this.peek().type === "ARITH_OP" ||
-      this.peek().type === "NUMBER" ||
-      (this.peek().type === "SYMBOL" && this.peek().value === "." && this.peekNext()?.type === "IDENT")
-    ) {
-        idx += this.consume().value as string
+    while (true) {
+      const tok = this.peek();
+      const tokType = tok.type;
+      const tokValue = tok.value;
+      console.log(`parseIndex loop: tok=${tokType}:${tokValue}, idx so far="${idx}"`);
+
+      // Simple token types
+      if (tokType === "IDENT" || tokType === "ARITH_OP" || tokType === "NUMBER") {
+        idx += this.consume().value as string;
+        continue;
+      }
+
+      // Check for dot followed by IDENT or @
+      if (tokType === "SYMBOL" && tokValue === ".") {
+        const next = this.peekNext();
+        console.log(`parseIndex: at dot, next=${next?.type}:${next?.value}`);
+        if (next && (next.type === "IDENT" || next.value === "@")) {
+          idx += this.consume().value as string;
+          continue;
+        }
+      }
+
+      // Check for @ (for compound time indices like @t.@i)
+      if (tokType === "SYMBOL" && tokValue === "@") {
+        idx += this.consume().value as string;
+        continue;
+      }
+
+      // No match, exit loop
+      console.log(`parseIndex: breaking, final idx="${idx}"`);
+      break;
     }
     // Return the correct AST node based on the 'time' flag
+    console.log(`parseIndex: returning ${time ? "time" : "other"}-index with name="${idx}"`);
     if (time) {
       return Create.index("time-index", idx);
     } else {
@@ -511,12 +556,12 @@ export class Parser {
     const index = Create.index( "other-index", idx + this.parseIndex().name)
     console.log("got here")
     this.consume("SYMBOL", ":");
-    
-    // Capture iterable (e.g., "t - k ... t - 1")
-    let iter = "";
+
+    // Capture iterable tokens (e.g., "t - k ... t - 1")
+    const iterTokens: AST.ExpressionToken[] = [];
     while (!(this.peek().value === ")" && this.peekNext().value === "{")) {
-      if (this.isEOF()) throw new Error("Unterminated If condition");
-      iter += this.consume().value;
+      if (this.isEOF()) throw new Error("Unterminated ForEach iterable");
+      iterTokens.push(toExprToken(this.consume()));
     }
     this.consume("SYMBOL", ")");
     this.consume("SYMBOL", "{");
@@ -527,30 +572,28 @@ export class Parser {
     }
     this.consume("SYMBOL", "}");
 
-    return Create.loopBlockOutsideRole({ index, iterable: Create.Iterable({ value: iter.trim() }), body });
+    return Create.loopBlockOutsideRole({ index, iterable: Create.Iterable({ tokens: iterTokens }), body });
   }
 
   private parseConditionalOutside(): AST.ConditionalBlockOutsideRole {
     this.consume("KEYWORD", "If");
 
-    // 1. Parse the "If" Condition
-    let ifCond = "";
+    // 1. Parse the "If" Condition as tokens
+    const ifCondTokens: AST.ExpressionToken[] = [];
     while (this.peek().value !== "{") {
         if (this.isEOF()) throw new Error("Unterminated If condition");
-        ifCond += this.consume().value;
-        console.log(ifCond)
+        ifCondTokens.push(toExprToken(this.consume()));
     }
-    console.log(ifCond)
     this.consume("SYMBOL", "{");
 
     // 2. Parse the "If" Body
     const ifBody: AST.PromptBlock[] = [];
     while (this.peek().value !== "}") {
-        ifBody.push(this.parseTopLevelBlock()); //
+        ifBody.push(this.parseTopLevelBlock());
     }
     this.consume("SYMBOL", "}");
 
-    const elseIfConditions: string[] = [];
+    const elseIfConditions: AST.ExpressionToken[][] = [];
     const elseIfBodies: AST.PromptBlock[][] = [];
     let elseBody: AST.PromptBlock[] | undefined = undefined;
 
@@ -559,9 +602,9 @@ export class Parser {
         const type = this.consume().value;
 
         if (type === "ElseIf") {
-            let eiCond = "";
+            const eiCondTokens: AST.ExpressionToken[] = [];
             while (this.peek().value !== "{"){
-                eiCond += this.consume().value;
+                eiCondTokens.push(toExprToken(this.consume()));
             }
             this.consume("SYMBOL", "{");
 
@@ -571,9 +614,9 @@ export class Parser {
             }
             this.consume("SYMBOL", "}");
 
-            elseIfConditions.push(eiCond.trim());
+            elseIfConditions.push(eiCondTokens);
             elseIfBodies.push(eiBody);
-        } 
+        }
         else if (type === "Else") {
             this.consume("SYMBOL", "{");
             const eBody: AST.PromptBlock[] = [];
@@ -586,12 +629,12 @@ export class Parser {
         }
     }
 
-    return Create.conditionalBlockOutsideRole({ 
-        Ifcondition: ifCond.trim(), 
-        IfBody: ifBody, 
-        elseif: elseIfConditions, 
+    return Create.conditionalBlockOutsideRole({
+        Ifcondition: ifCondTokens,
+        IfBody: ifBody,
+        elseif: elseIfConditions,
         elseifBody: elseIfBodies,
-        elseBody: elseBody 
+        elseBody: elseBody
     });
   }
 
@@ -601,10 +644,12 @@ export class Parser {
     let idx: string = this.peek().value === "@" ? "@" : "";
     const index = Create.index( "other-index", idx + this.parseIndex().name)
     this.consume("SYMBOL", ":");
-    let iter = "";
+
+    // Capture iterable tokens
+    const iterTokens: AST.ExpressionToken[] = [];
     while (!(this.peek().value === ")" && this.peekNext().value === "{")) {
-      if (this.isEOF()) throw new Error("Unterminated If condition");
-      iter += (this.consume()).value;
+      if (this.isEOF()) throw new Error("Unterminated ForEach iterable");
+      iterTokens.push(toExprToken(this.consume()));
     }
     this.consume("SYMBOL", ")");
     this.consume("SYMBOL", "{");
@@ -613,29 +658,28 @@ export class Parser {
     while ((this.peek() as any).value !== "}") body.push(this.parseRoleBuildingBlock()); // RECURSIVE: Inside loops contain role blocks
     this.consume("SYMBOL", "}");
 
-    return Create.loopBlockInsideRole({ index, iterable: Create.Iterable({ value: iter }), body });
+    return Create.loopBlockInsideRole({ index, iterable: Create.Iterable({ tokens: iterTokens }), body });
   }
 
   private parseConditionalInside(): AST.ConditionalBlockInsideRole {
       this.consume("KEYWORD", "If");
-      
-      // 1. Parse the "If" Condition
-      let ifCond = "";
+
+      // 1. Parse the "If" Condition as tokens
+      const ifCondTokens: AST.ExpressionToken[] = [];
       while (this.peek().value !== "{") {
           if (this.isEOF()) throw new Error("Unterminated If condition");
-          ifCond += this.consume().value;
-          console.log(ifCond)
+          ifCondTokens.push(toExprToken(this.consume()));
       }
       this.consume("SYMBOL", "{");
 
       // 2. Parse the "If" Body
       const ifBody: AST.RoleBuildingBlock[] = [];
       while (this.peek().value !== "}") {
-          ifBody.push(this.parseRoleBuildingBlock()); //
+          ifBody.push(this.parseRoleBuildingBlock());
       }
       this.consume("SYMBOL", "}");
 
-      const elseIfConditions: string[] = [];
+      const elseIfConditions: AST.ExpressionToken[][] = [];
       const elseIfBodies: AST.RoleBuildingBlock[][] = [];
       let elseBody: AST.RoleBuildingBlock[] | undefined = undefined;
 
@@ -644,9 +688,9 @@ export class Parser {
           const type = this.consume().value;
 
           if (type === "ElseIf") {
-              let eiCond = "";
+              const eiCondTokens: AST.ExpressionToken[] = [];
               while (this.peek().value !== "{") {
-                  eiCond += this.consume().value;
+                  eiCondTokens.push(toExprToken(this.consume()));
               }
               this.consume("SYMBOL", "{");
 
@@ -656,9 +700,9 @@ export class Parser {
               }
               this.consume("SYMBOL", "}");
 
-              elseIfConditions.push(eiCond.trim());
+              elseIfConditions.push(eiCondTokens);
               elseIfBodies.push(eiBody);
-          } 
+          }
           else if (type === "Else") {
               this.consume("SYMBOL", "{");
               const eBody: AST.RoleBuildingBlock[] = [];
@@ -671,12 +715,12 @@ export class Parser {
           }
       }
 
-      return Create.conditionalBlockInsideRole({ 
-          Ifcondition: ifCond.trim(), 
-          IfBody: ifBody, 
-          elseif: elseIfConditions, 
+      return Create.conditionalBlockInsideRole({
+          Ifcondition: ifCondTokens,
+          IfBody: ifBody,
+          elseif: elseIfConditions,
           elseifBody: elseIfBodies,
-          elseBody: elseBody 
+          elseBody: elseBody
       });
   }
 
@@ -684,11 +728,11 @@ export class Parser {
   private parseSwitchOutside(): AST.SwitchBlockOutsideRole {
     this.consume("KEYWORD", "Switch");
 
-    // 1. Capture the expression (e.g., env.user_input[@t])
-    let expression = "";
+    // 1. Capture the expression tokens (e.g., env.user_input[@t])
+    const exprTokens: AST.ExpressionToken[] = [];
     while (this.peek().value !== "{") {
       if (this.isEOF()) throw new Error("Expected '{' after Switch expression");
-      expression += this.consume().value;
+      exprTokens.push(toExprToken(this.consume()));
     }
     this.consume("SYMBOL", "{");
 
@@ -700,10 +744,10 @@ export class Parser {
       const kw = this.consume("KEYWORD").value;
 
       if (kw === "Case") {
-        let match : string = ""
+        const matchTokens: AST.ExpressionToken[] = [];
         while (this.peek().value !== "{") {
-          if (this.isEOF()) throw new Error("Expected '{' after Switch expression");
-          match += (this.consume().value as string);
+          if (this.isEOF()) throw new Error("Expected '{' after Case match");
+          matchTokens.push(toExprToken(this.consume()));
         }
         this.consume("SYMBOL", "{");
         const body: AST.PromptBlock[] = [];
@@ -711,8 +755,8 @@ export class Parser {
           body.push(this.parseTopLevelBlock());
         }
         this.consume("SYMBOL", "}");
-        cases.push(Create.caseBlockOutsideRole({ match, body }));
-      } 
+        cases.push(Create.caseBlockOutsideRole({ match: matchTokens, body }));
+      }
       else if (kw === "Default") {
         this.consume("SYMBOL", "{");
         const body: AST.PromptBlock[] = [];
@@ -725,21 +769,21 @@ export class Parser {
     }
     this.consume("SYMBOL", "}");
 
-    return Create.switchBlockOutsideRole({ 
-      expression: expression.trim(), 
-      cases, 
-      defaultCase 
+    return Create.switchBlockOutsideRole({
+      expression: exprTokens,
+      cases,
+      defaultCase
     });
   }
 
   private parseSwitchInside(): AST.SwitchBlockInsideRole {
     this.consume("KEYWORD", "Switch");
 
-    // 1. Capture the expression (e.g., env.user_input[@t])
-    let expression = "";
+    // 1. Capture the expression tokens (e.g., env.user_input[@t])
+    const exprTokens: AST.ExpressionToken[] = [];
     while (this.peek().value !== "{") {
       if (this.isEOF()) throw new Error("Expected '{' after Switch expression");
-      expression += this.consume().value;
+      exprTokens.push(toExprToken(this.consume()));
     }
     this.consume("SYMBOL", "{");
 
@@ -751,10 +795,10 @@ export class Parser {
       const kw = this.consume("KEYWORD").value;
 
       if (kw === "Case") {
-        let match : string = ""
+        const matchTokens: AST.ExpressionToken[] = [];
         while (this.peek().value !== "{") {
-          if (this.isEOF()) throw new Error("Expected '{' after Switch expression");
-          match += (this.consume().value as string);
+          if (this.isEOF()) throw new Error("Expected '{' after Case match");
+          matchTokens.push(toExprToken(this.consume()));
         }
         this.consume("SYMBOL", "{");
         const body: AST.RoleBuildingBlock[] = [];
@@ -762,8 +806,8 @@ export class Parser {
           body.push(this.parseRoleBuildingBlock());
         }
         this.consume("SYMBOL", "}");
-        cases.push(Create.caseBlockInsideRole({ match, body }));
-      } 
+        cases.push(Create.caseBlockInsideRole({ match: matchTokens, body }));
+      }
       else if (kw === "Default") {
         this.consume("SYMBOL", "{");
         const body: AST.RoleBuildingBlock[] = [];
@@ -776,10 +820,10 @@ export class Parser {
     }
     this.consume("SYMBOL", "}");
 
-    return Create.switchBlockInsideRole({ 
-      expression: expression.trim(), 
-      cases, 
-      defaultCase 
+    return Create.switchBlockInsideRole({
+      expression: exprTokens,
+      cases,
+      defaultCase
     });
   }
 

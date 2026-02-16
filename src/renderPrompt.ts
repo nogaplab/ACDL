@@ -24,6 +24,7 @@ import {
   TextArgs,
   CommentBlock,
   LabelBlock,
+  ExpressionToken,
 } from "./types";
 
 
@@ -63,7 +64,7 @@ export function renderPrompt(
 
 /**
  * Helper: escape characters that are special in HTML.
- * (So user-provided names / comments don’t break the HTML)
+ * (So user-provided names / comments don't break the HTML)
  */
 function escapeHtml(text: string): string {
   return text
@@ -72,6 +73,129 @@ function escapeHtml(text: string): string {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
+}
+
+/**
+ * Render an array of expression tokens with syntax highlighting.
+ * Maps token types to appropriate CSS classes for consistent coloring.
+ * Recognizes context var patterns (env.foo, sys.bar(x), etc.) and renders them as a unit.
+ */
+function renderExpressionTokens(tokens: ExpressionToken[]): string {
+  const result: string[] = [];
+  let i = 0;
+
+  while (i < tokens.length) {
+    const tok = tokens[i];
+
+    // Check for context var pattern: namespace keyword followed by dot
+    if (tok.type === "KEYWORD" &&
+        ["env", "sys", "resp", "prompt"].includes(tok.value) &&
+        i + 1 < tokens.length &&
+        tokens[i + 1].type === "SYMBOL" &&
+        tokens[i + 1].value === ".") {
+
+      // Collect all tokens that form the context var path
+      const contextVarTokens: string[] = [tok.value];
+      i++;
+
+      // Track bracket/paren depth to handle nested structures
+      let parenDepth = 0;
+      let bracketDepth = 0;
+
+      while (i < tokens.length) {
+        const t = tokens[i];
+
+        // Track nesting
+        if (t.value === "(") parenDepth++;
+        if (t.value === ")") parenDepth--;
+        if (t.value === "[") bracketDepth++;
+        if (t.value === "]") bracketDepth--;
+
+        // Continue if we're inside parens/brackets
+        if (parenDepth > 0 || bracketDepth > 0) {
+          contextVarTokens.push(escapeHtml(t.value));
+          i++;
+          continue;
+        }
+
+        // Continue for path components: . ident ( ) [ ] @
+        if (t.value === "." ||
+            t.type === "IDENT" ||
+            t.value === "(" ||
+            t.value === ")" ||
+            t.value === "[" ||
+            t.value === "]" ||
+            t.value === "@" ||
+            t.type === "NUMBER") {
+          contextVarTokens.push(escapeHtml(t.value));
+          i++;
+
+          // Stop after closing paren/bracket at depth 0
+          if ((t.value === ")" || t.value === "]") && parenDepth === 0 && bracketDepth === 0) {
+            // Check if next token continues the path
+            if (i < tokens.length && tokens[i].value === ".") {
+              continue;
+            }
+            break;
+          }
+          continue;
+        }
+
+        // Stop at anything else (operators, other keywords, etc.)
+        break;
+      }
+
+      result.push(`<span class="expr-context-var">${contextVarTokens.join("")}</span>`);
+      continue;
+    }
+
+    // Regular token rendering
+    const escaped = escapeHtml(tok.value);
+
+    switch (tok.type) {
+      case "KEYWORD":
+        result.push(`<span class="keyword">${escaped}</span>`);
+        break;
+
+      case "IDENT":
+        result.push(`<span class="expr-ident">${escaped}</span>`);
+        break;
+
+      case "NUMBER":
+        result.push(`<span class="expr-number">${escaped}</span>`);
+        break;
+
+      case "SYMBOL":
+        if (tok.value === "@") {
+          result.push(`<span class="expr-at">@</span>`);
+        } else {
+          result.push(`<span class="expr-symbol">${escaped}</span>`);
+        }
+        break;
+
+      case "LOGIC_OP":
+        result.push(`<span class="expr-logic-op">${escaped}</span>`);
+        break;
+
+      case "ARITH_OP":
+        result.push(`<span class="expr-arith-op">${escaped}</span>`);
+        break;
+
+      case "RANGE":
+        result.push(`<span class="expr-range">${escaped}</span>`);
+        break;
+
+      case "STRING":
+        result.push(`<span class="expr-string">"${escaped}"</span>`);
+        break;
+
+      default:
+        result.push(escaped);
+    }
+    i++;
+  }
+
+  return result.join("");
 }
 
 function renderPromptTitle(title: PromptTitle): string {
@@ -443,7 +567,7 @@ function renderContextVarBlock(block: ContextVar): string {
  */
 function renderLoopOutsideRole(block: LoopBlockOutsideRole): string {
   const indexHtml = `<span class="loop-var">${escapeHtml(block.index.name)}</span>`;
-  const iterableHtml = `<span class="loop-iterable">${escapeHtml(block.iterable.value)}</span>`;
+  const iterableHtml = `<span class="loop-iterable">${renderExpressionTokens(block.iterable.tokens)}</span>`;
   const header = `<span class="keyword">ForEach</span>(${indexHtml}: ${iterableHtml}):`;
 
   const bodyHtml = block.body
@@ -484,7 +608,7 @@ function renderLoopOutsideRole(block: LoopBlockOutsideRole): string {
  */
 function renderLoopInsideRole(block: LoopBlockInsideRole): string {
   const indexHtml = `<span class="loop-var">${escapeHtml(block.index.name)}</span>`;
-  const iterableHtml = `<span class="loop-iterable">${escapeHtml(block.iterable.value)}</span>`;
+  const iterableHtml = `<span class="loop-iterable">${renderExpressionTokens(block.iterable.tokens)}</span>`;
   const header = `<span class="keyword">ForEach</span>(${indexHtml}: ${iterableHtml}):`;
   const bodyHtml = block.body
     .map((child: any) =>
@@ -520,7 +644,7 @@ function renderLoopInsideRole(block: LoopBlockInsideRole): string {
  *   - defaultCase?: DefaultCaseBlockOutsideRole
  */
 function renderSwitchOutsideRole(block: SwitchBlockOutsideRole): string {
-  const exprHtml = `<span class="switch-expr">${escapeHtml(block.expression)}</span>`;
+  const exprHtml = `<span class="switch-expr">${renderExpressionTokens(block.expression)}</span>`;
   const header = `<span class="keyword">Switch</span>(${exprHtml}):`;
 
   const casesHtml = block.cases
@@ -533,7 +657,7 @@ function renderSwitchOutsideRole(block: SwitchBlockOutsideRole): string {
 
       return wrapBlock(
         "switch-case",
-        `<span class="keyword">Case</span> <span class="case-match">"${escapeHtml(c.match)}"</span>:`,
+        `<span class="keyword">Case</span> <span class="case-match">${renderExpressionTokens(c.match)}</span>:`,
         bodyHtml
       );
     })
@@ -588,7 +712,7 @@ function renderSwitchOutsideRole(block: SwitchBlockOutsideRole): string {
  *   - defaultCase?: DefaultCaseBlockInsideRole
  */
 function renderSwitchInsideRole(block: SwitchBlockInsideRole): string {
-  const exprHtml = `<span class="switch-expr">${escapeHtml(block.expression)}</span>`;
+  const exprHtml = `<span class="switch-expr">${renderExpressionTokens(block.expression)}</span>`;
   const header = `<span class="keyword">Switch</span>(${exprHtml}):`;
 
   const casesHtml = block.cases
@@ -601,7 +725,7 @@ function renderSwitchInsideRole(block: SwitchBlockInsideRole): string {
 
       return wrapBlock(
         "switch-case",
-        `<span class="keyword">Case</span> <span class="case-match">"${escapeHtml(c.match)}"</span>:`,
+        `<span class="keyword">Case</span> <span class="case-match">${renderExpressionTokens(c.match)}</span>:`,
         bodyHtml
       );
     })
@@ -670,7 +794,7 @@ function renderConditionalInsideRole(block: ConditionalBlockInsideRole): string 
   parts.push(
     wrapBlock(
       "conditional-section",
-      `<span class="keyword">If</span> (<span class="condition-expr">${escapeHtml(block.Ifcondition)}</span>):`,
+      `<span class="keyword">If</span> (<span class="condition-expr">${renderExpressionTokens(block.Ifcondition)}</span>):`,
       renderBody(block.IfBody)
     )
   );
@@ -680,7 +804,7 @@ function renderConditionalInsideRole(block: ConditionalBlockInsideRole): string 
     parts.push(
       wrapBlock(
         "conditional-section",
-        `<span class="keyword">ElseIf</span> (<span class="condition-expr">${escapeHtml(block.elseif[i])}</span>):`,
+        `<span class="keyword">ElseIf</span> (<span class="condition-expr">${renderExpressionTokens(block.elseif[i])}</span>):`,
         renderBody(block.elseifBody[i])
       )
     );
@@ -748,7 +872,7 @@ function renderConditionalOutsideRole(block: ConditionalBlockOutsideRole): strin
   parts.push(
     wrapBlock(
       "conditional-section",
-      `<span class="keyword">If</span> (<span class="condition-expr">${escapeHtml(block.Ifcondition)}</span>):`,
+      `<span class="keyword">If</span> (<span class="condition-expr">${renderExpressionTokens(block.Ifcondition)}</span>):`,
       renderBody(block.IfBody)
     )
   );
@@ -758,7 +882,7 @@ function renderConditionalOutsideRole(block: ConditionalBlockOutsideRole): strin
     parts.push(
       wrapBlock(
         "conditional-section",
-        `<span class="keyword">ElseIf</span> (<span class="condition-expr">${escapeHtml(block.elseif[i])}</span>):`,
+        `<span class="keyword">ElseIf</span> (<span class="condition-expr">${renderExpressionTokens(block.elseif[i])}</span>):`,
         renderBody(block.elseifBody[i])
       )
     );

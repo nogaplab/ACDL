@@ -396,6 +396,12 @@ function arithmeticExpr(params) {
 }
 
 // ../src/parser.ts
+function toExprToken(tok) {
+  return {
+    type: tok.type,
+    value: tok.value
+  };
+}
 var Parser = class {
   tokens = [];
   pos = 0;
@@ -676,13 +682,17 @@ var Parser = class {
   }
   parsePathDesc() {
     const tok = this.peek();
+    console.log(`parsePathDesc: tok=${tok.type}:${tok.value} at ${tok.line}:${tok.col}`);
     if (tok.type !== "IDENT" && tok.type !== "KEYWORD") {
       throw new Error(`[${tok.line}:${tok.col}] Expected identifier in path, got ${tok.type}`);
     }
     const base = this.consume().value;
+    console.log(`parsePathDesc: base=${base}, about to parse indices`);
     const indices = this.parseOptionalIndices();
+    console.log(`parsePathDesc: after indices, peek=${this.peek().type}:${this.peek().value}`);
     let next;
     if (this.match("SYMBOL", ".")) {
+      console.log(`parsePathDesc: matched dot, recursing`);
       next = this.parsePathDesc();
     }
     return pathDesc({ base, indices, next });
@@ -748,23 +758,52 @@ var Parser = class {
   }
   parseOptionalIndices() {
     const indices = [];
+    console.log(`parseOptionalIndices: peek=${this.peek().type}:${this.peek().value}`);
     if (this.match("SYMBOL", "[")) {
+      console.log(`parseOptionalIndices: found [, parsing index`);
       indices.push(this.parseIndex());
+      console.log(`parseOptionalIndices: after parseIndex, peek=${this.peek().type}:${this.peek().value}`);
       while (this.match("SYMBOL", ",")) {
         indices.push(this.parseIndex());
-        console.log(`indices: ${indices}`);
       }
     }
-    if (this.peek().value === "]")
+    if (this.peek().value === "]") {
+      console.log(`parseOptionalIndices: consuming ]`);
       this.consume("SYMBOL", "]");
+    }
+    console.log(`parseOptionalIndices: returning ${indices.length} indices, peek=${this.peek().type}:${this.peek().value}`);
     return indices;
   }
   parseIndex() {
+    console.log(`parseIndex: starting, peek=${this.peek().type}:${this.peek().value}`);
     let time = this.match("SYMBOL", "@");
+    console.log(`parseIndex: time=${time}, peek after @check=${this.peek().type}:${this.peek().value}`);
     let idx = "";
-    while (this.peek().type === "IDENT" || this.peek().type === "ARITH_OP" || this.peek().type === "NUMBER" || this.peek().type === "SYMBOL" && this.peek().value === "." && this.peekNext()?.type === "IDENT") {
-      idx += this.consume().value;
+    while (true) {
+      const tok = this.peek();
+      const tokType = tok.type;
+      const tokValue = tok.value;
+      console.log(`parseIndex loop: tok=${tokType}:${tokValue}, idx so far="${idx}"`);
+      if (tokType === "IDENT" || tokType === "ARITH_OP" || tokType === "NUMBER") {
+        idx += this.consume().value;
+        continue;
+      }
+      if (tokType === "SYMBOL" && tokValue === ".") {
+        const next = this.peekNext();
+        console.log(`parseIndex: at dot, next=${next?.type}:${next?.value}`);
+        if (next && (next.type === "IDENT" || next.value === "@")) {
+          idx += this.consume().value;
+          continue;
+        }
+      }
+      if (tokType === "SYMBOL" && tokValue === "@") {
+        idx += this.consume().value;
+        continue;
+      }
+      console.log(`parseIndex: breaking, final idx="${idx}"`);
+      break;
     }
+    console.log(`parseIndex: returning ${time ? "time" : "other"}-index with name="${idx}"`);
     if (time) {
       return index("time-index", idx);
     } else {
@@ -779,11 +818,11 @@ var Parser = class {
     const index2 = index("other-index", idx + this.parseIndex().name);
     console.log("got here");
     this.consume("SYMBOL", ":");
-    let iter = "";
+    const iterTokens = [];
     while (!(this.peek().value === ")" && this.peekNext().value === "{")) {
       if (this.isEOF())
-        throw new Error("Unterminated If condition");
-      iter += this.consume().value;
+        throw new Error("Unterminated ForEach iterable");
+      iterTokens.push(toExprToken(this.consume()));
     }
     this.consume("SYMBOL", ")");
     this.consume("SYMBOL", "{");
@@ -792,18 +831,16 @@ var Parser = class {
       body.push(this.parseTopLevelBlock());
     }
     this.consume("SYMBOL", "}");
-    return loopBlockOutsideRole({ index: index2, iterable: Iterable({ value: iter.trim() }), body });
+    return loopBlockOutsideRole({ index: index2, iterable: Iterable({ tokens: iterTokens }), body });
   }
   parseConditionalOutside() {
     this.consume("KEYWORD", "If");
-    let ifCond = "";
+    const ifCondTokens = [];
     while (this.peek().value !== "{") {
       if (this.isEOF())
         throw new Error("Unterminated If condition");
-      ifCond += this.consume().value;
-      console.log(ifCond);
+      ifCondTokens.push(toExprToken(this.consume()));
     }
-    console.log(ifCond);
     this.consume("SYMBOL", "{");
     const ifBody = [];
     while (this.peek().value !== "}") {
@@ -816,9 +853,9 @@ var Parser = class {
     while (this.peek().type === "KEYWORD" && (this.peek().value === "ElseIf" || this.peek().value === "Else")) {
       const type = this.consume().value;
       if (type === "ElseIf") {
-        let eiCond = "";
+        const eiCondTokens = [];
         while (this.peek().value !== "{") {
-          eiCond += this.consume().value;
+          eiCondTokens.push(toExprToken(this.consume()));
         }
         this.consume("SYMBOL", "{");
         const eiBody = [];
@@ -826,7 +863,7 @@ var Parser = class {
           eiBody.push(this.parseTopLevelBlock());
         }
         this.consume("SYMBOL", "}");
-        elseIfConditions.push(eiCond.trim());
+        elseIfConditions.push(eiCondTokens);
         elseIfBodies.push(eiBody);
       } else if (type === "Else") {
         this.consume("SYMBOL", "{");
@@ -840,7 +877,7 @@ var Parser = class {
       }
     }
     return conditionalBlockOutsideRole({
-      Ifcondition: ifCond.trim(),
+      Ifcondition: ifCondTokens,
       IfBody: ifBody,
       elseif: elseIfConditions,
       elseifBody: elseIfBodies,
@@ -853,11 +890,11 @@ var Parser = class {
     let idx = this.peek().value === "@" ? "@" : "";
     const index2 = index("other-index", idx + this.parseIndex().name);
     this.consume("SYMBOL", ":");
-    let iter = "";
+    const iterTokens = [];
     while (!(this.peek().value === ")" && this.peekNext().value === "{")) {
       if (this.isEOF())
-        throw new Error("Unterminated If condition");
-      iter += this.consume().value;
+        throw new Error("Unterminated ForEach iterable");
+      iterTokens.push(toExprToken(this.consume()));
     }
     this.consume("SYMBOL", ")");
     this.consume("SYMBOL", "{");
@@ -865,16 +902,15 @@ var Parser = class {
     while (this.peek().value !== "}")
       body.push(this.parseRoleBuildingBlock());
     this.consume("SYMBOL", "}");
-    return loopBlockInsideRole({ index: index2, iterable: Iterable({ value: iter }), body });
+    return loopBlockInsideRole({ index: index2, iterable: Iterable({ tokens: iterTokens }), body });
   }
   parseConditionalInside() {
     this.consume("KEYWORD", "If");
-    let ifCond = "";
+    const ifCondTokens = [];
     while (this.peek().value !== "{") {
       if (this.isEOF())
         throw new Error("Unterminated If condition");
-      ifCond += this.consume().value;
-      console.log(ifCond);
+      ifCondTokens.push(toExprToken(this.consume()));
     }
     this.consume("SYMBOL", "{");
     const ifBody = [];
@@ -888,9 +924,9 @@ var Parser = class {
     while (this.peek().type === "KEYWORD" && (this.peek().value === "ElseIf" || this.peek().value === "Else")) {
       const type = this.consume().value;
       if (type === "ElseIf") {
-        let eiCond = "";
+        const eiCondTokens = [];
         while (this.peek().value !== "{") {
-          eiCond += this.consume().value;
+          eiCondTokens.push(toExprToken(this.consume()));
         }
         this.consume("SYMBOL", "{");
         const eiBody = [];
@@ -898,7 +934,7 @@ var Parser = class {
           eiBody.push(this.parseRoleBuildingBlock());
         }
         this.consume("SYMBOL", "}");
-        elseIfConditions.push(eiCond.trim());
+        elseIfConditions.push(eiCondTokens);
         elseIfBodies.push(eiBody);
       } else if (type === "Else") {
         this.consume("SYMBOL", "{");
@@ -912,7 +948,7 @@ var Parser = class {
       }
     }
     return conditionalBlockInsideRole({
-      Ifcondition: ifCond.trim(),
+      Ifcondition: ifCondTokens,
       IfBody: ifBody,
       elseif: elseIfConditions,
       elseifBody: elseIfBodies,
@@ -922,11 +958,11 @@ var Parser = class {
   // parseSwitchOutside and parseSwitchInside would follow the same scoping pattern.
   parseSwitchOutside() {
     this.consume("KEYWORD", "Switch");
-    let expression = "";
+    const exprTokens = [];
     while (this.peek().value !== "{") {
       if (this.isEOF())
         throw new Error("Expected '{' after Switch expression");
-      expression += this.consume().value;
+      exprTokens.push(toExprToken(this.consume()));
     }
     this.consume("SYMBOL", "{");
     const cases = [];
@@ -934,11 +970,11 @@ var Parser = class {
     while (this.peek().value !== "}") {
       const kw = this.consume("KEYWORD").value;
       if (kw === "Case") {
-        let match = "";
+        const matchTokens = [];
         while (this.peek().value !== "{") {
           if (this.isEOF())
-            throw new Error("Expected '{' after Switch expression");
-          match += this.consume().value;
+            throw new Error("Expected '{' after Case match");
+          matchTokens.push(toExprToken(this.consume()));
         }
         this.consume("SYMBOL", "{");
         const body = [];
@@ -946,7 +982,7 @@ var Parser = class {
           body.push(this.parseTopLevelBlock());
         }
         this.consume("SYMBOL", "}");
-        cases.push(caseBlockOutsideRole({ match, body }));
+        cases.push(caseBlockOutsideRole({ match: matchTokens, body }));
       } else if (kw === "Default") {
         this.consume("SYMBOL", "{");
         const body = [];
@@ -959,18 +995,18 @@ var Parser = class {
     }
     this.consume("SYMBOL", "}");
     return switchBlockOutsideRole({
-      expression: expression.trim(),
+      expression: exprTokens,
       cases,
       defaultCase
     });
   }
   parseSwitchInside() {
     this.consume("KEYWORD", "Switch");
-    let expression = "";
+    const exprTokens = [];
     while (this.peek().value !== "{") {
       if (this.isEOF())
         throw new Error("Expected '{' after Switch expression");
-      expression += this.consume().value;
+      exprTokens.push(toExprToken(this.consume()));
     }
     this.consume("SYMBOL", "{");
     const cases = [];
@@ -978,11 +1014,11 @@ var Parser = class {
     while (this.peek().value !== "}") {
       const kw = this.consume("KEYWORD").value;
       if (kw === "Case") {
-        let match = "";
+        const matchTokens = [];
         while (this.peek().value !== "{") {
           if (this.isEOF())
-            throw new Error("Expected '{' after Switch expression");
-          match += this.consume().value;
+            throw new Error("Expected '{' after Case match");
+          matchTokens.push(toExprToken(this.consume()));
         }
         this.consume("SYMBOL", "{");
         const body = [];
@@ -990,7 +1026,7 @@ var Parser = class {
           body.push(this.parseRoleBuildingBlock());
         }
         this.consume("SYMBOL", "}");
-        cases.push(caseBlockInsideRole({ match, body }));
+        cases.push(caseBlockInsideRole({ match: matchTokens, body }));
       } else if (kw === "Default") {
         this.consume("SYMBOL", "{");
         const body = [];
@@ -1003,7 +1039,7 @@ var Parser = class {
     }
     this.consume("SYMBOL", "}");
     return switchBlockInsideRole({
-      expression: expression.trim(),
+      expression: exprTokens,
       cases,
       defaultCase
     });
@@ -1024,12 +1060,14 @@ function registerDiagnostics(context) {
   const diagnosticCollection = vscode.languages.createDiagnosticCollection("csdl");
   context.subscriptions.push(diagnosticCollection);
   const diagnose = (document) => {
+    console.log("CSDL diagnose called for:", document.uri.toString());
     if (document.languageId !== "csdl")
       return;
     const diagnostics = [];
     try {
       new Parser(document.getText()).parsePrompt();
     } catch (err) {
+      console.log("CSDL Parse Error:", err.message);
       const match = err.message.match(/\[(\d+):(\d+)\]\s*(.*)/s);
       if (match) {
         const line = Math.max(0, parseInt(match[1]) - 1);
@@ -1055,6 +1093,7 @@ function registerDiagnostics(context) {
         );
       }
     }
+    console.log("CSDL setting diagnostics:", diagnostics.length, "errors");
     diagnosticCollection.set(document.uri, diagnostics);
   };
   let timeout;
@@ -1097,6 +1136,84 @@ function renderPrompt(prompt2, style = "default") {
 function escapeHtml(text) {
   return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
+function renderExpressionTokens(tokens) {
+  const result = [];
+  let i = 0;
+  while (i < tokens.length) {
+    const tok = tokens[i];
+    if (tok.type === "KEYWORD" && ["env", "sys", "resp", "prompt"].includes(tok.value) && i + 1 < tokens.length && tokens[i + 1].type === "SYMBOL" && tokens[i + 1].value === ".") {
+      const contextVarTokens = [tok.value];
+      i++;
+      let parenDepth = 0;
+      let bracketDepth = 0;
+      while (i < tokens.length) {
+        const t = tokens[i];
+        if (t.value === "(")
+          parenDepth++;
+        if (t.value === ")")
+          parenDepth--;
+        if (t.value === "[")
+          bracketDepth++;
+        if (t.value === "]")
+          bracketDepth--;
+        if (parenDepth > 0 || bracketDepth > 0) {
+          contextVarTokens.push(escapeHtml(t.value));
+          i++;
+          continue;
+        }
+        if (t.value === "." || t.type === "IDENT" || t.value === "(" || t.value === ")" || t.value === "[" || t.value === "]" || t.value === "@" || t.type === "NUMBER") {
+          contextVarTokens.push(escapeHtml(t.value));
+          i++;
+          if ((t.value === ")" || t.value === "]") && parenDepth === 0 && bracketDepth === 0) {
+            if (i < tokens.length && tokens[i].value === ".") {
+              continue;
+            }
+            break;
+          }
+          continue;
+        }
+        break;
+      }
+      result.push(`<span class="expr-context-var">${contextVarTokens.join("")}</span>`);
+      continue;
+    }
+    const escaped = escapeHtml(tok.value);
+    switch (tok.type) {
+      case "KEYWORD":
+        result.push(`<span class="keyword">${escaped}</span>`);
+        break;
+      case "IDENT":
+        result.push(`<span class="expr-ident">${escaped}</span>`);
+        break;
+      case "NUMBER":
+        result.push(`<span class="expr-number">${escaped}</span>`);
+        break;
+      case "SYMBOL":
+        if (tok.value === "@") {
+          result.push(`<span class="expr-at">@</span>`);
+        } else {
+          result.push(`<span class="expr-symbol">${escaped}</span>`);
+        }
+        break;
+      case "LOGIC_OP":
+        result.push(`<span class="expr-logic-op">${escaped}</span>`);
+        break;
+      case "ARITH_OP":
+        result.push(`<span class="expr-arith-op">${escaped}</span>`);
+        break;
+      case "RANGE":
+        result.push(`<span class="expr-range">${escaped}</span>`);
+        break;
+      case "STRING":
+        result.push(`<span class="expr-string">"${escaped}"</span>`);
+        break;
+      default:
+        result.push(escaped);
+    }
+    i++;
+  }
+  return result.join("");
+}
 function renderPromptTitle(title) {
   const indices = title.indices;
   const indexSuffix = renderIndexList(title.indices);
@@ -1106,7 +1223,7 @@ function renderPromptTitle(title) {
 </div>`;
 }
 function renderIndexValue(index2) {
-  return index2.kind === "time-index" ? `@${escapeHtml(index2.name)}` : escapeHtml(index2.name);
+  return index2.kind === "time-index" ? `<span class="time-index">@${escapeHtml(index2.name)}</span>` : `<span class="other-index">${escapeHtml(index2.name)}</span>`;
 }
 function renderIndexList(indices) {
   if (indices.length === 0)
@@ -1201,8 +1318,11 @@ function renderRoleBuildingBlock(block) {
 function renderFuncBlock(block) {
   const argsText = block.arguments.map(renderTextArgs).join(", ");
   const resultIndices = block.indices && block.indices.length > 0 ? renderIndexList(block.indices) : "";
-  const commentHtml = block.comment ? `<span class="inline-comment"> // ${escapeHtml(block.comment)}</span>` : "";
-  return `<span class="func-block"><span class="func-name">${escapeHtml(block.name)}</span><span class="func-parens">(</span>${argsText}<span class="func-parens">)</span>${resultIndices}</span>${commentHtml}`;
+  const funcCore = `<span class="func-block"><span class="func-name">${escapeHtml(block.name)}</span><span class="func-parens">(</span>${argsText}<span class="func-parens">)</span>${resultIndices}</span>`;
+  if (block.comment) {
+    return `<span class="block-with-comment">${funcCore}<span class="inline-comment"> // ${escapeHtml(block.comment)}</span></span>`;
+  }
+  return funcCore;
 }
 function renderTextArgs(arg) {
   switch (arg.kind) {
@@ -1227,7 +1347,7 @@ function renderTemplateBlock(block) {
     block.name
   )}${argsText}</span>`;
   if (block.comment) {
-    return `${core}<span class="comment"> // ${escapeHtml(block.comment)}</span>`;
+    return `<span class="block-with-comment">${core}<span class="comment"> // ${escapeHtml(block.comment)}</span></span>`;
   }
   return core;
 }
@@ -1248,11 +1368,15 @@ function renderContextVarBlock(block) {
     current = current.next;
   }
   const joined = segments.join(".");
-  const commentHtml = block.comment ? `<span class="inline-comment"> // ${escapeHtml(block.comment)}</span>` : "";
-  return `<span class="context-var">${joined}</span>${commentHtml}`;
+  if (block.comment) {
+    return `<span class="block-with-comment"><span class="context-var">${joined}</span><span class="inline-comment"> // ${escapeHtml(block.comment)}</span></span>`;
+  }
+  return `<span class="context-var">${joined}</span>`;
 }
 function renderLoopOutsideRole(block) {
-  const header = `ForEach(${escapeHtml(block.index.name)}: ${escapeHtml(block.iterable.value)}):`;
+  const indexHtml = `<span class="loop-var">${escapeHtml(block.index.name)}</span>`;
+  const iterableHtml = `<span class="loop-iterable">${renderExpressionTokens(block.iterable.tokens)}</span>`;
+  const header = `<span class="keyword">ForEach</span>(${indexHtml}: ${iterableHtml}):`;
   const bodyHtml = block.body.map(
     (child) => `<div class="loop-child">${renderTopLevelBlock(child)}</div>`
   ).join("\n");
@@ -1263,23 +1387,24 @@ function renderLoopOutsideRole(block) {
   );
 }
 function renderLoopInsideRole(block) {
-  const indexText = block.index.name;
-  const iterableText = block.iterable.value;
-  const header = `ForEach(${escapeHtml(indexText)}: ${escapeHtml(iterableText)}):`;
+  const indexHtml = `<span class="loop-var">${escapeHtml(block.index.name)}</span>`;
+  const iterableHtml = `<span class="loop-iterable">${renderExpressionTokens(block.iterable.tokens)}</span>`;
+  const header = `<span class="keyword">ForEach</span>(${indexHtml}: ${iterableHtml}):`;
   const bodyHtml = block.body.map(
     (child) => `<div class="role-loop-child">${renderRoleBuildingBlock(child)}</div>`
   ).join("\n");
   return wrapBlock("loop-block-inside-role", header, bodyHtml);
 }
 function renderSwitchOutsideRole(block) {
-  const header = `Switch(${escapeHtml(block.expression)}):`;
+  const exprHtml = `<span class="switch-expr">${renderExpressionTokens(block.expression)}</span>`;
+  const header = `<span class="keyword">Switch</span>(${exprHtml}):`;
   const casesHtml = block.cases.map((c) => {
     const bodyHtml = c.body.map(
       (child) => `<div class="switch-child">${renderTopLevelBlock(child)}</div>`
     ).join("\n");
     return wrapBlock(
       "switch-case",
-      `Case "${escapeHtml(c.match)}":`,
+      `<span class="keyword">Case</span> <span class="case-match">${renderExpressionTokens(c.match)}</span>:`,
       bodyHtml
     );
   }).join("\n");
@@ -1289,7 +1414,7 @@ function renderSwitchOutsideRole(block) {
     ).join("\n");
     return wrapBlock(
       "switch-default",
-      "Default:",
+      `<span class="keyword">Default</span>:`,
       bodyHtml
     );
   })() : "";
@@ -1300,14 +1425,15 @@ function renderSwitchOutsideRole(block) {
   );
 }
 function renderSwitchInsideRole(block) {
-  const header = `Switch(${escapeHtml(block.expression)}):`;
+  const exprHtml = `<span class="switch-expr">${renderExpressionTokens(block.expression)}</span>`;
+  const header = `<span class="keyword">Switch</span>(${exprHtml}):`;
   const casesHtml = block.cases.map((c) => {
     const bodyHtml = c.body.map(
       (child) => `<div class="role-switch-child">${renderRoleBuildingBlock(child)}</div>`
     ).join("\n");
     return wrapBlock(
       "switch-case",
-      `Case "${escapeHtml(c.match)}":`,
+      `<span class="keyword">Case</span> <span class="case-match">${renderExpressionTokens(c.match)}</span>:`,
       bodyHtml
     );
   }).join("\n");
@@ -1317,7 +1443,7 @@ function renderSwitchInsideRole(block) {
     ).join("\n");
     return wrapBlock(
       "switch-default",
-      "Default:",
+      `<span class="keyword">Default</span>:`,
       bodyHtml
     );
   })() : "";
@@ -1335,7 +1461,7 @@ function renderConditionalInsideRole(block) {
   parts.push(
     wrapBlock(
       "conditional-section",
-      `If (${escapeHtml(block.Ifcondition)}):`,
+      `<span class="keyword">If</span> (<span class="condition-expr">${renderExpressionTokens(block.Ifcondition)}</span>):`,
       renderBody(block.IfBody)
     )
   );
@@ -1343,7 +1469,7 @@ function renderConditionalInsideRole(block) {
     parts.push(
       wrapBlock(
         "conditional-section",
-        `ElseIf (${escapeHtml(block.elseif[i])}):`,
+        `<span class="keyword">ElseIf</span> (<span class="condition-expr">${renderExpressionTokens(block.elseif[i])}</span>):`,
         renderBody(block.elseifBody[i])
       )
     );
@@ -1352,7 +1478,7 @@ function renderConditionalInsideRole(block) {
     parts.push(
       wrapBlock(
         "conditional-section",
-        "Else:",
+        `<span class="keyword">Else</span>:`,
         renderBody(block.elseBody)
       )
     );
@@ -1370,7 +1496,7 @@ function renderConditionalOutsideRole(block) {
   parts.push(
     wrapBlock(
       "conditional-section",
-      `If (${escapeHtml(block.Ifcondition)}):`,
+      `<span class="keyword">If</span> (<span class="condition-expr">${renderExpressionTokens(block.Ifcondition)}</span>):`,
       renderBody(block.IfBody)
     )
   );
@@ -1378,7 +1504,7 @@ function renderConditionalOutsideRole(block) {
     parts.push(
       wrapBlock(
         "conditional-section",
-        `ElseIf (${escapeHtml(block.elseif[i])}):`,
+        `<span class="keyword">ElseIf</span> (<span class="condition-expr">${renderExpressionTokens(block.elseif[i])}</span>):`,
         renderBody(block.elseifBody[i])
       )
     );
@@ -1387,7 +1513,7 @@ function renderConditionalOutsideRole(block) {
     parts.push(
       wrapBlock(
         "conditional-section",
-        "Else:",
+        `<span class="keyword">Else</span>:`,
         renderBody(block.elseBody)
       )
     );

@@ -6,12 +6,14 @@ export function registerDiagnostics(context: vscode.ExtensionContext) {
   context.subscriptions.push(diagnosticCollection);
 
   const diagnose = (document: vscode.TextDocument) => {
+    console.log("CSDL diagnose called for:", document.uri.toString());
     if (document.languageId !== "csdl") return;
     const diagnostics: vscode.Diagnostic[] = [];
 
     try {
       new Parser(document.getText()).parsePrompt();
     } catch (err: any) {
+      console.log("CSDL Parse Error:", err.message);  // Debug output
       const match = err.message.match(/\[(\d+):(\d+)\]\s*(.*)/s);
       if (match) {
         const line = Math.max(0, parseInt(match[1]) - 1);
@@ -38,6 +40,7 @@ export function registerDiagnostics(context: vscode.ExtensionContext) {
       }
     }
 
+    console.log("CSDL setting diagnostics:", diagnostics.length, "errors");
     diagnosticCollection.set(document.uri, diagnostics);
   };
 

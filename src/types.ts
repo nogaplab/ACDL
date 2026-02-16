@@ -47,6 +47,13 @@ export type PathDesc = {
 
 export type ArithmeticOperator = "-" | "+" | "%" | "*" | "/";
 
+// Token info for expressions in conditions, iterables, switch expressions
+// Preserves token type for syntax highlighting without restricting grammar
+export type ExpressionToken = {
+  type: "KEYWORD" | "IDENT" | "NUMBER" | "SYMBOL" | "LOGIC_OP" | "ARITH_OP" | "RANGE" | "STRING";
+  value: string;
+};
+
 export type ArithmeticExpr = {
     kind: "arithmetic";
     operator: Array<ArithmeticOperator>;
@@ -120,23 +127,23 @@ export type RoleMessage = {
 
 export type ConditionalBlockOutsideRole = {
   kind: "conditional-block-outside-role";
-  Ifcondition: string;
+  Ifcondition: ExpressionToken[];
   IfBody: Array<PromptBlock>;
-  elseif: Array<string>;
+  elseif: Array<ExpressionToken[]>;
   elseifBody: Array<Array<PromptBlock>>;
   elseBody?: Array<PromptBlock>;
 };
 
 export type SwitchBlockOutsideRole = {
   kind: "switch-block-outside-role";
-  expression: string; 
+  expression: ExpressionToken[];
   cases: Array<CaseBlockOutsideRole>;
   defaultCase?: DefaultCaseBlockOutsideRole;
 };
 
 export type CaseBlockOutsideRole = {
   kind: "case-block-outside-role";
-  match: string;
+  match: ExpressionToken[];
   body: Array<PromptBlock>;
 };
 
@@ -159,28 +166,28 @@ export type LoopBlockInsideRole = {
 
 export type Iterable = {
   kind: "iterable";
-  value: string; // common objects are sets and ranges. constraint: no spaces
+  tokens: ExpressionToken[]; // preserves token info for syntax highlighting
 }
 
 export type ConditionalBlockInsideRole = {
   kind: "conditional-block-inside-role";
-  Ifcondition: string;
+  Ifcondition: ExpressionToken[];
   IfBody: Array<RoleBuildingBlock>;
-  elseif: Array<string>;
+  elseif: Array<ExpressionToken[]>;
   elseifBody: Array<Array<RoleBuildingBlock>>;
   elseBody?: Array<RoleBuildingBlock>;
 };
 
 export type SwitchBlockInsideRole = {
   kind: "switch-block-inside-role";
-  expression: string; // what type is this? some variable whose value needs to match one of the cases
+  expression: ExpressionToken[];
   cases: Array<CaseBlockInsideRole>;
   defaultCase?: DefaultCaseBlockInsideRole;
 };
 
 export type CaseBlockInsideRole = {
   kind: "case-block-inside-role";
-  match: string;
+  match: ExpressionToken[];
   body: Array<RoleBuildingBlock>;
 };
 

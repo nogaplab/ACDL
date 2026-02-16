@@ -7,15 +7,15 @@ Prompt[@t]: {
     } 
     
     // all the tool calls and reponses from all turns
-    ForEach(i: range(1,t)) {
+    ForEach(@i: range(1,@t)) {
         U: env.user_input[@i]
-        ForEach(k: range(1, sys.steps[i])){
+        ForEach(@k: range(1, sys.steps[@i])){
             A: {
-                sys.tool_used[@i.k]
-                sys.tool_used[@i.k].tool_response[@i.k]
+                sys.tool_used[@i.@k]
+                sys.tool_used[@i.@k].tool_response
             }
         }
-        If i<t {
+        If @i<@t {
             A: resp.agent_answer[@i]
         }
     }  
