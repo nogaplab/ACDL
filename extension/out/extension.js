@@ -385,6 +385,9 @@ function defaultCaseBlockInsideRole(params) {
 function Iterable(params) {
   return { ...params, kind: "iterable" };
 }
+function rangeExpr(params) {
+  return { ...params, kind: "range-expr" };
+}
 function commentBlock(params) {
   return { ...params, kind: "comment-block" };
 }
@@ -759,17 +762,17 @@ var Parser = class {
   parseOptionalIndices() {
     const indices = [];
     console.log(`parseOptionalIndices: peek=${this.peek().type}:${this.peek().value}`);
-    if (this.match("SYMBOL", "[")) {
+    while (this.match("SYMBOL", "[")) {
       console.log(`parseOptionalIndices: found [, parsing index`);
       indices.push(this.parseIndex());
       console.log(`parseOptionalIndices: after parseIndex, peek=${this.peek().type}:${this.peek().value}`);
       while (this.match("SYMBOL", ",")) {
         indices.push(this.parseIndex());
       }
-    }
-    if (this.peek().value === "]") {
-      console.log(`parseOptionalIndices: consuming ]`);
-      this.consume("SYMBOL", "]");
+      if (this.peek().value === "]") {
+        console.log(`parseOptionalIndices: consuming ]`);
+        this.consume("SYMBOL", "]");
+      }
     }
     console.log(`parseOptionalIndices: returning ${indices.length} indices, peek=${this.peek().type}:${this.peek().value}`);
     return indices;
@@ -816,13 +819,18 @@ var Parser = class {
     this.consume("SYMBOL", "(");
     let idx = this.peek().value === "@" ? "@" : "";
     const index2 = index("other-index", idx + this.parseIndex().name);
-    console.log("got here");
     this.consume("SYMBOL", ":");
-    const iterTokens = [];
-    while (!(this.peek().value === ")" && this.peekNext().value === "{")) {
-      if (this.isEOF())
-        throw new Error("Unterminated ForEach iterable");
-      iterTokens.push(toExprToken(this.consume()));
+    let iterable;
+    if (this.peek().value === "range" && this.peekNext().value === "(") {
+      iterable = this.parseRangeExpr();
+    } else {
+      const iterTokens = [];
+      while (!(this.peek().value === ")" && this.peekNext().value === "{")) {
+        if (this.isEOF())
+          throw new Error("Unterminated ForEach iterable");
+        iterTokens.push(toExprToken(this.consume()));
+      }
+      iterable = Iterable({ tokens: iterTokens });
     }
     this.consume("SYMBOL", ")");
     this.consume("SYMBOL", "{");
@@ -831,7 +839,54 @@ var Parser = class {
       body.push(this.parseTopLevelBlock());
     }
     this.consume("SYMBOL", "}");
-    return loopBlockOutsideRole({ index: index2, iterable: Iterable({ tokens: iterTokens }), body });
+    return loopBlockOutsideRole({ index: index2, iterable, body });
+  }
+  parseRangeExpr() {
+    this.consume("IDENT", "range");
+    this.consume("SYMBOL", "(");
+    const start = [];
+    let depth = 0;
+    while (!(this.peek().value === "," && depth === 0)) {
+      if (this.isEOF())
+        throw new Error("Unterminated range expression");
+      const tok = this.consume();
+      if (tok.value === "(")
+        depth++;
+      if (tok.value === ")")
+        depth--;
+      start.push(toExprToken(tok));
+    }
+    this.consume("SYMBOL", ",");
+    const end = [];
+    depth = 0;
+    while (!((this.peek().value === "," || this.peek().value === ")") && depth === 0)) {
+      if (this.isEOF())
+        throw new Error("Unterminated range expression");
+      const tok = this.consume();
+      if (tok.value === "(")
+        depth++;
+      if (tok.value === ")")
+        depth--;
+      end.push(toExprToken(tok));
+    }
+    let step;
+    if (this.peek().value === ",") {
+      this.consume("SYMBOL", ",");
+      step = [];
+      depth = 0;
+      while (!(this.peek().value === ")" && depth === 0)) {
+        if (this.isEOF())
+          throw new Error("Unterminated range expression");
+        const tok = this.consume();
+        if (tok.value === "(")
+          depth++;
+        if (tok.value === ")")
+          depth--;
+        step.push(toExprToken(tok));
+      }
+    }
+    this.consume("SYMBOL", ")");
+    return rangeExpr({ start, end, step });
   }
   parseConditionalOutside() {
     this.consume("KEYWORD", "If");
@@ -890,11 +945,17 @@ var Parser = class {
     let idx = this.peek().value === "@" ? "@" : "";
     const index2 = index("other-index", idx + this.parseIndex().name);
     this.consume("SYMBOL", ":");
-    const iterTokens = [];
-    while (!(this.peek().value === ")" && this.peekNext().value === "{")) {
-      if (this.isEOF())
-        throw new Error("Unterminated ForEach iterable");
-      iterTokens.push(toExprToken(this.consume()));
+    let iterable;
+    if (this.peek().value === "range" && this.peekNext().value === "(") {
+      iterable = this.parseRangeExpr();
+    } else {
+      const iterTokens = [];
+      while (!(this.peek().value === ")" && this.peekNext().value === "{")) {
+        if (this.isEOF())
+          throw new Error("Unterminated ForEach iterable");
+        iterTokens.push(toExprToken(this.consume()));
+      }
+      iterable = Iterable({ tokens: iterTokens });
     }
     this.consume("SYMBOL", ")");
     this.consume("SYMBOL", "{");
@@ -902,7 +963,7 @@ var Parser = class {
     while (this.peek().value !== "}")
       body.push(this.parseRoleBuildingBlock());
     this.consume("SYMBOL", "}");
-    return loopBlockInsideRole({ index: index2, iterable: Iterable({ tokens: iterTokens }), body });
+    return loopBlockInsideRole({ index: index2, iterable, body });
   }
   parseConditionalInside() {
     this.consume("KEYWORD", "If");
@@ -1057,17 +1118,17 @@ var Parser = class {
 
 // src/diagnostics.ts
 function registerDiagnostics(context) {
-  const diagnosticCollection = vscode.languages.createDiagnosticCollection("csdl");
+  const diagnosticCollection = vscode.languages.createDiagnosticCollection("acdl");
   context.subscriptions.push(diagnosticCollection);
   const diagnose = (document) => {
-    console.log("CSDL diagnose called for:", document.uri.toString());
-    if (document.languageId !== "csdl")
+    console.log("ACDL diagnose called for:", document.uri.toString());
+    if (document.languageId !== "acdl")
       return;
     const diagnostics = [];
     try {
       new Parser(document.getText()).parsePrompt();
     } catch (err) {
-      console.log("CSDL Parse Error:", err.message);
+      console.log("ACDL Parse Error:", err.message);
       const match = err.message.match(/\[(\d+):(\d+)\]\s*(.*)/s);
       if (match) {
         const line = Math.max(0, parseInt(match[1]) - 1);
@@ -1093,7 +1154,7 @@ function registerDiagnostics(context) {
         );
       }
     }
-    console.log("CSDL setting diagnostics:", diagnostics.length, "errors");
+    console.log("ACDL setting diagnostics:", diagnostics.length, "errors");
     diagnosticCollection.set(document.uri, diagnostics);
   };
   let timeout;
@@ -1156,6 +1217,27 @@ function renderExpressionTokens(tokens) {
           bracketDepth++;
         if (t.value === "]")
           bracketDepth--;
+        if (t.value === "@" && i + 1 < tokens.length) {
+          const nextTok = tokens[i + 1];
+          if (nextTok.type === "IDENT" || nextTok.type === "NUMBER") {
+            let timeIndexName = escapeHtml(nextTok.value);
+            i += 2;
+            while (i < tokens.length && tokens[i].value === "." && i + 1 < tokens.length && (tokens[i + 1].type === "IDENT" || tokens[i + 1].type === "NUMBER" || tokens[i + 1].value === "@")) {
+              timeIndexName += ".";
+              i++;
+              if (tokens[i].value === "@") {
+                timeIndexName += "@";
+                i++;
+              }
+              if (i < tokens.length && (tokens[i].type === "IDENT" || tokens[i].type === "NUMBER")) {
+                timeIndexName += escapeHtml(tokens[i].value);
+                i++;
+              }
+            }
+            contextVarTokens.push(`<span class="time-index">@${timeIndexName}</span>`);
+            continue;
+          }
+        }
         if (parenDepth > 0 || bracketDepth > 0) {
           contextVarTokens.push(escapeHtml(t.value));
           i++;
@@ -1177,6 +1259,106 @@ function renderExpressionTokens(tokens) {
       result.push(`<span class="expr-context-var">${contextVarTokens.join("")}</span>`);
       continue;
     }
+    if (tok.type === "IDENT" && tok.value === "range" && i + 1 < tokens.length && tokens[i + 1].value === "(") {
+      i++;
+      i++;
+      const startTokens = [];
+      let depth = 0;
+      while (i < tokens.length && !(tokens[i].value === "," && depth === 0)) {
+        const t = tokens[i];
+        if (t.value === "(")
+          depth++;
+        if (t.value === ")")
+          depth--;
+        startTokens.push(t);
+        i++;
+      }
+      i++;
+      const endTokens = [];
+      depth = 0;
+      while (i < tokens.length && !((tokens[i].value === "," || tokens[i].value === ")") && depth === 0)) {
+        const t = tokens[i];
+        if (t.value === "(")
+          depth++;
+        if (t.value === ")")
+          depth--;
+        endTokens.push(t);
+        i++;
+      }
+      let stepTokens;
+      if (i < tokens.length && tokens[i].value === ",") {
+        i++;
+        stepTokens = [];
+        depth = 0;
+        while (i < tokens.length && !(tokens[i].value === ")" && depth === 0)) {
+          const t = tokens[i];
+          if (t.value === "(")
+            depth++;
+          if (t.value === ")")
+            depth--;
+          stepTokens.push(t);
+          i++;
+        }
+      }
+      i++;
+      const startHtml = renderExpressionTokens(startTokens);
+      const endHtml = renderExpressionTokens(endTokens);
+      const stepHtml = stepTokens ? ` <span class="range-keyword">every</span> ${renderExpressionTokens(stepTokens)}` : "";
+      result.push(`<span class="range-expr">${startHtml}<span class="range-dots">...</span>${endHtml}${stepHtml}</span>`);
+      continue;
+    }
+    if (tok.type === "IDENT" && i + 1 < tokens.length && tokens[i + 1].value === "(") {
+      const funcName = escapeHtml(tok.value);
+      i++;
+      i++;
+      const argTokens = [];
+      let depth = 1;
+      while (i < tokens.length && depth > 0) {
+        const t = tokens[i];
+        if (t.value === "(")
+          depth++;
+        if (t.value === ")")
+          depth--;
+        if (depth > 0) {
+          argTokens.push(t);
+        }
+        i++;
+      }
+      const argsHtml = renderExpressionTokens(argTokens);
+      result.push(`<span class="func-block"><span class="func-name">${funcName}</span><span class="func-parens">(</span>${argsHtml}<span class="func-parens">)</span></span>`);
+      continue;
+    }
+    if (tok.type === "LOGIC_OP") {
+      let combined = tok.value;
+      i++;
+      while (i < tokens.length && tokens[i].type === "LOGIC_OP") {
+        combined += tokens[i].value;
+        i++;
+      }
+      result.push(`<span class="expr-logic-op">${escapeHtml(combined)}</span>`);
+      continue;
+    }
+    if (tok.type === "SYMBOL" && tok.value === "@" && i + 1 < tokens.length) {
+      const nextTok = tokens[i + 1];
+      if (nextTok.type === "IDENT" || nextTok.type === "NUMBER") {
+        let timeIndexName = escapeHtml(nextTok.value);
+        i += 2;
+        while (i < tokens.length && tokens[i].value === "." && i + 1 < tokens.length && (tokens[i + 1].type === "IDENT" || tokens[i + 1].type === "NUMBER" || tokens[i + 1].value === "@")) {
+          timeIndexName += ".";
+          i++;
+          if (tokens[i].value === "@") {
+            timeIndexName += "@";
+            i++;
+          }
+          if (i < tokens.length && (tokens[i].type === "IDENT" || tokens[i].type === "NUMBER")) {
+            timeIndexName += escapeHtml(tokens[i].value);
+            i++;
+          }
+        }
+        result.push(`<span class="time-index">@${timeIndexName}</span>`);
+        continue;
+      }
+    }
     const escaped = escapeHtml(tok.value);
     switch (tok.type) {
       case "KEYWORD":
@@ -1194,9 +1376,6 @@ function renderExpressionTokens(tokens) {
         } else {
           result.push(`<span class="expr-symbol">${escaped}</span>`);
         }
-        break;
-      case "LOGIC_OP":
-        result.push(`<span class="expr-logic-op">${escaped}</span>`);
         break;
       case "ARITH_OP":
         result.push(`<span class="expr-arith-op">${escaped}</span>`);
@@ -1228,7 +1407,7 @@ function renderIndexValue(index2) {
 function renderIndexList(indices) {
   if (indices.length === 0)
     return "";
-  return `[${indices.map(renderIndexValue).join(", ")}]`;
+  return indices.map((idx) => `[${renderIndexValue(idx)}]`).join("");
 }
 function renderPromptBody(body) {
   if (body.kind === "chat-prompt-body") {
@@ -1316,6 +1495,16 @@ function renderRoleBuildingBlock(block) {
   }
 }
 function renderFuncBlock(block) {
+  if (block.name === "range" && block.arguments.length >= 2) {
+    const startHtml = renderTextArgs(block.arguments[0]);
+    const endHtml = renderTextArgs(block.arguments[1]);
+    const stepHtml = block.arguments.length >= 3 ? ` <span class="range-keyword">every</span> ${renderTextArgs(block.arguments[2])}` : "";
+    const rangeCore = `<span class="range-expr">${startHtml}<span class="range-dots">...</span>${endHtml}${stepHtml}</span>`;
+    if (block.comment) {
+      return `<span class="block-with-comment">${rangeCore}<span class="inline-comment"> // ${escapeHtml(block.comment)}</span></span>`;
+    }
+    return rangeCore;
+  }
   const argsText = block.arguments.map(renderTextArgs).join(", ");
   const resultIndices = block.indices && block.indices.length > 0 ? renderIndexList(block.indices) : "";
   const funcCore = `<span class="func-block"><span class="func-name">${escapeHtml(block.name)}</span><span class="func-parens">(</span>${argsText}<span class="func-parens">)</span>${resultIndices}</span>`;
@@ -1368,14 +1557,28 @@ function renderContextVarBlock(block) {
     current = current.next;
   }
   const joined = segments.join(".");
+  const namespaceClass = `context-var-${block.base.toLowerCase()}`;
   if (block.comment) {
-    return `<span class="block-with-comment"><span class="context-var">${joined}</span><span class="inline-comment"> // ${escapeHtml(block.comment)}</span></span>`;
+    return `<span class="block-with-comment"><span class="context-var ${namespaceClass}">${joined}</span><span class="inline-comment"> // ${escapeHtml(block.comment)}</span></span>`;
   }
-  return `<span class="context-var">${joined}</span>`;
+  return `<span class="context-var ${namespaceClass}">${joined}</span>`;
+}
+function renderIterable(iterable) {
+  if (iterable.kind === "range-expr") {
+    return renderRangeExpr(iterable);
+  } else {
+    return renderExpressionTokens(iterable.tokens);
+  }
+}
+function renderRangeExpr(range) {
+  const startHtml = renderExpressionTokens(range.start);
+  const endHtml = renderExpressionTokens(range.end);
+  const stepHtml = range.step ? ` <span class="range-keyword">every</span> ${renderExpressionTokens(range.step)}` : "";
+  return `<span class="range-expr">${startHtml}<span class="range-dots">...</span>${endHtml}${stepHtml}</span>`;
 }
 function renderLoopOutsideRole(block) {
   const indexHtml = `<span class="loop-var">${escapeHtml(block.index.name)}</span>`;
-  const iterableHtml = `<span class="loop-iterable">${renderExpressionTokens(block.iterable.tokens)}</span>`;
+  const iterableHtml = `<span class="loop-iterable">${renderIterable(block.iterable)}</span>`;
   const header = `<span class="keyword">ForEach</span>(${indexHtml}: ${iterableHtml}):`;
   const bodyHtml = block.body.map(
     (child) => `<div class="loop-child">${renderTopLevelBlock(child)}</div>`
@@ -1388,7 +1591,7 @@ function renderLoopOutsideRole(block) {
 }
 function renderLoopInsideRole(block) {
   const indexHtml = `<span class="loop-var">${escapeHtml(block.index.name)}</span>`;
-  const iterableHtml = `<span class="loop-iterable">${renderExpressionTokens(block.iterable.tokens)}</span>`;
+  const iterableHtml = `<span class="loop-iterable">${renderIterable(block.iterable)}</span>`;
   const header = `<span class="keyword">ForEach</span>(${indexHtml}: ${iterableHtml}):`;
   const bodyHtml = block.body.map(
     (child) => `<div class="role-loop-child">${renderRoleBuildingBlock(child)}</div>`
@@ -1490,45 +1693,26 @@ function renderConditionalInsideRole(block) {
 }
 function renderConditionalOutsideRole(block) {
   const renderBody = (body) => body.map(
-    (child) => `<div class="role-condition-child">${renderTopLevelBlock(child)}</div>`
+    (child) => `<div class="conditional-child">${renderTopLevelBlock(child)}</div>`
   ).join("\n");
-  const parts = [];
-  parts.push(
-    wrapBlock(
-      "conditional-section",
-      `<span class="keyword">If</span> (<span class="condition-expr">${renderExpressionTokens(block.Ifcondition)}</span>):`,
-      renderBody(block.IfBody)
-    )
-  );
+  const ifHeader = `<span class="keyword">If</span> (<span class="condition-expr">${renderExpressionTokens(block.Ifcondition)}</span>):`;
+  let result = wrapBlock("conditional-block-outside-role", ifHeader, renderBody(block.IfBody));
   for (let i = 0; i < block.elseif.length; i++) {
-    parts.push(
-      wrapBlock(
-        "conditional-section",
-        `<span class="keyword">ElseIf</span> (<span class="condition-expr">${renderExpressionTokens(block.elseif[i])}</span>):`,
-        renderBody(block.elseifBody[i])
-      )
-    );
+    const elseifHeader = `<span class="keyword">ElseIf</span> (<span class="condition-expr">${renderExpressionTokens(block.elseif[i])}</span>):`;
+    result += wrapBlock("conditional-block-outside-role", elseifHeader, renderBody(block.elseifBody[i]));
   }
   if (block.elseBody && block.elseBody.length > 0) {
-    parts.push(
-      wrapBlock(
-        "conditional-section",
-        `<span class="keyword">Else</span>:`,
-        renderBody(block.elseBody)
-      )
-    );
+    const elseHeader = `<span class="keyword">Else</span>:`;
+    result += wrapBlock("conditional-block-outside-role", elseHeader, renderBody(block.elseBody));
   }
-  return `
-<div class="conditional-block-inside-role">
-  ${parts.join("\n")}
-</div>`;
+  return result;
 }
 
 // src/preview.ts
 function registerPreviewCommand(context) {
   let panel;
   context.subscriptions.push(
-    vscode2.commands.registerCommand("csdl.showPreview", () => {
+    vscode2.commands.registerCommand("acdl.showPreview", () => {
       const editor = vscode2.window.activeTextEditor;
       if (!editor)
         return;
@@ -1536,8 +1720,8 @@ function registerPreviewCommand(context) {
         panel.reveal(vscode2.ViewColumn.Beside);
       } else {
         panel = vscode2.window.createWebviewPanel(
-          "csdlPreview",
-          "CSDL Preview",
+          "acdlPreview",
+          "ACDL Preview",
           vscode2.ViewColumn.Beside,
           { enableScripts: false }
         );
@@ -1551,7 +1735,7 @@ function registerPreviewCommand(context) {
   let timeout;
   vscode2.workspace.onDidChangeTextDocument(
     (e) => {
-      if (panel && e.document.languageId === "csdl") {
+      if (panel && e.document.languageId === "acdl") {
         clearTimeout(timeout);
         timeout = setTimeout(
           () => updatePreview(panel, e.document, context),
@@ -1582,7 +1766,7 @@ function updatePreview(panel, doc, context) {
   body { padding: 20px; background: #ffffff; }
 </style>
 </head>
-<body>${bodyHtml}</body>
+<body class="compact">${bodyHtml}</body>
 </html>`;
 }
 function loadPreviewCss(context) {
@@ -1601,7 +1785,7 @@ function escapeHtml2(text) {
 var vscode3 = __toESM(require("vscode"));
 function registerDefinitionProvider(context) {
   context.subscriptions.push(
-    vscode3.languages.registerDefinitionProvider("csdl", {
+    vscode3.languages.registerDefinitionProvider("acdl", {
       provideDefinition(document, position) {
         const wordRange = document.getWordRangeAtPosition(
           position,

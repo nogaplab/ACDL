@@ -2,18 +2,18 @@ import * as vscode from "vscode";
 import { Parser } from "../../src/parser";
 
 export function registerDiagnostics(context: vscode.ExtensionContext) {
-  const diagnosticCollection = vscode.languages.createDiagnosticCollection("csdl");
+  const diagnosticCollection = vscode.languages.createDiagnosticCollection("acdl");
   context.subscriptions.push(diagnosticCollection);
 
   const diagnose = (document: vscode.TextDocument) => {
-    console.log("CSDL diagnose called for:", document.uri.toString());
-    if (document.languageId !== "csdl") return;
+    console.log("ACDL diagnose called for:", document.uri.toString());
+    if (document.languageId !== "acdl") return;
     const diagnostics: vscode.Diagnostic[] = [];
 
     try {
       new Parser(document.getText()).parsePrompt();
     } catch (err: any) {
-      console.log("CSDL Parse Error:", err.message);  // Debug output
+      console.log("ACDL Parse Error:", err.message);  // Debug output
       const match = err.message.match(/\[(\d+):(\d+)\]\s*(.*)/s);
       if (match) {
         const line = Math.max(0, parseInt(match[1]) - 1);
@@ -40,7 +40,7 @@ export function registerDiagnostics(context: vscode.ExtensionContext) {
       }
     }
 
-    console.log("CSDL setting diagnostics:", diagnostics.length, "errors");
+    console.log("ACDL setting diagnostics:", diagnostics.length, "errors");
     diagnosticCollection.set(document.uri, diagnostics);
   };
 

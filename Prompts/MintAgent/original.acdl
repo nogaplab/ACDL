@@ -1,0 +1,25 @@
+Original[@t]: {
+    U: {
+        TASK_DESCRIPTION(sys.max_total_steps)
+        env.tool_descriptions // description of each tool, how to use them, and when to use them
+        env.in_context_examples
+        env.task_prompt // the question you need to answer, or task you need to complete
+    }
+
+    ForEach(i: range(1,@t-1)) {
+        ForEach(k: range(1,sys.step[@i])){
+            A: {
+                resp.tool_reasoning[@i.k]
+                sys.tool_used[@i.k]
+            }
+            U: sys.tool_used[@i.k].tool_response
+    
+        A: {
+            resp.solution_reasoning[@i]
+            resp.solution
+        }
+        U: env.feedback[@i.k] // response if the answer was right or wrong, remaining tries if failed
+        }
+    }
+
+}

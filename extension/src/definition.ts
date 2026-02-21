@@ -2,7 +2,7 @@ import * as vscode from "vscode";
 
 export function registerDefinitionProvider(context: vscode.ExtensionContext) {
   context.subscriptions.push(
-    vscode.languages.registerDefinitionProvider("csdl", {
+    vscode.languages.registerDefinitionProvider("acdl", {
       provideDefinition(document, position) {
         const wordRange = document.getWordRangeAtPosition(
           position,

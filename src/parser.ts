@@ -13,7 +13,7 @@ function toExprToken(tok: Token): AST.ExpressionToken {
 
 
 /**
- * Recursive Descent Parser for the CSDL (Context Structure Description Language) Prompt DSL.
+ * Recursive Descent Parser for the ACDL (Agentic Context Description Language) Prompt DSL.
  * * This parser distinguishes between "Top-Level" scope (Global blocks and Role Messages)
  * and "Inside-Role" scope (Context variables and role-specific logic).
  */
@@ -484,17 +484,18 @@ export class Parser {
   private parseOptionalIndices(): AST.Index[] {
     const indices: AST.Index[] = [];
     console.log(`parseOptionalIndices: peek=${this.peek().type}:${this.peek().value}`);
-    if (this.match("SYMBOL", "[")){
+    // Loop to handle multiple consecutive bracket sets like [@t][i]
+    while (this.match("SYMBOL", "[")) {
       console.log(`parseOptionalIndices: found [, parsing index`);
       indices.push(this.parseIndex());
       console.log(`parseOptionalIndices: after parseIndex, peek=${this.peek().type}:${this.peek().value}`);
       while (this.match("SYMBOL", ",")) {
         indices.push(this.parseIndex());
       }
-    }
-    if (this.peek().value === "]") {
-      console.log(`parseOptionalIndices: consuming ]`);
-      this.consume("SYMBOL", "]");
+      if (this.peek().value === "]") {
+        console.log(`parseOptionalIndices: consuming ]`);
+        this.consume("SYMBOL", "]");
+      }
     }
     console.log(`parseOptionalIndices: returning ${indices.length} indices, peek=${this.peek().type}:${this.peek().value}`);
     return indices;

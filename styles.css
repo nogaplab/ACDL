@@ -1,5 +1,5 @@
 /* ======================================================
-   CSDL PROMPT VISUALIZER - ACADEMIC PAPER STYLE
+   ACDL PROMPT VISUALIZER - ACADEMIC PAPER STYLE
    Clean, professional design for research publications
    ====================================================== */
 
@@ -21,18 +21,18 @@
   --system-bg: #f0f7ff;
   --system-border: #0969da;
   --system-text: #0550ae;
+  
+  --assistant-bg: #e6fafa;
+  --assistant-border: #1acad1;
+  --assistant-text: #0a9196;
+
+  --tool-bg: #ffebe6;
+  --tool-border: #f7660b;
+  --tool-text: #800d00;
 
   --user-bg: #fff8e6;
-  --user-border: #bf8700;
+  --user-border: #e5990b;
   --user-text: #805600;
-
-  --assistant-bg: #f0fff4;
-  --assistant-border: #1a7f37;
-  --assistant-text: #116329;
-
-  --tool-bg: #faf0ff;
-  --tool-border: #8250df;
-  --tool-text: #6639ba;
 
   --none-bg: #f5f5f5;
   --none-border: #6e7781;
@@ -45,13 +45,14 @@
   --control-header-bg: #eaeef2;
 
   /* Accent colors for inline elements */
-  --accent-template: #0550ae;
-  --accent-template-bg: #ddf4ff;
-  /* Functions - light purple */
-  --accent-function: #a855f7;
+  --accent-template: #9333ea;
+  --accent-template-bg: #faf5ff;
+  /* Functions - purple */
+  --accent-function: #9333ea;
   --accent-function-bg: #faf5ff;
-  --accent-context: #1a7f37;
-  --accent-context-bg: #dafbe1;
+  /* Context variables - teal */
+  --accent-context: #0da66b;
+  --accent-context-bg: #e0ffdd;
   /* Variables (all indexes, iterables) - light blue */
   --accent-variable: #0969da;
   --accent-variable-bg: rgba(9, 105, 218, 0.12);
@@ -249,9 +250,15 @@ body {
 .func-block {
   display: inline-flex;
   align-items: center;
+  gap: 4px;
+  background: var(--accent-function-bg);
+  border: 1px solid var(--accent-function);
   color: var(--accent-function);
+  padding: 2px 8px;
+  border-radius: 4px;
   font-family: 'JetBrains Mono', 'SF Mono', monospace;
   font-size: 12px;
+  font-weight: 500;
 }
 
 .func-name {
@@ -259,7 +266,8 @@ body {
 }
 
 .func-parens {
-  color: var(--text-muted);
+  color: var(--accent-function);
+  opacity: 0.7;
 }
 
 .context-var {
@@ -284,12 +292,32 @@ body {
   font-weight: 600;
 }
 
+/* Environment variables (env.*) - teal styling */
+.context-var.context-var-env {
+  background: var(--accent-context-bg);
+  border-color: var(--accent-context);
+  color: var(--accent-context);
+}
+
+.context-var.context-var-env .segment {
+  color: var(--accent-context);
+}
+
 /* Indices - All variables use light blue, no background */
 .time-index {
   color: var(--accent-variable);
   font-weight: 700;
   font-family: 'JetBrains Mono', 'SF Mono', monospace;
   font-size: 12px;
+}
+
+/* Ensure time-index is styled correctly even when nested inside context-var */
+.context-var .time-index,
+.context-var .segment .time-index,
+.context-var-env .time-index,
+.context-var-env .segment .time-index,
+.expr-context-var .time-index {
+  color: var(--accent-variable);
 }
 
 .other-index {
@@ -466,6 +494,7 @@ body {
   padding: 6px 12px 6px 16px;
   border-left: 3px solid var(--control-border);
   background: var(--control-bg);
+  overflow: hidden;
 }
 
 .conditional-section {
@@ -475,6 +504,7 @@ body {
   background: var(--bg-primary);
   border: 1px solid var(--border-light);
   border-radius: 4px;
+  overflow: hidden;
 }
 
 /* Loop headers */
@@ -576,6 +606,7 @@ body {
   background: var(--bg-primary);
   border: 1px solid var(--border-light);
   border-radius: 4px;
+  overflow: hidden;
 }
 
 .switch-case-header,
@@ -737,7 +768,7 @@ body {
   border-right: 1px solid var(--border-light);
 }
 
-#csdl-editor {
+#acdl-editor {
   width: 100%;
   flex-grow: 1;
   font-family: 'JetBrains Mono', 'SF Mono', monospace;
@@ -752,7 +783,7 @@ body {
   line-height: 1.5;
 }
 
-#csdl-editor:focus {
+#acdl-editor:focus {
   outline: none;
   border-color: var(--system-border);
   box-shadow: 0 0 0 2px rgba(9, 105, 218, 0.15);
@@ -945,7 +976,9 @@ body {
 .compact .loop-block-outside-role-header,
 .compact .loop-block-inside-role-header,
 .compact .switch-block-outside-role-header,
-.compact .switch-block-inside-role-header {
+.compact .switch-block-inside-role-header,
+.compact .conditional-block-outside-role-header,
+.compact .conditional-block-inside-role-header {
   padding: 1px 4px;
   margin: -2px -6px 2px -8px;
   border-radius: 0 2px 0 0;
@@ -956,7 +989,9 @@ body {
 .compact .loop-block-outside-role-header::before,
 .compact .loop-block-inside-role-header::before,
 .compact .switch-block-outside-role-header::before,
-.compact .switch-block-inside-role-header::before {
+.compact .switch-block-inside-role-header::before,
+.compact .conditional-block-outside-role-header::before,
+.compact .conditional-block-inside-role-header::before {
   font-size: 8px;
 }
 

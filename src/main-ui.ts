@@ -8,9 +8,9 @@ let editorView: EditorView;
 
 export function initFileHandlers() {
   const dropZone = document.getElementById("drop-zone");
-  const fileInput = document.getElementById("csdl-upload") as HTMLInputElement;
+  const fileInput = document.getElementById("acdl-upload") as HTMLInputElement;
   const output = document.getElementById("output");
-  const editorContainer = document.getElementById("csdl-editor-container");
+  const editorContainer = document.getElementById("acdl-editor-container");
   const renderBtn = document.getElementById("render-btn");
 
   if (!dropZone || !fileInput || !output || !editorContainer || !renderBtn) return;
@@ -51,7 +51,7 @@ export function initFileHandlers() {
  * Validates the file and reads its content into the editor before rendering.
  */
 function validateAndProcess(file: File, output: HTMLElement) {
-  if (file.name.toLowerCase().endsWith('.csdl')) {
+  if (file.name.toLowerCase().endsWith('.acdl')) {
     const reader = new FileReader();
     reader.onload = (e) => {
       const text = e.target?.result as string;
@@ -63,7 +63,7 @@ function validateAndProcess(file: File, output: HTMLElement) {
     };
     reader.readAsText(file);
   } else {
-    alert(`Invalid file: ${file.name}. Please use a .csdl file.`);
+    alert(`Invalid file: ${file.name}. Please use a .acdl file.`);
   }
 }
 
@@ -73,7 +73,7 @@ function validateAndProcess(file: File, output: HTMLElement) {
  */
 function processAndRender(text: string, output: HTMLElement) {
   if (!text.trim()) {
-    output.innerHTML = `<div class="info-msg">Editor is empty. Write or drop a .csdl file to begin.</div>`;
+    output.innerHTML = `<div class="info-msg">Editor is empty. Write or drop a .acdl file to begin.</div>`;
     return;
   }
 

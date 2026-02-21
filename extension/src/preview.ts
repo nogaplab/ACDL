@@ -8,7 +8,7 @@ export function registerPreviewCommand(context: vscode.ExtensionContext) {
   let panel: vscode.WebviewPanel | undefined;
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("csdl.showPreview", () => {
+    vscode.commands.registerCommand("acdl.showPreview", () => {
       const editor = vscode.window.activeTextEditor;
       if (!editor) return;
 
@@ -16,8 +16,8 @@ export function registerPreviewCommand(context: vscode.ExtensionContext) {
         panel.reveal(vscode.ViewColumn.Beside);
       } else {
         panel = vscode.window.createWebviewPanel(
-          "csdlPreview",
-          "CSDL Preview",
+          "acdlPreview",
+          "ACDL Preview",
           vscode.ViewColumn.Beside,
           { enableScripts: false },
         );
@@ -34,7 +34,7 @@ export function registerPreviewCommand(context: vscode.ExtensionContext) {
   let timeout: ReturnType<typeof setTimeout> | undefined;
   vscode.workspace.onDidChangeTextDocument(
     (e) => {
-      if (panel && e.document.languageId === "csdl") {
+      if (panel && e.document.languageId === "acdl") {
         clearTimeout(timeout);
         timeout = setTimeout(
           () => updatePreview(panel!, e.document, context),
@@ -73,7 +73,7 @@ function updatePreview(
   body { padding: 20px; background: #ffffff; }
 </style>
 </head>
-<body>${bodyHtml}</body>
+<body class="compact">${bodyHtml}</body>
 </html>`;
 }
 

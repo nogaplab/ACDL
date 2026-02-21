@@ -1,0 +1,87 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "ACDL",
+  "scopeName": "source.acdl",
+  "patterns": [
+    { "include": "#comment" },
+    { "include": "#string" },
+    { "include": "#number" },
+    { "include": "#prompt-declaration" },
+    { "include": "#role-identifier" },
+    { "include": "#namespace-keyword" },
+    { "include": "#control-keyword" },
+    { "include": "#template" },
+    { "include": "#range-operator" },
+    { "include": "#operator" },
+    { "include": "#context-variable-path" },
+    { "include": "#index-expression" },
+    { "include": "#punctuation" }
+  ],
+  "repository": {
+    "comment": {
+      "match": "//[^}]*",
+      "name": "comment.line.double-slash.acdl"
+    },
+    "string": {
+      "begin": "\"",
+      "end": "\"",
+      "name": "string.quoted.double.acdl",
+      "patterns": [
+        {
+          "match": "\\\\[\"\\\\nt]",
+          "name": "constant.character.escape.acdl"
+        }
+      ]
+    },
+    "number": {
+      "match": "\\b[0-9]+\\b",
+      "name": "constant.numeric.acdl"
+    },
+    "prompt-declaration": {
+      "match": "\\b(Prompt)\\b",
+      "name": "keyword.other.prompt.acdl"
+    },
+    "role-identifier": {
+      "match": "\\b([SUATN])(?=\\s*:)",
+      "captures": {
+        "1": { "name": "entity.name.tag.role.acdl" }
+      }
+    },
+    "namespace-keyword": {
+      "match": "\\b(env|sys|resp|prompt)\\b",
+      "name": "keyword.other.namespace.acdl"
+    },
+    "control-keyword": {
+      "match": "\\b(If|ElseIf|Else|ForEach|Switch|Case|Default|break|continue)\\b",
+      "name": "keyword.control.acdl"
+    },
+    "template": {
+      "match": "\\b([A-Z][A-Z0-9_]+)\\b",
+      "name": "entity.name.function.template.acdl"
+    },
+    "range-operator": {
+      "match": "\\.\\.\\.|\\u2026",
+      "name": "keyword.operator.range.acdl"
+    },
+    "operator": {
+      "match": "[=!<>&|^+\\-*/%]",
+      "name": "keyword.operator.acdl"
+    },
+    "context-variable-path": {
+      "match": "(?<=\\b(?:env|sys|resp|prompt))\\.([a-zA-Z_][a-zA-Z0-9_]*)",
+      "captures": {
+        "1": { "name": "variable.other.property.acdl" }
+      }
+    },
+    "index-expression": {
+      "match": "@([a-zA-Z_][a-zA-Z0-9_]*)",
+      "captures": {
+        "0": { "name": "variable.parameter.index.acdl" }
+      }
+    },
+    "punctuation": {
+      "match": "[{}()\\[\\]:;,@#$?_]",
+      "name": "punctuation.acdl"
+    }
+  }
+}

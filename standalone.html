@@ -1,0 +1,2447 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>ACDL Prompt Visualizer - Standalone</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <!-- Export libraries -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <style>
+/* ======================================================
+   ACDL PROMPT VISUALIZER - ACADEMIC PAPER STYLE
+   ====================================================== */
+
+:root {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8f9fa;
+  --bg-tertiary: #f1f3f4;
+  --border-light: #e1e4e8;
+  --border-medium: #d0d7de;
+  --border-dark: #b0b8c1;
+  --border-subtle: #e1e4e8;
+  --text-primary: #1f2328;
+  --text-secondary: #57606a;
+  --text-muted: #8b949e;
+  --system-bg: #f0f7ff;
+  --system-border: #0969da;
+  --system-text: #0550ae;
+  --system-glow: rgba(9, 105, 218, 0.15);
+  --user-bg: #fff8e6;
+  --user-border: #bf8700;
+  --user-text: #805600;
+  --assistant-bg: #f0fff4;
+  --assistant-border: #1a7f37;
+  --assistant-text: #116329;
+  --tool-bg: #faf0ff;
+  --tool-border: #8250df;
+  --tool-text: #6639ba;
+  --none-bg: #f5f5f5;
+  --none-border: #6e7781;
+  --none-text: #57606a;
+  --control-bg: #f6f8fa;
+  --control-border: #6e7781;
+  --control-text: #57606a;
+  --control-header-bg: #eaeef2;
+  --accent-template: #0550ae;
+  --accent-template-bg: #ddf4ff;
+  --accent-function: #a855f7;
+  --accent-function-bg: #faf5ff;
+  --accent-context: #1a7f37;
+  --accent-context-bg: #dafbe1;
+  --accent-variable: #0969da;
+  --accent-variable-bg: rgba(9, 105, 218, 0.12);
+  --accent-index: var(--accent-variable);
+  --accent-index-bg: var(--accent-variable-bg);
+  --accent-other-index: var(--accent-variable);
+  --accent-other-index-bg: var(--accent-variable-bg);
+  --accent-expr: #c2410c;
+  --accent-expr-bg: rgba(251, 146, 60, 0.15);
+  --accent-expr-border: #ea580c;
+  --accent-comment: #6e7781;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+
+* { box-sizing: border-box; }
+
+/* Header */
+header {
+  height: 60px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  gap: 16px;
+  box-sizing: border-box;
+}
+
+header h1 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+/* Drop zone */
+#drop-zone {
+  flex: 1;
+  max-width: 300px;
+  height: 40px;
+  border: 1px dashed var(--border-medium);
+  border-radius: 8px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+#drop-zone:hover,
+#drop-zone.hover {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: var(--system-border);
+  color: var(--text-primary);
+}
+
+.browse-btn {
+  font-size: 12px;
+  color: var(--system-border);
+  margin-left: 6px;
+  font-weight: 400;
+}
+
+/* Prompt Selector */
+.prompt-selector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.prompt-selector label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.prompt-selector select {
+  padding: 8px 12px;
+  border: 1px solid var(--border-medium);
+  border-radius: 6px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: inherit;
+  min-width: 200px;
+  cursor: pointer;
+}
+
+.prompt-selector select:hover {
+  border-color: var(--system-border);
+}
+
+.prompt-selector select:focus {
+  outline: none;
+  border-color: var(--system-border);
+  box-shadow: 0 0 0 3px var(--system-glow);
+}
+
+/* Main container */
+.main-container {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* Sidebar */
+#sidebar {
+  width: 420px;
+  min-width: 200px;
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  gap: 12px;
+  box-sizing: border-box;
+  transition: width 0.3s ease, min-width 0.3s ease, padding 0.3s ease;
+}
+
+#sidebar.collapsed {
+  width: 0 !important;
+  min-width: 0 !important;
+  padding: 0 !important;
+  overflow: hidden;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.panel-header h3 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.panel-toggle-btn {
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px 8px;
+  font-size: 12px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.panel-toggle-btn:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border-color: var(--border-medium);
+}
+
+#acdl-editor {
+  flex: 1;
+  width: 100%;
+  font-family: 'JetBrains Mono', 'SF Mono', 'Consolas', monospace;
+  font-size: 13px;
+  padding: 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  resize: none;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.5;
+  overflow: auto;
+}
+
+#acdl-editor:focus {
+  outline: none;
+  border-color: var(--system-border);
+  box-shadow: 0 0 0 3px var(--system-glow);
+}
+
+#render-btn {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 6px rgba(16, 185, 129, 0.25);
+}
+
+#render-btn:hover {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 12px rgba(16, 185, 129, 0.35);
+}
+
+/* Resizer */
+.resizer {
+  width: 6px;
+  background: var(--border-subtle);
+  cursor: col-resize;
+  flex-shrink: 0;
+  transition: background 0.2s ease;
+  position: relative;
+}
+
+.resizer:hover, .resizer.dragging {
+  background: var(--system-border);
+}
+
+.resizer::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 2px;
+  height: 30px;
+  background: var(--text-muted);
+  border-radius: 1px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.resizer:hover::after, .resizer.dragging::after {
+  opacity: 1;
+}
+
+/* Output panel */
+#output-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 200px;
+  overflow: hidden;
+  transition: min-width 0.3s ease;
+}
+
+#output-wrapper.collapsed {
+  min-width: 0 !important;
+  flex: 0 !important;
+  width: 0 !important;
+  overflow: hidden;
+}
+
+#output-wrapper.collapsed #output-header,
+#output-wrapper.collapsed #output {
+  display: none;
+}
+
+#output-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+#output-header h3 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+#output {
+  flex: 1;
+  overflow-y: auto;
+  padding: 40px;
+  background: var(--bg-primary);
+}
+
+/* Restore buttons */
+.restore-btn {
+  position: fixed;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 8px;
+  font-size: 12px;
+  transition: all 0.2s ease;
+  display: none;
+  z-index: 100;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+}
+
+.restore-btn:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border-color: var(--system-border);
+}
+
+#restore-sidebar {
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  border-left: none;
+  border-radius: 0 4px 4px 0;
+}
+
+#restore-output {
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  border-right: none;
+  border-radius: 4px 0 0 4px;
+}
+
+/* Header actions */
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.export-dropdown { position: relative; }
+
+.export-btn {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.export-btn:hover {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  transform: translateY(-1px);
+}
+
+.export-btn svg { width: 14px; height: 14px; }
+
+.export-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 4px;
+  min-width: 140px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  display: none;
+}
+
+.export-menu.show { display: block; }
+
+.export-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.export-menu-item:hover { background: var(--bg-tertiary); }
+.export-menu-item svg { width: 16px; height: 16px; color: var(--text-secondary); }
+
+.export-btn.loading { pointer-events: none; opacity: 0.7; }
+
+.export-btn.loading::after {
+  content: '';
+  width: 12px;
+  height: 12px;
+  border: 2px solid transparent;
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-left: 4px;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Collapsible */
+.collapsed > .block-children,
+.collapsed > .role-body-block,
+.collapsed > .loop-child,
+.collapsed > .role-loop-child,
+.collapsed > .switch-child,
+.collapsed > .role-switch-child,
+.collapsed > .role-condition-child {
+  display: none !important;
+}
+
+body.resizing { user-select: none; cursor: col-resize; }
+
+/* ======================================================
+   PROMPT VISUALIZATION STYLES
+   ====================================================== */
+
+.prompt-container {
+  width: fit-content;
+  max-width: 900px;
+  margin: 0 auto;
+  position: relative;
+  padding-left: 24px;
+  border-left: 2px solid var(--border-medium);
+}
+
+.prompt-title {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-medium);
+  border-radius: 6px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  margin-left: -24px;
+  padding-left: 24px;
+}
+
+.prompt-title h1 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-family: 'JetBrains Mono', 'SF Mono', 'Consolas', monospace;
+}
+
+/* Role messages */
+.role-message {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-medium);
+  border-radius: 6px;
+  margin: 4px 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.role-message:hover { border-color: var(--border-dark); }
+
+.role-message.system { background: var(--system-bg); border-color: var(--system-border); }
+.role-message.user { background: var(--user-bg); border-color: var(--user-border); }
+.role-message.assistant { background: var(--assistant-bg); border-color: var(--assistant-border); }
+.role-message.tool { background: var(--tool-bg); border-color: var(--tool-border); }
+
+.role-message-header {
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  border-radius: 0 0 4px 0;
+}
+
+.role-message.system .role-message-header { background: var(--system-border); color: white; }
+.role-message.user .role-message-header { background: var(--user-border); color: white; }
+.role-message.assistant .role-message-header { background: var(--assistant-border); color: white; }
+.role-message.tool .role-message-header { background: var(--tool-border); color: white; }
+
+/* None/completion message */
+.none-message {
+  background: var(--none-bg);
+  border: 1px solid var(--none-border);
+  border-radius: 6px;
+  margin: 4px 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.none-message:hover { border-color: var(--border-dark); }
+
+.none-message-header {
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  border-radius: 0 0 4px 0;
+  background: var(--none-border);
+  color: white;
+}
+
+.role-body-block {
+  padding: 2px 12px;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+/* Inline elements */
+.template-block {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--accent-template-bg);
+  border: 1px solid var(--accent-template);
+  color: var(--accent-template);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.template-block::before { content: '\25C6'; font-size: 6px; opacity: 0.7; }
+
+.func-block {
+  display: inline-flex;
+  align-items: center;
+  color: var(--accent-function);
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-size: 12px;
+}
+
+.func-name { font-weight: 600; }
+.func-parens { color: var(--text-muted); }
+
+.context-var {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--accent-context-bg);
+  border: 1px solid var(--accent-context);
+  color: var(--accent-context);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.context-var .segment { color: var(--accent-context); }
+.context-var .segment.base { font-weight: 600; }
+
+.time-index {
+  color: var(--accent-variable);
+  font-weight: 700;
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-size: 12px;
+}
+
+.other-index {
+  color: var(--accent-variable);
+  font-weight: 700;
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-size: 12px;
+}
+
+.keyword {
+  color: #000000;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+}
+
+/* Expression tokens */
+.expr-context-var {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--accent-context-bg);
+  border: 1px solid var(--accent-context);
+  color: var(--accent-context);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.expr-namespace { color: var(--accent-context); font-weight: 700; font-family: 'JetBrains Mono', 'SF Mono', monospace; }
+.expr-ident { color: var(--accent-variable); font-weight: 600; font-family: 'JetBrains Mono', 'SF Mono', monospace; }
+.expr-number { color: var(--accent-variable); font-weight: 600; font-family: 'JetBrains Mono', 'SF Mono', monospace; }
+.expr-symbol { color: var(--text-secondary); font-family: 'JetBrains Mono', 'SF Mono', monospace; }
+.expr-at { color: var(--accent-variable); font-weight: 700; font-family: 'JetBrains Mono', 'SF Mono', monospace; }
+.expr-logic-op { color: var(--text-primary); font-weight: 700; font-family: 'JetBrains Mono', 'SF Mono', monospace; font-variant-ligatures: none; padding: 0 2px; }
+.expr-arith-op { color: var(--text-primary); font-weight: 600; font-family: 'JetBrains Mono', 'SF Mono', monospace; padding: 0 1px; }
+.expr-range { color: var(--text-secondary); font-weight: 600; font-family: 'JetBrains Mono', 'SF Mono', monospace; padding: 0 2px; }
+.expr-string { color: #a31515; font-family: 'JetBrains Mono', 'SF Mono', monospace; }
+
+.loop-var { color: var(--accent-variable); font-weight: 700; font-family: 'JetBrains Mono', 'SF Mono', monospace; }
+.loop-iterable, .condition-expr, .switch-expr, .case-match { font-weight: 700; }
+
+.range-expr { font-family: 'JetBrains Mono', 'SF Mono', monospace; font-size: 12px; }
+.range-dots { color: var(--text-secondary); font-weight: 600; padding: 0 2px; }
+.range-keyword { color: var(--accent-function); font-weight: 600; }
+
+.comment, .inline-comment {
+  color: var(--accent-comment);
+  font-style: italic;
+  font-size: 11px;
+  margin-left: 8px;
+  white-space: normal;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 350px;
+}
+
+.block-with-comment {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: top;
+  max-width: 100%;
+}
+
+.comment-block {
+  color: var(--accent-comment);
+  font-style: italic;
+  padding: 2px 0;
+  margin: 1px 0;
+  font-size: 12px;
+}
+
+/* Control flow blocks */
+.loop-block-outside-role,
+.loop-block-inside-role,
+.switch-block-outside-role,
+.switch-block-inside-role,
+.conditional-block-outside-role,
+.conditional-block-inside-role {
+  position: relative;
+  margin: 5px 0;
+  border-radius: 4px;
+  padding: 6px 12px 6px 16px;
+  border-left: 3px solid var(--control-border);
+  background: var(--control-bg);
+}
+
+.conditional-section {
+  position: relative;
+  margin: 3px 0;
+  padding: 4px 10px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
+}
+
+.loop-block-outside-role-header,
+.loop-block-inside-role-header {
+  background: var(--control-header-bg);
+  padding: 3px 10px;
+  margin: -6px -12px 4px -16px;
+  border-radius: 0 4px 0 0;
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--control-text);
+  border-bottom: 1px solid var(--border-light);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.loop-block-outside-role-header::before,
+.loop-block-inside-role-header::before {
+  content: '\21BB';
+  font-size: 12px;
+  color: var(--control-border);
+}
+
+.conditional-block-outside-role-header {
+  background: var(--control-header-bg);
+  padding: 3px 10px;
+  margin: -6px -12px 4px -16px;
+  border-radius: 0 4px 0 0;
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--control-text);
+  border-bottom: 1px solid var(--border-light);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.conditional-block-outside-role-header::before {
+  content: '\25C7';
+  font-size: 10px;
+  color: var(--control-border);
+}
+
+.conditional-section-header {
+  background: var(--control-header-bg);
+  padding: 3px 10px;
+  margin: -4px -10px 3px -10px;
+  border-radius: 4px 4px 0 0;
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--control-text);
+  border-bottom: 1px solid var(--border-light);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.conditional-section-header::before {
+  content: '\25C7';
+  font-size: 10px;
+  color: var(--control-border);
+}
+
+.switch-block-outside-role-header,
+.switch-block-inside-role-header {
+  background: var(--control-header-bg);
+  padding: 3px 10px;
+  margin: -6px -12px 4px -16px;
+  border-radius: 0 4px 0 0;
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--control-text);
+  border-bottom: 1px solid var(--border-light);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.switch-block-outside-role-header::before,
+.switch-block-inside-role-header::before {
+  content: '\2387';
+  font-size: 12px;
+  color: var(--control-border);
+}
+
+.switch-case, .switch-default {
+  margin: 3px 0;
+  padding: 4px 10px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
+}
+
+.switch-case-header, .switch-default-header {
+  background: var(--control-header-bg);
+  padding: 2px 8px;
+  margin: -4px -10px 3px -10px;
+  border-radius: 4px 4px 0 0;
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--control-text);
+  border-bottom: 1px solid var(--border-light);
+}
+
+/* Block children */
+.block-children { padding: 2px 0 2px 12px; margin: 2px 0; }
+.conditional-child, .role-condition-child, .switch-child, .role-switch-child, .loop-child, .role-loop-child {
+  margin: 2px 0;
+  padding: 1px 0;
+}
+
+/* Label blocks */
+.label-block { margin: 16px 0; position: relative; }
+.label-start, .label-end {
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-size: 10px;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+  padding: 2px 0;
+}
+.label-block-body {
+  border-left: 2px solid var(--border-light);
+  margin-left: 6px;
+  padding-left: 12px;
+}
+
+/* Collapsible */
+.collapsible-header { cursor: pointer; user-select: none; }
+.collapsible-header:hover { opacity: 0.8; }
+.collapsed .block-children, .collapsed .label-block-body, .collapsed > .role-body-block { display: none; }
+.collapsed .collapsible-header::after { content: ' \25B8'; font-size: 10px; opacity: 0.6; }
+
+/* Error messages */
+.error-msg {
+  color: #cf222e;
+  background: #ffebe9;
+  padding: 12px 16px;
+  border: 1px solid #ff8182;
+  border-radius: 6px;
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-size: 12px;
+}
+
+/* ======================================================
+   COMPACT MODE
+   ====================================================== */
+.compact .prompt-container { width: fit-content; max-width: 600px; padding-left: 10px; border-left-width: 1px; }
+.compact .prompt-title { padding: 3px 8px; margin-bottom: 4px; margin-left: -10px; padding-left: 10px; border-radius: 3px; }
+.compact .prompt-title h1 { font-size: 10px; }
+.compact .role-message, .compact .none-message { margin: 1px 0; padding: 0; border-radius: 3px; }
+.compact .role-message-header, .compact .none-message-header { padding: 0 4px; margin: 0; font-size: 7px; letter-spacing: 0.2px; border-radius: 0 0 2px 0; line-height: 1; display: block; }
+.compact .role-body-block { padding: 2px 6px; display: flex; flex-wrap: wrap; gap: 1px 3px; align-items: center; }
+.compact .template-block { padding: 1px 5px; border-radius: 3px; font-size: 9px; gap: 2px; }
+.compact .template-block::before { font-size: 5px; }
+.compact .func-block { font-size: 9px; }
+.compact .context-var, .compact .expr-context-var { padding: 1px 5px; border-radius: 3px; font-size: 9px; gap: 1px; }
+.compact .time-index, .compact .other-index, .compact .loop-var { font-size: 9px; }
+.compact .loop-iterable, .compact .condition-expr, .compact .switch-expr, .compact .case-match { font-size: 9px; }
+.compact .keyword { font-size: 9px; }
+.compact .expr-context-var, .compact .expr-namespace, .compact .expr-ident, .compact .expr-number, .compact .expr-symbol, .compact .expr-at, .compact .expr-logic-op, .compact .expr-arith-op, .compact .expr-range, .compact .expr-string { font-size: 9px; }
+.compact .comment, .compact .inline-comment { font-size: 7px; margin-left: 2px; }
+.compact .comment-block { padding: 1px 6px; margin: 1px 0; font-size: 7px; border-left-width: 1px; }
+.compact .loop-block-outside-role, .compact .loop-block-inside-role, .compact .conditional-block-outside-role, .compact .conditional-block-inside-role, .compact .switch-block-outside-role, .compact .switch-block-inside-role { margin: 2px 0; padding: 2px 6px 2px 8px; border-left-width: 2px; border-radius: 2px; }
+.compact .loop-block-outside-role-header, .compact .loop-block-inside-role-header, .compact .switch-block-outside-role-header, .compact .switch-block-inside-role-header { padding: 1px 4px; margin: -2px -6px 2px -8px; border-radius: 0 2px 0 0; font-size: 7px; gap: 3px; }
+.compact .loop-block-outside-role-header::before, .compact .loop-block-inside-role-header::before, .compact .switch-block-outside-role-header::before, .compact .switch-block-inside-role-header::before { font-size: 8px; }
+.compact .conditional-section { padding: 2px 5px; margin: 1px 0; border-radius: 2px; }
+.compact .conditional-section-header { padding: 1px 4px; margin: -2px -5px 2px -5px; border-radius: 2px 2px 0 0; font-size: 7px; gap: 2px; }
+.compact .conditional-section-header::before { font-size: 7px; }
+.compact .switch-case, .compact .switch-default { margin: 1px 0; padding: 2px 5px; border-radius: 2px; }
+.compact .switch-case-header, .compact .switch-default-header { padding: 1px 4px; margin: -2px -5px 2px -5px; border-radius: 2px 2px 0 0; font-size: 7px; }
+.compact .block-children { padding: 0 0 0 6px; margin: 1px 0; }
+.compact .conditional-child, .compact .role-condition-child, .compact .switch-child, .compact .role-switch-child, .compact .loop-child, .compact .role-loop-child { margin: 1px 0; padding: 0; }
+.compact .label-block { margin: 4px 0; }
+.compact .label-start, .compact .label-end { font-size: 7px; padding: 0; }
+.compact .label-block-body { margin-left: 3px; padding-left: 6px; border-left-width: 1px; }
+.compact, .compact * { line-height: 1.1 !important; }
+.compact .template-block, .compact .func-block, .compact .context-var, .compact .time-index, .compact .other-index, .compact .text-block { margin: 0; display: inline-flex; vertical-align: middle; }
+.compact .role-body-block > * { margin: 0; }
+  </style>
+</head>
+
+<body>
+  <header>
+    <h1>ACDL Visualizer</h1>
+    <label id="drop-zone" for="acdl-upload">
+      Drop .acdl file here <span class="browse-btn">or browse</span>
+      <input type="file" id="acdl-upload" accept=".acdl" style="display: none;" />
+    </label>
+    <div class="prompt-selector">
+      <label for="prompt-select">Examples:</label>
+      <select id="prompt-select">
+        <option value="">-- Select --</option>
+        <optgroup label="Papers">
+          <option value="pokemon">Pokemon Blue Agent</option>
+          <option value="genagents">Generative Agents</option>
+          <option value="rlm">RLM (REPL Language Model)</option>
+        </optgroup>
+        <optgroup label="React Patterns">
+          <option value="basic_react">Basic ReAct</option>
+          <option value="mintagent">MintAgent</option>
+        </optgroup>
+        <optgroup label="Chats">
+          <option value="chat1">Simple Chat</option>
+          <option value="rag">RAG Chat</option>
+          <option value="yuval">Game Agent</option>
+        </optgroup>
+      </select>
+    </div>
+  </header>
+
+  <div class="main-container">
+    <aside id="sidebar">
+      <div class="panel-header">
+        <h3>Source Editor</h3>
+        <button class="panel-toggle-btn" id="collapse-sidebar" title="Collapse editor">
+          <span>&#x25C0;</span>
+        </button>
+      </div>
+      <textarea id="acdl-editor" placeholder="Enter ACDL code here or select an example prompt..."></textarea>
+      <button id="render-btn">Render Visualization</button>
+    </aside>
+
+    <div class="resizer" id="resizer"></div>
+
+    <div id="output-wrapper">
+      <div id="output-header">
+        <h3>Visualization</h3>
+        <div class="header-actions">
+          <div class="export-dropdown">
+            <button class="export-btn" id="export-btn" title="Export visualization">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              Export
+            </button>
+            <div class="export-menu" id="export-menu">
+              <button class="export-menu-item" id="export-png">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                  <circle cx="8.5" cy="8.5" r="1.5"/>
+                  <polyline points="21 15 16 10 5 21"/>
+                </svg>
+                Export as PNG
+              </button>
+              <button class="export-menu-item" id="export-pdf">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                  <line x1="16" y1="13" x2="8" y2="13"/>
+                  <line x1="16" y1="17" x2="8" y2="17"/>
+                </svg>
+                Export as PDF
+              </button>
+            </div>
+          </div>
+          <button class="panel-toggle-btn" id="collapse-output" title="Collapse visualization">
+            <span>&#x25B6;</span>
+          </button>
+        </div>
+      </div>
+      <main id="output" class="compact">
+        <div class="info-msg" style="color: var(--text-secondary); text-align: center; padding: 60px 40px; font-size: 15px;">
+          Select an example prompt from the dropdown or enter ACDL code, then click "Render Visualization"
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <button class="restore-btn" id="restore-sidebar" title="Show editor">Editor</button>
+  <button class="restore-btn" id="restore-output" title="Show visualization">Viz</button>
+
+  <script>
+// ============================================================
+// EMBEDDED PROMPTS
+// ============================================================
+const PROMPTS = {
+  pokemon: `Prompt[@t]: {
+    U: env.image.hud // heads up display, a screenshot with things like HP, coordinates of the character on the map and ID codes for items printed on it
+    S: {
+        INTRO // you are playing pokemon blue
+        GOAL // beat the game
+        CONVENTIONS  // vision to text translation conventions, general gameplay tips
+    }
+
+    History {
+        If @t>1 {
+            ForEach(i: range(@t-min(@t, 100), @t-1)) {
+                A: resp.action[@i]
+            }
+
+            If @t>100 {
+                Summary{
+                    A: summarize(range(@t-min(100+@t,200),@t-100))
+                }
+
+
+                If @t>1000 {
+                    Compressed_Summary{
+                        A: compress_summaries(range(prompt.Summary[@t], prompt.Summary[@t-900], 100)) // In jumps of 100 between summary times
+                    }
+                }
+
+
+                ForEach(i: range(max(100, @t-900), @t-100, 100)) {
+                    A: prompt.Summary[@i]
+                }
+
+                If @t>1000 {
+                    ForEach(i: range(1000, @t-100, 1000)) {
+                        A: prompt.Compressed_Summary[@i]
+                    }
+                }
+            }
+        }
+    }
+
+    If @t%25==0 {
+        //response from critique agents tracking of subgoals (primary, secondary, tertiary, contingency plants, preparation, exploration, team composition)
+        A: critique_performance(prompt.History[@t]) // not sure what it gets, probably action history of some sort but they didnt say
+    }
+
+    U: env.xml_map[@t] // unseen coordinates are not viewable until explored
+    S: INSTRUCTION_TO_EXPLORE
+    S: CHOOSE_ACTION // instructions to choose next action and how
+}`,
+
+  genagents: `Prompt[@t, agent_name]: {
+	S: {sys.agent_desc}
+	U: {env.datetime[@t]}
+	U: {sys.status[@t]}
+	U: {env.general[@t]}
+	A: {get_context_summary(@t, sys.agent_name123, sys.topic_)}
+	ForEach(i: t - k ... t -1)   {
+		U: {env.agent_utterance[@i]}
+		A: {sys.my_utterance[@i]}
+	}
+	ForEach(agent_name: agent_names){
+		If env.in_dialog(agent_name) {
+			U: {get_dialog_history(sys.agent_name)}
+		}
+	}
+	S: {QUESTION // How would Eddy respond to John?}
+}`,
+
+  rlm: `RLM[@t]: {
+    // self.messages
+    S: {
+        AVAILABLE_TOOLS // context variable, llm query(subquery), python execution via REPL blocks
+        INTERACTION_RULES   // inspect context, iterate, dont answer early, how to return final answer
+    }
+
+    ForEach(i: range(1,@t)) {
+        // if used tools, adds a list of tool responses to history
+        If mem.code_blocks[@i] {
+            ForEach(k: range(1,sys.code_block[@i].len)){
+                U: {
+                    sys.code_block[@i.k]
+                    sys.code_block[@i.k].response
+                }
+            }
+        }
+
+        Else {
+            // if didnt use tools, adds the llm response to the history
+            A: LLM_RESP
+        }
+    }
+
+    // next action prompt
+    If sys.final_answer[@t] {
+        U: PROVIDE_FINAL_ANSWER
+    }
+    ElseIf @t == 1 {
+        U: {
+            USE_REPL        // this is your first interaction, there is no action history yet so use the repl env to view your context
+            REPL_INSTRUCTIONS(query)    // use the repl instructions to find the answer to the query. look for context var, or query sublm
+        }
+    }
+    Else {
+        U: {
+            HIST_EXPLANATION    // the history before is your previous interactions with the REPL env
+            REPL(sys.query)     // use the REPL to answer the query
+        }
+    }
+}`,
+
+  basic_react: `Prompt[@t]: {
+    U: {obs.user_question}
+    ForEach(i:0...t-1) {
+        A: {
+            AVAILABLE_TOOLS
+            resp.tool_reasoning[@i]
+            resp.tool[@i]
+        }
+        U: {obs.tool_resp[@i]}
+    }
+    S: {INSTRUCTION   // choose an action}
+}`,
+
+  mintagent: `Prompt[@t]: {
+    U: {
+        TASK_DESCRIPTION(sys.max_total_steps)
+        env.tool_desc
+        env.in_context_example
+        env.task_prompt
+    }
+
+    // only the result of the previous turns or the new query in them
+    ForEach(@k: range(1, @t-1)){
+        U: env.user_input[@k]  // could be a new query/task, or a response to a solution(success or failure)
+        A: resp.agent_answer[@k]
+    }
+
+    U: env.user_input[@t]
+
+    // all the tool calls and reponses from the current turn
+    ForEach(@i: range(1, sys.steps[@t])){
+        A: sys.tool_used[@t.@i]
+        T: sys.tool_used[@t.@i].tool_response
+    }
+}`,
+
+  chat1: `Chat1[@t]: {
+    S: INSTRUCTIONS
+    U: {
+        ForEach(i: range(1,t-1)) {
+            env.user_input[@i]
+            resp.llm_answer[@i]
+        }
+    }
+
+    U: env.user_input[@t]
+}`,
+
+  rag: `Prompt[t]: {
+    S: {ROLE_DESCRIPTION // you are an assistant who's job is...}
+    ForEach(i: range(1,t-1)) {
+	    U: {env.user_input[@i]}
+        U: {ForEach(k: range(1,(sys.RAG_resp).len())){
+            sys.RAG_resp[@i,k]}}
+        A: {resp.LLM_text[@i]}
+	}
+    Switch env.user_input[@t] {
+	    Case "bad" {
+		    U: {ForEach(i: range(1,improve_RAG_response(env.user_input[@t]).len())){
+                improve_RAG_response(env.user_input[@t])[i]}
+            }
+            S: {INSTRUCTIONS // not good enough, get better results}
+		}
+	    Default {
+            U: {ForEach(i: range(1,(sys.RAG_resp).len())) {
+			        sys.RAG_resp[@t,i]}
+            }
+        }
+    }
+}`,
+
+  yuval: `Prompt[@t]: {
+    S: {
+        INTRO  // context for the environment the agent is in
+        GOAL_DESC
+        INSTRUCTIONS  // explains to the agent which actions he can perform and how to do so
+    }
+    U: obs.game_state[@t]
+}`
+};
+
+// ============================================================
+// SCANNER
+// ============================================================
+const NAMESPACE_KEYWORDS = new Set(["env", "sys", "resp", "prompt"]);
+const CONTROL_KEYWORDS = new Set(["If", "ElseIf", "Else", "ForEach", "Switch", "Case", "Default", "break", "continue"]);
+const LOGIC_OP = new Set(["=", "!", "<", ">", "&", "|", "^"]);
+const ARITH_OP = new Set(["-", "+", "%", "*", "/"]);
+const SYMBOLS = new Set([":", ";", ".", ",", "(", ")", "{", "}", "[", "]", "@", "#", "$", "?", "!", "_"]);
+
+class Scanner {
+  constructor(input) {
+    this.pos = 0;
+    this.line = 1;
+    this.col = 1;
+    this.input = input;
+  }
+
+  nextToken() {
+    this.skipWhitespace();
+    if (this.isEOF()) return { type: "EOF", value: null, line: this.line, col: this.col };
+
+    const ch = this.peek();
+
+    if (ch === "/" && this.peekNext() === "/") return this.readComment();
+    if (ch === "\u2026") { const col = this.col; this.advance(); return { type: "RANGE", value: "\u2026", line: this.line, col }; }
+    if (ch === ".") {
+      if (this.peekNext() === "." && this.input[this.pos + 2] === ".") {
+        const col = this.col;
+        this.advance(); this.advance(); this.advance();
+        return { type: "RANGE", value: "...", line: this.line, col };
+      }
+    }
+    if (LOGIC_OP.has(ch)) { const col = this.col; const value = this.advance(); return { type: "LOGIC_OP", value, line: this.line, col }; }
+    if (ARITH_OP.has(ch)) { const col = this.col; const value = this.advance(); return { type: "ARITH_OP", value, line: this.line, col }; }
+    if (ch === '"') return this.readString();
+    if (SYMBOLS.has(ch)) return this.readSymbol();
+    if (this.isDigit(ch)) return this.readNumber();
+    if (this.isIdentStart(ch)) return this.readIdentifier();
+
+    throw new Error(`[${this.line}:${this.col}] Unexpected character '${ch}'`);
+  }
+
+  readComment() {
+    const startCol = this.col;
+    this.advance(); this.advance();
+    let value = "";
+    while (!this.isEOF() && this.peek() !== "\n" && this.peek() !== "}") {
+      value += this.advance();
+    }
+    return { type: "COMMENT", value: value.trim(), line: this.line, col: startCol };
+  }
+
+  readString() {
+    const startCol = this.col;
+    this.advance();
+    let value = "";
+    while (!this.isEOF()) {
+      const ch = this.peek();
+      if (ch === '"') { this.advance(); return { type: "STRING", value, line: this.line, col: startCol }; }
+      if (ch === "\\") {
+        this.advance();
+        if (this.isEOF()) throw new Error("Unterminated string literal");
+        const esc = this.advance();
+        switch (esc) {
+          case '"': value += '"'; break;
+          case "\\": value += "\\"; break;
+          case "n": value += "\n"; break;
+          case "t": value += "\t"; break;
+          default: throw new Error(`Invalid escape sequence \\${esc}`);
+        }
+        continue;
+      }
+      if (ch === "\n") throw new Error("Unterminated string literal");
+      value += this.advance();
+    }
+    throw new Error("Unterminated string literal");
+  }
+
+  readSymbol() { const startCol = this.col; const value = this.advance(); return { type: "SYMBOL", value, line: this.line, col: startCol }; }
+
+  readIdentifier() {
+    const startCol = this.col;
+    let value = "";
+    while (!this.isEOF() && this.isIdentPart(this.peek())) { value += this.advance(); }
+    if (CONTROL_KEYWORDS.has(value)) return { type: "KEYWORD", value, line: this.line, col: startCol };
+    if (NAMESPACE_KEYWORDS.has(value)) return { type: "KEYWORD", value, line: this.line, col: startCol };
+    return { type: "IDENT", value, line: this.line, col: startCol };
+  }
+
+  readNumber() {
+    const startCol = this.col;
+    let value = "";
+    while (!this.isEOF() && this.isDigit(this.peek())) { value += this.advance(); }
+    return { type: "NUMBER", value, line: this.line, col: startCol };
+  }
+
+  skipWhitespace() { while (!this.isEOF()) { const ch = this.peek(); if (ch === " " || ch === "\t" || ch === "\n" || ch === "\r") { this.advance(); } else { break; } } }
+  advance() { const ch = this.input[this.pos++]; if (ch === "\n") { this.line++; this.col = 1; } else { this.col++; } return ch; }
+  peek() { return this.input[this.pos]; }
+  peekNext() { return this.input[this.pos + 1]; }
+  isEOF() { return this.pos >= this.input.length; }
+  isDigit(ch) { return ch >= "0" && ch <= "9"; }
+  isIdentStart(ch) { return /[a-zA-Z_]/.test(ch); }
+  isIdentPart(ch) { return /[a-zA-Z0-9_]/.test(ch); }
+}
+
+// ============================================================
+// PARSER
+// ============================================================
+function toExprToken(tok) { return { type: tok.type, value: tok.value }; }
+
+class Parser {
+  constructor(input) {
+    this.tokens = [];
+    this.pos = 0;
+    const scanner = new Scanner(input);
+    let token;
+    do { token = scanner.nextToken(); this.tokens.push(token); } while (token.type !== "EOF");
+  }
+
+  peek() { return this.tokens[this.pos]; }
+  peekNext() { return this.tokens[this.pos + 1]; }
+
+  consume(type, value) {
+    const tok = this.peek();
+    if (type && tok.type !== type) throw new Error(`[${tok.line}:${tok.col}] Expected token type ${type}, got ${tok.type} with value ${tok.value}`);
+    if (value && tok.value !== value) throw new Error(`[${tok.line}:${tok.col}] Expected value "${value}", got "${tok.value}"`);
+    this.pos++;
+    return tok;
+  }
+
+  match(type, value) {
+    const tok = this.peek();
+    if (tok.type === type && (!value || tok.value === value)) { this.pos++; return true; }
+    return false;
+  }
+
+  parsePrompt() {
+    const title = this.parseTitle();
+    this.consume("SYMBOL", ":");
+    this.consume("SYMBOL", "{");
+    const body = this.parsePromptBody();
+    this.consume("SYMBOL", "}");
+    return { kind: "prompt", title, body };
+  }
+
+  parseTitle() {
+    const name = this.consume("IDENT").value;
+    const indices = this.parseOptionalIndices();
+    return { kind: "title", name, indices };
+  }
+
+  parsePromptBody() {
+    const savedPos = this.pos;
+    while (this.peek().type === "COMMENT") this.pos++;
+    const isCompletionPrompt = this.peek().type === "IDENT" && this.peek().value === "N";
+    this.pos = savedPos;
+    if (isCompletionPrompt) return this.parseCompletionPromptBody();
+    return this.parseChatPromptBody();
+  }
+
+  parseChatPromptBody() {
+    const body = [];
+    while (this.peek().type !== "EOF" && this.peek().value !== "}") {
+      if (this.peek().type === "COMMENT") {
+        const text = this.consume("COMMENT").value;
+        body.push({ kind: "comment-block", text });
+        continue;
+      }
+      body.push(this.parsePromptBodyItem());
+    }
+    return { kind: "chat-prompt-body", body };
+  }
+
+  parseCompletionPromptBody() {
+    while (this.peek().type === "COMMENT") this.consume("COMMENT");
+    const message = this.parseNoneMessage();
+    while (this.peek().type === "COMMENT") this.consume("COMMENT");
+    if (this.peek().type !== "EOF" && this.peek().value !== "}") {
+      const tok = this.peek();
+      throw new Error(`[${tok.line}:${tok.col}] Completion prompts (N:) can only have a single message.`);
+    }
+    return { kind: "completion-prompt-body", message };
+  }
+
+  parseNoneMessage() {
+    this.consume("IDENT", "N");
+    this.consume("SYMBOL", ":");
+    const body = [];
+    if (this.peek().value === "{") {
+      this.consume("SYMBOL", "{");
+      while (this.peek().type !== "EOF" && this.peek().value !== "}") body.push(this.parseRoleBuildingBlock());
+      this.consume("SYMBOL", "}");
+    } else {
+      const startLine = this.peek().line;
+      body.push(this.parseRoleBuildingBlockSingleLine(startLine));
+    }
+    return { kind: "none-message", body };
+  }
+
+  parsePromptBodyItem() {
+    const tok = this.peek();
+    if (tok.type === "IDENT") {
+      const nextTok = this.peekNext();
+      if (nextTok.value === "{") return this.parseLabelBlock();
+    }
+    return this.parseTopLevelBlock();
+  }
+
+  parseTopLevelBlock() {
+    const tok = this.peek();
+    const nextTok = this.peekNext();
+    const val = tok.value;
+
+    if (tok.type === "IDENT" && (val === "S" || val === "U" || val === "A" || val === "T")) return this.parseRoleMessage();
+    if (tok.type === "KEYWORD") {
+      switch (val) {
+        case "If": return this.parseConditionalOutside();
+        case "ForEach": return this.parseLoopOutside();
+        case "Switch": return this.parseSwitchOutside();
+      }
+    }
+    if (tok.type === "COMMENT") {
+      const text = this.consume("COMMENT").value;
+      return { kind: "comment-block", text };
+    }
+    if (tok.type === "IDENT" && nextTok.value === "{") return this.parseLabelBlock();
+
+    throw new Error(`[${tok.line}:${tok.col}] Syntax Error: Unexpected token "${val}" in global scope.`);
+  }
+
+  parseLabelBlock() {
+    const labelTok = this.consume("IDENT");
+    const label = labelTok.value;
+    this.consume("SYMBOL", "{");
+    const blocks = [];
+    while (this.peek().value !== "}") {
+      if (this.peek().type === "COMMENT") {
+        const text = this.consume("COMMENT").value;
+        blocks.push({ kind: "comment-block", text });
+        continue;
+      }
+      blocks.push(this.parseTopLevelBlock());
+    }
+    this.consume("SYMBOL", "}");
+    return { kind: "label-block", label, body: blocks };
+  }
+
+  parseRoleMessage() {
+    const roleId = this.consume("IDENT").value;
+    this.consume("SYMBOL", ":");
+    const roleMap = { "S": "system", "U": "user", "A": "assistant", "T": "tool" };
+    const role = roleMap[roleId];
+    const body = [];
+    if (this.peek().value === "{") {
+      this.consume("SYMBOL", "{");
+      while (this.peek().type !== "EOF" && this.peek().value !== "}") body.push(this.parseRoleBuildingBlock());
+      this.consume("SYMBOL", "}");
+    } else {
+      const startLine = this.peek().line;
+      body.push(this.parseRoleBuildingBlockSingleLine(startLine));
+    }
+    return { kind: "role-message", role, body };
+  }
+
+  parseRoleBuildingBlockSingleLine(startLine) {
+    const tok = this.peek();
+    if (tok.line !== startLine) throw new Error(`[${tok.line}:${tok.col}] Single-line role syntax cannot span multiple lines`);
+    const val = tok.value;
+    if (tok.type === "KEYWORD") {
+      if (val === "If" || val === "ForEach" || val === "Switch") throw new Error(`[${tok.line}:${tok.col}] Control flow statements not allowed in single-line role syntax`);
+      const namespaces = ["env", "sys", "resp", "prompt"];
+      if (namespaces.includes(val)) return this.parseContextVar();
+    }
+    if (tok.type === "IDENT") return this.parseTemplateOrFunc();
+    throw new Error(`[${tok.line}:${tok.col}] Unexpected ${tok.type} (${val}) in single-line role syntax`);
+  }
+
+  parseRoleBuildingBlock() {
+    const tok = this.peek();
+    const val = tok.value;
+    if (tok.type === "COMMENT") {
+      const text = this.consume("COMMENT").value;
+      return { kind: "comment-block", text };
+    }
+    if (tok.type === "KEYWORD") {
+      if (val === "If") return this.parseConditionalInside();
+      if (val === "ForEach") return this.parseLoopInside();
+      if (val === "Switch") return this.parseSwitchInside();
+      if (val === "break" || val === "continue") {
+        const name = this.consume("KEYWORD").value;
+        return { kind: "template", name, arguments: [], comment: undefined };
+      }
+      const namespaces = ["env", "sys", "resp", "prompt"];
+      if (namespaces.includes(val)) return this.parseContextVar();
+    }
+    if (tok.type === "IDENT") return this.parseTemplateOrFunc();
+    throw new Error(`[${tok.line}:${tok.col}] Unexpected ${tok.type} (${val}) inside role.`);
+  }
+
+  parseContextVar() {
+    const baseTok = this.consume("KEYWORD");
+    const base = baseTok.value;
+    const indices = this.parseOptionalIndices();
+    this.consume("SYMBOL", ".");
+    const path = this.parsePathDesc();
+    const comment = this.peek().type === "COMMENT" ? this.consume("COMMENT").value : undefined;
+    return { kind: "context-var", base, indices, path, comment };
+  }
+
+  parsePathDesc() {
+    const tok = this.peek();
+    if (tok.type !== "IDENT" && tok.type !== "KEYWORD") throw new Error(`[${tok.line}:${tok.col}] Expected identifier in path, got ${tok.type}`);
+    const base = this.consume().value;
+    const indices = this.parseOptionalIndices();
+    let next;
+    if (this.match("SYMBOL", ".")) next = this.parsePathDesc();
+    return { kind: "path-desc", base, indices, next };
+  }
+
+  parseTemplateOrFunc() {
+    const name = this.consume("IDENT").value;
+    let args = [];
+    if (this.peek().value === "(") {
+      this.consume("SYMBOL", "(");
+      args = this.parseTextArgs();
+      this.consume("SYMBOL", ")");
+    }
+    if (name === name.toUpperCase()) {
+      const comment = this.peek().type === "COMMENT" ? this.consume("COMMENT").value : undefined;
+      return { kind: "template", name, arguments: args, comment };
+    }
+    const indices = this.parseOptionalIndices();
+    const comment = this.peek().type === "COMMENT" ? this.consume("COMMENT").value : undefined;
+    return { kind: "function", name, arguments: args, indices, comment };
+  }
+
+  parseTextArgs() {
+    const args = [];
+    if (this.peek().value === ")") return args;
+    do { args.push(this.parseSingleTextArg()); } while (this.match("SYMBOL", ","));
+    return args;
+  }
+
+  parseSingleTextArg() {
+    let left = this.parseAtom();
+    if (this.peek().type === "ARITH_OP") {
+      const operators = [];
+      while (this.peek().type === "ARITH_OP") operators.push(this.consume("ARITH_OP").value);
+      const right = this.parseSingleTextArg();
+      return { kind: "arithmetic", operator: operators, left, right };
+    }
+    return left;
+  }
+
+  parseAtom() {
+    const tok = this.peek();
+    if (this.match("SYMBOL", "@")) return { kind: "time-index", name: this.consume("IDENT").value };
+    if (tok.type === "KEYWORD" && ["env", "sys", "resp", "prompt"].includes(tok.value)) return this.parseContextVar();
+    if (tok.type === "NUMBER") return { kind: "other-index", name: this.consume("NUMBER").value };
+    if (tok.type === "IDENT") {
+      if (this.peekNext().value === "(") return this.parseTemplateOrFunc();
+      return { kind: "other-index", name: this.consume("IDENT").value };
+    }
+    throw new Error(`[${tok.line}:${tok.col}] Unexpected token in arguments: ${tok.type} (${tok.value})`);
+  }
+
+  parseOptionalIndices() {
+    const indices = [];
+    if (this.match("SYMBOL", "[")) {
+      indices.push(this.parseIndex());
+      while (this.match("SYMBOL", ",")) indices.push(this.parseIndex());
+    }
+    if (this.peek().value === "]") this.consume("SYMBOL", "]");
+    return indices;
+  }
+
+  parseIndex() {
+    let time = this.match("SYMBOL", "@");
+    let idx = "";
+    while (true) {
+      const tok = this.peek();
+      const tokType = tok.type;
+      const tokValue = tok.value;
+      if (tokType === "IDENT" || tokType === "ARITH_OP" || tokType === "NUMBER") { idx += this.consume().value; continue; }
+      if (tokType === "SYMBOL" && tokValue === ".") {
+        const next = this.peekNext();
+        if (next && (next.type === "IDENT" || next.value === "@")) { idx += this.consume().value; continue; }
+      }
+      if (tokType === "SYMBOL" && tokValue === "@") { idx += this.consume().value; continue; }
+      break;
+    }
+    return time ? { kind: "time-index", name: idx } : { kind: "other-index", name: idx };
+  }
+
+  parseLoopOutside() {
+    this.consume("KEYWORD", "ForEach");
+    this.consume("SYMBOL", "(");
+    let idx = this.peek().value === "@" ? "@" : "";
+    const index = { kind: "other-index", name: idx + this.parseIndex().name };
+    this.consume("SYMBOL", ":");
+    let iterable;
+    if (this.peek().value === "range" && this.peekNext().value === "(") {
+      iterable = this.parseRangeExpr();
+    } else {
+      const iterTokens = [];
+      while (!(this.peek().value === ")" && this.peekNext().value === "{")) {
+        if (this.isEOF()) throw new Error("Unterminated ForEach iterable");
+        iterTokens.push(toExprToken(this.consume()));
+      }
+      iterable = { kind: "iterable", tokens: iterTokens };
+    }
+    this.consume("SYMBOL", ")");
+    this.consume("SYMBOL", "{");
+    const body = [];
+    while (this.peek().value !== "}") body.push(this.parseTopLevelBlock());
+    this.consume("SYMBOL", "}");
+    return { kind: "loop-block-outside-role", index, iterable, body };
+  }
+
+  parseRangeExpr() {
+    this.consume("IDENT", "range");
+    this.consume("SYMBOL", "(");
+    const start = [];
+    let depth = 0;
+    while (!(this.peek().value === "," && depth === 0)) {
+      if (this.isEOF()) throw new Error("Unterminated range expression");
+      const tok = this.consume();
+      if (tok.value === "(") depth++;
+      if (tok.value === ")") depth--;
+      start.push(toExprToken(tok));
+    }
+    this.consume("SYMBOL", ",");
+    const end = [];
+    depth = 0;
+    while (!((this.peek().value === "," || this.peek().value === ")") && depth === 0)) {
+      if (this.isEOF()) throw new Error("Unterminated range expression");
+      const tok = this.consume();
+      if (tok.value === "(") depth++;
+      if (tok.value === ")") depth--;
+      end.push(toExprToken(tok));
+    }
+    let step;
+    if (this.peek().value === ",") {
+      this.consume("SYMBOL", ",");
+      step = [];
+      depth = 0;
+      while (!(this.peek().value === ")" && depth === 0)) {
+        if (this.isEOF()) throw new Error("Unterminated range expression");
+        const tok = this.consume();
+        if (tok.value === "(") depth++;
+        if (tok.value === ")") depth--;
+        step.push(toExprToken(tok));
+      }
+    }
+    this.consume("SYMBOL", ")");
+    return { kind: "range-expr", start, end, step };
+  }
+
+  parseConditionalOutside() {
+    this.consume("KEYWORD", "If");
+    const ifCondTokens = [];
+    while (this.peek().value !== "{") {
+      if (this.isEOF()) throw new Error("Unterminated If condition");
+      ifCondTokens.push(toExprToken(this.consume()));
+    }
+    this.consume("SYMBOL", "{");
+    const ifBody = [];
+    while (this.peek().value !== "}") ifBody.push(this.parseTopLevelBlock());
+    this.consume("SYMBOL", "}");
+    const elseIfConditions = [];
+    const elseIfBodies = [];
+    let elseBody;
+    while (this.peek().type === "KEYWORD" && (this.peek().value === "ElseIf" || this.peek().value === "Else")) {
+      const type = this.consume().value;
+      if (type === "ElseIf") {
+        const eiCondTokens = [];
+        while (this.peek().value !== "{") eiCondTokens.push(toExprToken(this.consume()));
+        this.consume("SYMBOL", "{");
+        const eiBody = [];
+        while (this.peek().value !== "}") eiBody.push(this.parseTopLevelBlock());
+        this.consume("SYMBOL", "}");
+        elseIfConditions.push(eiCondTokens);
+        elseIfBodies.push(eiBody);
+      } else if (type === "Else") {
+        this.consume("SYMBOL", "{");
+        const eBody = [];
+        while (this.peek().value !== "}") eBody.push(this.parseTopLevelBlock());
+        this.consume("SYMBOL", "}");
+        elseBody = eBody;
+        break;
+      }
+    }
+    return { kind: "conditional-block-outside-role", Ifcondition: ifCondTokens, IfBody: ifBody, elseif: elseIfConditions, elseifBody: elseIfBodies, elseBody };
+  }
+
+  parseLoopInside() {
+    this.consume("KEYWORD", "ForEach");
+    this.consume("SYMBOL", "(");
+    let idx = this.peek().value === "@" ? "@" : "";
+    const index = { kind: "other-index", name: idx + this.parseIndex().name };
+    this.consume("SYMBOL", ":");
+    let iterable;
+    if (this.peek().value === "range" && this.peekNext().value === "(") {
+      iterable = this.parseRangeExpr();
+    } else {
+      const iterTokens = [];
+      while (!(this.peek().value === ")" && this.peekNext().value === "{")) {
+        if (this.isEOF()) throw new Error("Unterminated ForEach iterable");
+        iterTokens.push(toExprToken(this.consume()));
+      }
+      iterable = { kind: "iterable", tokens: iterTokens };
+    }
+    this.consume("SYMBOL", ")");
+    this.consume("SYMBOL", "{");
+    const body = [];
+    while (this.peek().value !== "}") body.push(this.parseRoleBuildingBlock());
+    this.consume("SYMBOL", "}");
+    return { kind: "loop-block-inside-role", index, iterable, body };
+  }
+
+  parseConditionalInside() {
+    this.consume("KEYWORD", "If");
+    const ifCondTokens = [];
+    while (this.peek().value !== "{") {
+      if (this.isEOF()) throw new Error("Unterminated If condition");
+      ifCondTokens.push(toExprToken(this.consume()));
+    }
+    this.consume("SYMBOL", "{");
+    const ifBody = [];
+    while (this.peek().value !== "}") ifBody.push(this.parseRoleBuildingBlock());
+    this.consume("SYMBOL", "}");
+    const elseIfConditions = [];
+    const elseIfBodies = [];
+    let elseBody;
+    while (this.peek().type === "KEYWORD" && (this.peek().value === "ElseIf" || this.peek().value === "Else")) {
+      const type = this.consume().value;
+      if (type === "ElseIf") {
+        const eiCondTokens = [];
+        while (this.peek().value !== "{") eiCondTokens.push(toExprToken(this.consume()));
+        this.consume("SYMBOL", "{");
+        const eiBody = [];
+        while (this.peek().value !== "}") eiBody.push(this.parseRoleBuildingBlock());
+        this.consume("SYMBOL", "}");
+        elseIfConditions.push(eiCondTokens);
+        elseIfBodies.push(eiBody);
+      } else if (type === "Else") {
+        this.consume("SYMBOL", "{");
+        const eBody = [];
+        while (this.peek().value !== "}") eBody.push(this.parseRoleBuildingBlock());
+        this.consume("SYMBOL", "}");
+        elseBody = eBody;
+        break;
+      }
+    }
+    return { kind: "conditional-block-inside-role", Ifcondition: ifCondTokens, IfBody: ifBody, elseif: elseIfConditions, elseifBody: elseIfBodies, elseBody };
+  }
+
+  parseSwitchOutside() {
+    this.consume("KEYWORD", "Switch");
+    const exprTokens = [];
+    while (this.peek().value !== "{") {
+      if (this.isEOF()) throw new Error("Expected '{' after Switch expression");
+      exprTokens.push(toExprToken(this.consume()));
+    }
+    this.consume("SYMBOL", "{");
+    const cases = [];
+    let defaultCase;
+    while (this.peek().value !== "}") {
+      const kw = this.consume("KEYWORD").value;
+      if (kw === "Case") {
+        const matchTokens = [];
+        while (this.peek().value !== "{") {
+          if (this.isEOF()) throw new Error("Expected '{' after Case match");
+          matchTokens.push(toExprToken(this.consume()));
+        }
+        this.consume("SYMBOL", "{");
+        const body = [];
+        while (this.peek().value !== "}") body.push(this.parseTopLevelBlock());
+        this.consume("SYMBOL", "}");
+        cases.push({ kind: "case-block-outside-role", match: matchTokens, body });
+      } else if (kw === "Default") {
+        this.consume("SYMBOL", "{");
+        const body = [];
+        while (this.peek().value !== "}") body.push(this.parseTopLevelBlock());
+        this.consume("SYMBOL", "}");
+        defaultCase = { kind: "default-case-block-outside-role", body };
+      }
+    }
+    this.consume("SYMBOL", "}");
+    return { kind: "switch-block-outside-role", expression: exprTokens, cases, defaultCase };
+  }
+
+  parseSwitchInside() {
+    this.consume("KEYWORD", "Switch");
+    const exprTokens = [];
+    while (this.peek().value !== "{") {
+      if (this.isEOF()) throw new Error("Expected '{' after Switch expression");
+      exprTokens.push(toExprToken(this.consume()));
+    }
+    this.consume("SYMBOL", "{");
+    const cases = [];
+    let defaultCase;
+    while (this.peek().value !== "}") {
+      const kw = this.consume("KEYWORD").value;
+      if (kw === "Case") {
+        const matchTokens = [];
+        while (this.peek().value !== "{") {
+          if (this.isEOF()) throw new Error("Expected '{' after Case match");
+          matchTokens.push(toExprToken(this.consume()));
+        }
+        this.consume("SYMBOL", "{");
+        const body = [];
+        while (this.peek().value !== "}") body.push(this.parseRoleBuildingBlock());
+        this.consume("SYMBOL", "}");
+        cases.push({ kind: "case-block-inside-role", match: matchTokens, body });
+      } else if (kw === "Default") {
+        this.consume("SYMBOL", "{");
+        const body = [];
+        while (this.peek().value !== "}") body.push(this.parseRoleBuildingBlock());
+        this.consume("SYMBOL", "}");
+        defaultCase = { kind: "default-case-block-inside-role", body };
+      }
+    }
+    this.consume("SYMBOL", "}");
+    return { kind: "switch-block-inside-role", expression: exprTokens, cases, defaultCase };
+  }
+
+  isEOF() { return this.peek().type === "EOF"; }
+}
+
+// ============================================================
+// RENDERER
+// ============================================================
+function escapeHtml(text) {
+  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
+function wrapBlock(cls, headerHtml, bodyHtml) {
+  return `<div class="${cls}"><div class="${cls}-header">${headerHtml}</div><div class="block-children">${bodyHtml}</div></div>`;
+}
+
+function renderExpressionTokens(tokens) {
+  const result = [];
+  let i = 0;
+  while (i < tokens.length) {
+    const tok = tokens[i];
+    if (tok.type === "KEYWORD" && ["env", "sys", "resp", "prompt"].includes(tok.value) && i + 1 < tokens.length && tokens[i + 1].type === "SYMBOL" && tokens[i + 1].value === ".") {
+      const contextVarTokens = [tok.value];
+      i++;
+      let parenDepth = 0, bracketDepth = 0;
+      while (i < tokens.length) {
+        const t = tokens[i];
+        if (t.value === "(") parenDepth++;
+        if (t.value === ")") parenDepth--;
+        if (t.value === "[") bracketDepth++;
+        if (t.value === "]") bracketDepth--;
+        if (parenDepth > 0 || bracketDepth > 0) { contextVarTokens.push(escapeHtml(t.value)); i++; continue; }
+        if (t.value === "." || t.type === "IDENT" || t.value === "(" || t.value === ")" || t.value === "[" || t.value === "]" || t.value === "@" || t.type === "NUMBER") {
+          contextVarTokens.push(escapeHtml(t.value));
+          i++;
+          if ((t.value === ")" || t.value === "]") && parenDepth === 0 && bracketDepth === 0) {
+            if (i < tokens.length && tokens[i].value === ".") continue;
+            break;
+          }
+          continue;
+        }
+        break;
+      }
+      result.push(`<span class="expr-context-var">${contextVarTokens.join("")}</span>`);
+      continue;
+    }
+    if (tok.type === "IDENT" && tok.value === "range" && i + 1 < tokens.length && tokens[i + 1].value === "(") {
+      i++; i++;
+      const startTokens = [];
+      let depth = 0;
+      while (i < tokens.length && !(tokens[i].value === "," && depth === 0)) {
+        const t = tokens[i];
+        if (t.value === "(") depth++;
+        if (t.value === ")") depth--;
+        startTokens.push(t);
+        i++;
+      }
+      i++;
+      const endTokens = [];
+      depth = 0;
+      while (i < tokens.length && !((tokens[i].value === "," || tokens[i].value === ")") && depth === 0)) {
+        const t = tokens[i];
+        if (t.value === "(") depth++;
+        if (t.value === ")") depth--;
+        endTokens.push(t);
+        i++;
+      }
+      let stepTokens;
+      if (i < tokens.length && tokens[i].value === ",") {
+        i++;
+        stepTokens = [];
+        depth = 0;
+        while (i < tokens.length && !(tokens[i].value === ")" && depth === 0)) {
+          const t = tokens[i];
+          if (t.value === "(") depth++;
+          if (t.value === ")") depth--;
+          stepTokens.push(t);
+          i++;
+        }
+      }
+      i++;
+      const startHtml = renderExpressionTokens(startTokens);
+      const endHtml = renderExpressionTokens(endTokens);
+      const stepHtml = stepTokens ? ` <span class="range-keyword">every</span> ${renderExpressionTokens(stepTokens)}` : "";
+      result.push(`<span class="range-expr">${startHtml}<span class="range-dots">...</span>${endHtml}${stepHtml}</span>`);
+      continue;
+    }
+    if (tok.type === "LOGIC_OP") {
+      let combined = tok.value;
+      i++;
+      while (i < tokens.length && tokens[i].type === "LOGIC_OP") { combined += tokens[i].value; i++; }
+      result.push(`<span class="expr-logic-op">${escapeHtml(combined)}</span>`);
+      continue;
+    }
+    const escaped = escapeHtml(tok.value);
+    switch (tok.type) {
+      case "KEYWORD": result.push(`<span class="keyword">${escaped}</span>`); break;
+      case "IDENT": result.push(`<span class="expr-ident">${escaped}</span>`); break;
+      case "NUMBER": result.push(`<span class="expr-number">${escaped}</span>`); break;
+      case "SYMBOL": result.push(tok.value === "@" ? `<span class="expr-at">@</span>` : `<span class="expr-symbol">${escaped}</span>`); break;
+      case "ARITH_OP": result.push(`<span class="expr-arith-op">${escaped}</span>`); break;
+      case "RANGE": result.push(`<span class="expr-range">${escaped}</span>`); break;
+      case "STRING": result.push(`<span class="expr-string">"${escaped}"</span>`); break;
+      default: result.push(escaped);
+    }
+    i++;
+  }
+  return result.join("");
+}
+
+function renderIndexValue(index) {
+  return index.kind === "time-index" ? `<span class="time-index">@${escapeHtml(index.name)}</span>` : `<span class="other-index">${escapeHtml(index.name)}</span>`;
+}
+
+function renderIndexList(indices) {
+  if (indices.length === 0) return "";
+  return `[${indices.map(renderIndexValue).join(", ")}]`;
+}
+
+function renderPrompt(prompt, style = "default") {
+  const titleHtml = renderPromptTitle(prompt.title);
+  const bodyHtml = renderPromptBody(prompt.body);
+  return `<div class="prompt-container prompt-style-${style}">${titleHtml}${bodyHtml}</div>`;
+}
+
+function renderPromptTitle(title) {
+  const indexSuffix = renderIndexList(title.indices);
+  return `<div class="prompt-title"><h1>${escapeHtml(title.name)}${indexSuffix}</h1></div>`;
+}
+
+function renderPromptBody(body) {
+  if (body.kind === "chat-prompt-body") return body.body.map(renderPromptBodyItem).join("\n");
+  return renderNoneMessage(body.message);
+}
+
+function renderNoneMessage(msg) {
+  const bodyHtml = msg.body.map(b => `<div class="role-body-block">${renderRoleBuildingBlock(b)}</div>`).join("\n");
+  return `<div class="none-message completion-prompt"><div class="none-message-header">Completion Prompt (no role)</div>${bodyHtml}</div>`;
+}
+
+function renderPromptBodyItem(item) {
+  if (item.kind === "label-block") return renderLabelBlock(item);
+  return renderTopLevelBlock(item);
+}
+
+function renderTopLevelBlock(block) {
+  switch (block.kind) {
+    case "role-message": return renderRoleMessage(block);
+    case "conditional-block-outside-role": return renderConditionalOutsideRole(block);
+    case "loop-block-outside-role": return renderLoopOutsideRole(block);
+    case "switch-block-outside-role": return renderSwitchOutsideRole(block);
+    case "comment-block": return renderCommentBlock(block);
+    case "label-block": return renderLabelBlock(block);
+  }
+}
+
+function renderCommentBlock(block) {
+  return `<div class="comment-block">// ${escapeHtml(block.text)}</div>`;
+}
+
+function renderLabelBlock(block) {
+  const labelName = escapeHtml(block.label);
+  const labelStart = `<div class="label-start">\u2554\u2550\u2550 ${labelName} \u2550\u2550\u2557</div>`;
+  const labelEnd = `<div class="label-end">\u255A\u2550\u2550 End ${labelName} \u2550\u2550\u255D</div>`;
+  const bodyHtml = block.body.map(b => renderTopLevelBlock(b)).join("\n");
+  return `<div class="label-block">${labelStart}<div class="label-block-body">${bodyHtml}</div>${labelEnd}</div>`;
+}
+
+function renderRoleMessage(msg) {
+  const roleClass = escapeHtml(msg.role);
+  const bodyHtml = msg.body.map(b => `<div class="role-body-block">${renderRoleBuildingBlock(b)}</div>`).join("\n");
+  return `<div class="role-message ${roleClass}"><div class="role-message-header">Role: ${escapeHtml(msg.role)}</div>${bodyHtml}</div>`;
+}
+
+function renderRoleBuildingBlock(block) {
+  switch (block.kind) {
+    case "template": return renderTemplateBlock(block);
+    case "context-var": return renderContextVarBlock(block);
+    case "function": return renderFuncBlock(block);
+    case "conditional-block-inside-role": return renderConditionalInsideRole(block);
+    case "loop-block-inside-role": return renderLoopInsideRole(block);
+    case "switch-block-inside-role": return renderSwitchInsideRole(block);
+    case "comment-block": return renderCommentBlock(block);
+  }
+}
+
+function renderTextArgs(arg) {
+  switch (arg.kind) {
+    case "context-var": return renderContextVarBlock(arg);
+    case "function": return renderFuncBlock(arg);
+    case "time-index": return `<span class="time-index">@${escapeHtml(arg.name)}</span>`;
+    case "other-index": return `<span class="other-index">${escapeHtml(arg.name)}</span>`;
+    case "arithmetic":
+      const left = renderTextArgs(arg.left);
+      const ops = arg.operator.join("");
+      const right = renderTextArgs(arg.right);
+      return `<span class="arithmetic-expr">${left}${escapeHtml(ops)}${right}</span>`;
+  }
+}
+
+function renderFuncBlock(block) {
+  if (block.name === "range" && block.arguments.length >= 2) {
+    const startHtml = renderTextArgs(block.arguments[0]);
+    const endHtml = renderTextArgs(block.arguments[1]);
+    const stepHtml = block.arguments.length >= 3 ? ` <span class="range-keyword">every</span> ${renderTextArgs(block.arguments[2])}` : "";
+    const rangeCore = `<span class="range-expr">${startHtml}<span class="range-dots">...</span>${endHtml}${stepHtml}</span>`;
+    if (block.comment) return `<span class="block-with-comment">${rangeCore}<span class="inline-comment"> // ${escapeHtml(block.comment)}</span></span>`;
+    return rangeCore;
+  }
+  const argsText = block.arguments.map(renderTextArgs).join(", ");
+  const resultIndices = block.indices && block.indices.length > 0 ? renderIndexList(block.indices) : "";
+  const funcCore = `<span class="func-block"><span class="func-name">${escapeHtml(block.name)}</span><span class="func-parens">(</span>${argsText}<span class="func-parens">)</span>${resultIndices}</span>`;
+  if (block.comment) return `<span class="block-with-comment">${funcCore}<span class="inline-comment"> // ${escapeHtml(block.comment)}</span></span>`;
+  return funcCore;
+}
+
+function renderTemplateBlock(block) {
+  const argsText = block.arguments.length > 0 ? `(${block.arguments.map(renderTextArgs).join(", ")})` : "";
+  const core = `<span class="template-block">${escapeHtml(block.name)}${argsText}</span>`;
+  if (block.comment) return `<span class="block-with-comment">${core}<span class="comment"> // ${escapeHtml(block.comment)}</span></span>`;
+  return core;
+}
+
+function renderContextVarBlock(block) {
+  const segments = [];
+  const rootIndices = block.indices;
+  const rootIndexText = rootIndices.length > 0 ? renderIndexList(block.indices) : "";
+  segments.push(`<span class="segment base">${escapeHtml(block.base)}${rootIndexText}</span>`);
+  let current = block.path;
+  while (current) {
+    const segIndices = current.indices;
+    const segIndexText = segIndices.length > 0 ? renderIndexList(current.indices) : "";
+    segments.push(`<span class="segment">${escapeHtml(current.base)}${segIndexText}</span>`);
+    current = current.next;
+  }
+  const joined = segments.join(".");
+  if (block.comment) return `<span class="block-with-comment"><span class="context-var">${joined}</span><span class="inline-comment"> // ${escapeHtml(block.comment)}</span></span>`;
+  return `<span class="context-var">${joined}</span>`;
+}
+
+function renderIterable(iterable) {
+  if (iterable.kind === "range-expr") return renderRangeExpr(iterable);
+  return renderExpressionTokens(iterable.tokens);
+}
+
+function renderRangeExpr(range) {
+  const startHtml = renderExpressionTokens(range.start);
+  const endHtml = renderExpressionTokens(range.end);
+  const stepHtml = range.step ? ` <span class="range-keyword">every</span> ${renderExpressionTokens(range.step)}` : "";
+  return `<span class="range-expr">${startHtml}<span class="range-dots">...</span>${endHtml}${stepHtml}</span>`;
+}
+
+function renderLoopOutsideRole(block) {
+  const indexHtml = `<span class="loop-var">${escapeHtml(block.index.name)}</span>`;
+  const iterableHtml = `<span class="loop-iterable">${renderIterable(block.iterable)}</span>`;
+  const header = `<span class="keyword">ForEach</span>(${indexHtml}: ${iterableHtml}):`;
+  const bodyHtml = block.body.map(child => `<div class="loop-child">${renderTopLevelBlock(child)}</div>`).join("\n");
+  return wrapBlock("loop-block-outside-role", header, bodyHtml);
+}
+
+function renderLoopInsideRole(block) {
+  const indexHtml = `<span class="loop-var">${escapeHtml(block.index.name)}</span>`;
+  const iterableHtml = `<span class="loop-iterable">${renderIterable(block.iterable)}</span>`;
+  const header = `<span class="keyword">ForEach</span>(${indexHtml}: ${iterableHtml}):`;
+  const bodyHtml = block.body.map(child => `<div class="role-loop-child">${renderRoleBuildingBlock(child)}</div>`).join("\n");
+  return wrapBlock("loop-block-inside-role", header, bodyHtml);
+}
+
+function renderSwitchOutsideRole(block) {
+  const exprHtml = `<span class="switch-expr">${renderExpressionTokens(block.expression)}</span>`;
+  const header = `<span class="keyword">Switch</span>(${exprHtml}):`;
+  const casesHtml = block.cases.map(c => {
+    const bodyHtml = c.body.map(child => `<div class="switch-child">${renderTopLevelBlock(child)}</div>`).join("\n");
+    return wrapBlock("switch-case", `<span class="keyword">Case</span> <span class="case-match">${renderExpressionTokens(c.match)}</span>:`, bodyHtml);
+  }).join("\n");
+  const defaultHtml = block.defaultCase ? (() => {
+    const bodyHtml = block.defaultCase.body.map(child => `<div class="switch-child">${renderTopLevelBlock(child)}</div>`).join("\n");
+    return wrapBlock("switch-default", `<span class="keyword">Default</span>:`, bodyHtml);
+  })() : "";
+  return wrapBlock("switch-block-outside-role", header, `${casesHtml}${defaultHtml}`);
+}
+
+function renderSwitchInsideRole(block) {
+  const exprHtml = `<span class="switch-expr">${renderExpressionTokens(block.expression)}</span>`;
+  const header = `<span class="keyword">Switch</span>(${exprHtml}):`;
+  const casesHtml = block.cases.map(c => {
+    const bodyHtml = c.body.map(child => `<div class="role-switch-child">${renderRoleBuildingBlock(child)}</div>`).join("\n");
+    return wrapBlock("switch-case", `<span class="keyword">Case</span> <span class="case-match">${renderExpressionTokens(c.match)}</span>:`, bodyHtml);
+  }).join("\n");
+  const defaultHtml = block.defaultCase ? (() => {
+    const bodyHtml = block.defaultCase.body.map(child => `<div class="role-switch-child">${renderRoleBuildingBlock(child)}</div>`).join("\n");
+    return wrapBlock("switch-default", `<span class="keyword">Default</span>:`, bodyHtml);
+  })() : "";
+  return wrapBlock("switch-block-inside-role", header, `${casesHtml}${defaultHtml}`);
+}
+
+function renderConditionalInsideRole(block) {
+  const renderBody = (body) => body.map(child => `<div class="role-condition-child">${renderRoleBuildingBlock(child)}</div>`).join("\n");
+  const parts = [];
+  parts.push(wrapBlock("conditional-section", `<span class="keyword">If</span> (<span class="condition-expr">${renderExpressionTokens(block.Ifcondition)}</span>):`, renderBody(block.IfBody)));
+  for (let i = 0; i < block.elseif.length; i++) {
+    parts.push(wrapBlock("conditional-section", `<span class="keyword">ElseIf</span> (<span class="condition-expr">${renderExpressionTokens(block.elseif[i])}</span>):`, renderBody(block.elseifBody[i])));
+  }
+  if (block.elseBody && block.elseBody.length > 0) {
+    parts.push(wrapBlock("conditional-section", `<span class="keyword">Else</span>:`, renderBody(block.elseBody)));
+  }
+  return `<div class="conditional-block-inside-role">${parts.join("\n")}</div>`;
+}
+
+function renderConditionalOutsideRole(block) {
+  const renderBody = (body) => body.map(child => `<div class="conditional-child">${renderTopLevelBlock(child)}</div>`).join("\n");
+  const ifHeader = `<span class="keyword">If</span> (<span class="condition-expr">${renderExpressionTokens(block.Ifcondition)}</span>):`;
+  let result = wrapBlock("conditional-block-outside-role", ifHeader, renderBody(block.IfBody));
+  for (let i = 0; i < block.elseif.length; i++) {
+    const elseifHeader = `<span class="keyword">ElseIf</span> (<span class="condition-expr">${renderExpressionTokens(block.elseif[i])}</span>):`;
+    result += wrapBlock("conditional-block-outside-role", elseifHeader, renderBody(block.elseifBody[i]));
+  }
+  if (block.elseBody && block.elseBody.length > 0) {
+    const elseHeader = `<span class="keyword">Else</span>:`;
+    result += wrapBlock("conditional-block-outside-role", elseHeader, renderBody(block.elseBody));
+  }
+  return result;
+}
+
+// ============================================================
+// UI FUNCTIONALITY
+// ============================================================
+function enableCollapsibleBlocks() {
+  const headers = document.querySelectorAll(
+    ".role-message-header, " +
+    ".loop-block-outside-role-header, .loop-block-inside-role-header, " +
+    ".switch-block-outside-role-header, .switch-block-inside-role-header, " +
+    ".conditional-section-header"
+  );
+  headers.forEach((header) => {
+    const container = header.parentElement;
+    if (!container) return;
+    header.classList.add("collapsible-header");
+    const newHeader = header.cloneNode(true);
+    header.parentNode.replaceChild(newHeader, header);
+    newHeader.addEventListener("click", () => { container.classList.toggle("collapsed"); });
+  });
+}
+
+function doRender() {
+  const input = document.getElementById("acdl-editor").value;
+  const output = document.getElementById("output");
+  if (!input.trim()) {
+    output.innerHTML = '<div class="info-msg" style="color: var(--text-secondary); text-align: center; padding: 60px 40px; font-size: 15px;">Enter ACDL code and click "Render Visualization"</div>';
+    return;
+  }
+  try {
+    const parser = new Parser(input);
+    const ast = parser.parsePrompt();
+    const html = renderPrompt(ast);
+    output.innerHTML = html;
+    enableCollapsibleBlocks();
+  } catch (err) {
+    output.innerHTML = `<div class="error-msg">${escapeHtml(err.message)}</div>`;
+  }
+}
+
+// ============================================================
+// INITIALIZE
+// ============================================================
+document.addEventListener("DOMContentLoaded", () => {
+  const sidebar = document.getElementById("sidebar");
+  const resizer = document.getElementById("resizer");
+  const outputWrapper = document.getElementById("output-wrapper");
+  const collapseSidebar = document.getElementById("collapse-sidebar");
+  const collapseOutput = document.getElementById("collapse-output");
+  const restoreSidebar = document.getElementById("restore-sidebar");
+  const restoreOutput = document.getElementById("restore-output");
+  const promptSelect = document.getElementById("prompt-select");
+  const editor = document.getElementById("acdl-editor");
+  const renderBtn = document.getElementById("render-btn");
+  const output = document.getElementById("output");
+  const dropZone = document.getElementById("drop-zone");
+  const fileInput = document.getElementById("acdl-upload");
+
+  let isResizing = false;
+  let lastSidebarWidth = 420;
+
+  // File upload handling
+  function handleFile(file) {
+    if (!file.name.endsWith(".acdl")) {
+      alert("Please select a .acdl file");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      editor.value = e.target.result;
+      promptSelect.value = ""; // Clear the dropdown selection
+      doRender();
+    };
+    reader.onerror = () => {
+      alert("Error reading file");
+    };
+    reader.readAsText(file);
+  }
+
+  // File input change
+  fileInput.addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (file) handleFile(file);
+    fileInput.value = ""; // Reset so same file can be selected again
+  });
+
+  // Drag and drop
+  dropZone.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dropZone.classList.add("hover");
+  });
+
+  dropZone.addEventListener("dragleave", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dropZone.classList.remove("hover");
+  });
+
+  dropZone.addEventListener("drop", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dropZone.classList.remove("hover");
+    const file = e.dataTransfer.files[0];
+    if (file) handleFile(file);
+  });
+
+  // Prompt selector
+  promptSelect.addEventListener("change", () => {
+    const key = promptSelect.value;
+    if (key && PROMPTS[key]) {
+      editor.value = PROMPTS[key];
+      doRender();
+    }
+  });
+
+  // Render button
+  renderBtn.addEventListener("click", doRender);
+
+  // Resizer
+  resizer.addEventListener("mousedown", (e) => {
+    isResizing = true;
+    document.body.classList.add("resizing");
+    resizer.classList.add("dragging");
+    e.preventDefault();
+  });
+
+  document.addEventListener("mousemove", (e) => {
+    if (!isResizing) return;
+    const containerRect = document.querySelector(".main-container").getBoundingClientRect();
+    const newSidebarWidth = e.clientX - containerRect.left;
+    const minWidth = 200;
+    const maxWidth = containerRect.width - 250;
+    if (newSidebarWidth >= minWidth && newSidebarWidth <= maxWidth) {
+      sidebar.style.width = newSidebarWidth + "px";
+      lastSidebarWidth = newSidebarWidth;
+    }
+  });
+
+  document.addEventListener("mouseup", () => {
+    if (isResizing) {
+      isResizing = false;
+      document.body.classList.remove("resizing");
+      resizer.classList.remove("dragging");
+    }
+  });
+
+  // Collapse/expand
+  collapseSidebar.addEventListener("click", () => {
+    sidebar.classList.add("collapsed");
+    restoreSidebar.style.display = "block";
+  });
+
+  restoreSidebar.addEventListener("click", () => {
+    sidebar.classList.remove("collapsed");
+    sidebar.style.width = lastSidebarWidth + "px";
+    restoreSidebar.style.display = "none";
+  });
+
+  collapseOutput.addEventListener("click", () => {
+    outputWrapper.classList.add("collapsed");
+    restoreOutput.style.display = "block";
+  });
+
+  restoreOutput.addEventListener("click", () => {
+    outputWrapper.classList.remove("collapsed");
+    restoreOutput.style.display = "none";
+  });
+
+  // Export functionality
+  const exportBtn = document.getElementById("export-btn");
+  const exportMenu = document.getElementById("export-menu");
+  const exportPng = document.getElementById("export-png");
+  const exportPdf = document.getElementById("export-pdf");
+
+  exportBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    exportMenu.classList.toggle("show");
+  });
+
+  document.addEventListener("click", () => { exportMenu.classList.remove("show"); });
+
+  async function captureFullContent() {
+    const content = output.querySelector(".prompt-container");
+    if (!content) return null;
+    const originalOutputStyle = output.style.cssText;
+    const originalContentStyle = content.style.cssText;
+    const originalWrapperStyle = outputWrapper.style.cssText;
+    const originalBodyStyle = document.body.style.cssText;
+
+    output.style.overflow = "visible";
+    output.style.height = "auto";
+    output.style.maxHeight = "none";
+    output.style.position = "relative";
+    outputWrapper.style.overflow = "visible";
+    outputWrapper.style.height = "auto";
+    document.body.style.overflow = "visible";
+
+    const inlineFlexEls = content.querySelectorAll(".context-var, .template-block, .func-block");
+    const savedDisplays = [];
+    inlineFlexEls.forEach(el => { savedDisplays.push(el.style.display); el.style.display = "inline-block"; });
+
+    const exportFixStyle = document.createElement("style");
+    exportFixStyle.textContent = `.template-block::before { vertical-align: middle; line-height: 1; position: relative; top: -1px; }`;
+    document.head.appendChild(exportFixStyle);
+
+    content.offsetHeight;
+
+    const fullWidth = Math.max(content.scrollWidth, content.offsetWidth, content.getBoundingClientRect().width);
+    const fullHeight = Math.max(content.scrollHeight, content.offsetHeight, content.getBoundingClientRect().height);
+    const captureWidth = Math.ceil(fullWidth) + 20;
+    const captureHeight = Math.ceil(fullHeight) + 20;
+
+    try {
+      const canvas = await html2canvas(content, {
+        backgroundColor: "#ffffff",
+        scale: window.devicePixelRatio * 2 || 3,
+        useCORS: true,
+        logging: false,
+        width: captureWidth,
+        height: captureHeight,
+        windowWidth: captureWidth,
+        windowHeight: captureHeight,
+        scrollX: 0,
+        scrollY: 0,
+        x: 0,
+        y: 0,
+        allowTaint: true,
+        imageTimeout: 0
+      });
+      return canvas;
+    } finally {
+      inlineFlexEls.forEach((el, i) => { el.style.display = savedDisplays[i]; });
+      exportFixStyle.remove();
+      output.style.cssText = originalOutputStyle;
+      content.style.cssText = originalContentStyle;
+      outputWrapper.style.cssText = originalWrapperStyle;
+      document.body.style.cssText = originalBodyStyle;
+    }
+  }
+
+  exportPng.addEventListener("click", async () => {
+    exportMenu.classList.remove("show");
+    if (!output.querySelector(".prompt-container")) {
+      alert("No visualization to export. Please render a prompt first.");
+      return;
+    }
+    exportBtn.classList.add("loading");
+    try {
+      const canvas = await captureFullContent();
+      if (!canvas) throw new Error("Failed to capture content");
+      const link = document.createElement("a");
+      link.download = "csdl-visualization.png";
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+    } catch (error) {
+      console.error("Export failed:", error);
+      alert("Failed to export PNG. Please try again.");
+    } finally {
+      exportBtn.classList.remove("loading");
+    }
+  });
+
+  exportPdf.addEventListener("click", async () => {
+    exportMenu.classList.remove("show");
+    if (!output.querySelector(".prompt-container")) {
+      alert("No visualization to export. Please render a prompt first.");
+      return;
+    }
+    exportBtn.classList.add("loading");
+    try {
+      const canvas = await captureFullContent();
+      if (!canvas) throw new Error("Failed to capture content");
+      const { jsPDF } = window.jspdf;
+      const imgData = canvas.toDataURL("image/png");
+      const imgWidth = canvas.width;
+      const imgHeight = canvas.height;
+      const pdfWidth = Math.max(210, (imgWidth / 2) * 0.264583);
+      const pdfHeight = (imgHeight / imgWidth) * pdfWidth;
+      const pdf = new jsPDF({
+        orientation: pdfWidth > pdfHeight ? "landscape" : "portrait",
+        unit: "mm",
+        format: [pdfWidth, pdfHeight]
+      });
+      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+      pdf.save("csdl-visualization.pdf");
+    } catch (error) {
+      console.error("Export failed:", error);
+      alert("Failed to export PDF. Please try again.");
+    } finally {
+      exportBtn.classList.remove("loading");
+    }
+  });
+});
+  </script>
+</body>
+</html>

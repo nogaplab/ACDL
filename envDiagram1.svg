@@ -1,0 +1,63 @@
+<?xml version="1.0"?>
+<svg width="500" height="250" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg">
+ <defs>
+  <marker id="arrowhead" markerHeight="6" markerWidth="8" orient="auto" refX="7" refY="3">
+   <polygon fill="#37474F" id="svg_1" points="0 0, 8 3, 0 6"/>
+  </marker>
+  <marker id="arrowhead-indigo" markerHeight="6" markerWidth="8" orient="auto" refX="7" refY="3">
+   <polygon fill="#1A237E" id="svg_2" points="0 0, 8 3, 0 6"/>
+  </marker>
+ </defs>
+ <!-- CIRCLES -->
+ <!-- ARROWS -->
+ <g class="layer">
+  <title>Layer 1</title>
+  <rect fill="white" height="250" id="svg_3" transform="matrix(1 0 0 1 -6 0)" width="500"/>
+  <g id="environment">
+   <ellipse cx="70" cy="70" fill="#B3E5FC" id="env-circle" rx="55" ry="35" stroke="#03A9F4" stroke-width="2"/>
+   <text fill="#1a1a1a" font-family="Arial" font-size="13" font-weight="500" id="env-label" text-anchor="middle" x="70" y="75">Environment</text>
+  </g>
+  <g id="memory" transform="matrix(1 0 0 1 -3 -12)">
+   <ellipse cx="70" cy="175" fill="#C5CAE9" id="mem-circle" rx="55" ry="35" stroke="#3F51B5" stroke-width="2"/>
+   <text fill="#1a1a1a" font-family="Arial" font-size="13" font-weight="500" id="mem-label" text-anchor="middle" x="70" y="180">Memory</text>
+  </g>
+  <g id="system">
+   <ellipse cx="250" cy="120" fill="#C5CAE9" id="sys-circle" rx="55" ry="40" stroke="#3F51B5" stroke-width="2"/>
+   <text fill="#1a1a1a" font-family="Arial" font-size="13" font-weight="500" id="sys-label1" text-anchor="middle" x="250" y="115">System/</text>
+   <text fill="#1a1a1a" font-family="Arial" font-size="13" font-weight="500" id="sys-label2" text-anchor="middle" x="250" y="132">Agent</text>
+  </g>
+  <g id="llm">
+   <ellipse cx="430" cy="120" fill="#B2DFDB" id="llm-circle" rx="55" ry="35" stroke="#26A69A" stroke-width="2"/>
+   <text fill="#1a1a1a" font-family="Arial" font-size="13" font-weight="500" id="llm-label" text-anchor="middle" x="430" y="125">LLM</text>
+  </g>
+  <g id="arrow-observations" transform="matrix(1.06494 0 0 1.05841 -6.05195 0.976744)">
+   <path d="m125,55c30,-5 55,10 75,30" fill="none" id="obs-path" marker-end="url(#arrowhead)" stroke="#37474F" stroke-width="1.5" transform="matrix(0.88 0 0 1 18 6)"/>
+   <text fill="#37474F" font-family="Arial" font-size="9" id="obs-label" text-anchor="middle" transform="rotate(8.17048 167.045 58.8471) matrix(0.955083 0.296339 -0.296339 0.955083 26.6155 -43.01)" x="164.31" y="58.81">observations</text>
+  </g>
+  <g id="arrow-actions" transform="matrix(0.946709 0.264439 -0.252038 0.892398 33.2367 -44.1958)">
+   <text fill="#37474F" font-family="Arial" font-size="9" id="act-label" text-anchor="middle" transform="matrix(0.998589 0.0530956 -0.0530956 0.998589 5.69904 -10.4398)" x="162.05" y="126">actions</text>
+  </g>
+  <g id="arrow-query" transform="matrix(0.916563 0 0 1 22.2945 0)">
+   <path d="m308,100c22,-14 52,-14 73,0" fill="none" id="query-path" marker-end="url(#arrowhead)" stroke="#37474F" stroke-width="1.5" transform="rotate(-2.64937 346.5 101.75) matrix(0.998931 0.0462222 -0.0462222 0.998931 6.74777 -8.82229)"/>
+   <text fill="#37474F" font-family="Arial" font-size="9" id="query-label" text-anchor="middle" transform="matrix(1 0 0 1 2 4)" x="343" y="89">query</text>
+  </g>
+  <g id="acdl-highlight" transform="matrix(1 0 0 1 10 13)">
+   <ellipse cx="342" cy="90" fill="none" id="acdl-ellipse" rx="50" ry="18" stroke="#1A237E" stroke-dasharray="4,2" stroke-width="2" transform="matrix(0.731474 0 0 1.12262 80.7428 -10.9545)"/>
+   <text fill="#1A237E" font-family="Arial" font-size="12" font-weight="600" id="acdl-label" text-anchor="middle" transform="matrix(1 0 0 1 -33 -7)" x="415" y="55">ACDL</text>
+   <path d="m400,58l-18,16" fill="none" id="acdl-pointer" marker-end="url(#arrowhead-indigo)" stroke="#1A237E" stroke-width="1.5" transform="matrix(1 0 0 1 -24 -5)"/>
+  </g>
+  <g id="arrow-response" transform="translate(-1 0) translate(-1 0) translate(0 -1) translate(0 -1) translate(0 -1) translate(0 -1) translate(0 -1) translate(0 -1)">
+   <path d="m378,140c-20,12 -48,12 -73,0" fill="none" id="resp-path" marker-end="url(#arrowhead)" stroke="#37474F" stroke-width="1.5" transform="matrix(0.891771 0 0 1 37.9034 -8)"/>
+   <text fill="#37474F" font-family="Arial" font-size="9" id="resp-label" text-anchor="middle" x="345" y="151">response</text>
+   <path d="m189.61,108.68c-23.68,2.94 -51.94,-6.1 -68.37,-24.42" fill="none" id="svg_5" marker-end="url(#arrowhead)" stroke="#37474F" stroke-width="1.5" transform="matrix(1 0 0 1 8 2)"/>
+   <path d="m276.19,134.77c-23.68,2.94 -51.94,-6.1 -68.37,-24.42" fill="none" id="svg_6" marker-end="url(#arrowhead)" stroke="#37474F" stroke-width="1.5" transform="matrix(0.844939 -0.534862 0.534862 0.844939 -106.174 187.484)"/>
+  </g>
+  <g id="arrow-store" transform="matrix(0.987744 0 0 1 2.50524 5)">
+   <text fill="#37474F" font-family="Arial" font-size="9" id="store-label" text-anchor="middle" transform="matrix(0.943847 -0.330382 0.330382 0.943847 -52.9216 44.349)" x="172.06" y="192.47">store</text>
+  </g>
+  <g id="arrow-retrieve" transform="matrix(0.997411 -0.0719169 0.0719169 0.997411 -13.549 7.04546)">
+   <path d="m125,152c25,-17 53,-20 75,-10" fill="none" id="retrieve-path" marker-end="url(#arrowhead)" stroke="#37474F" stroke-width="1.5"/>
+   <text fill="#37474F" font-family="Arial" font-size="9" id="retrieve-label" text-anchor="middle" transform="rotate(2.16958 156.164 130) matrix(0.979961 -0.199192 0.199192 0.979961 -25.0918 42.3481)" x="160" y="125">retrieve</text>
+  </g>
+ </g>
+</svg>

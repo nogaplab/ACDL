@@ -1,8 +1,8 @@
-# CSDL Prompt Renderer
+# ACDL Prompt Renderer
 
-A TypeScript compiler and interactive visualizer for the **Context Structure Description Language (CSDL)** — a declarative language for specifying, documenting, and reasoning about LLM prompt structures.
+A TypeScript compiler and interactive visualizer for the **Agentic Context Description Language (ACDL)** — a declarative language for specifying, documenting, and reasoning about LLM prompt structures.
 
-CSDL captures the architecture of prompts: which role messages exist, what dynamic content they contain, how they evolve over time, and under what conditions sections appear or repeat. This tool parses `.csdl` files and renders them as interactive HTML visualizations.
+ACDL captures the architecture of prompts: which role messages exist, what dynamic content they contain, how they evolve over time, and under what conditions sections appear or repeat. This tool parses `.acdl` files and renders them as interactive HTML visualizations.
 
 ---
 
@@ -43,8 +43,8 @@ npm run dev
 ```
 
 Open the URL provided (usually http://localhost:5173). You can:
-- Write or paste CSDL directly in the editor panel
-- Drag and drop a `.csdl` file onto the header bar
+- Write or paste ACDL directly in the editor panel
+- Drag and drop a `.acdl` file onto the header bar
 - Browse for a file using the upload button
 - Click **Render Flowchart** to visualize
 - Toggle **Compact** mode for paper-ready output
@@ -62,7 +62,7 @@ bun run cli -- output.html my_prompt_name
 bun run cli -- comparison.html prompt_v1 prompt_v2 --style compact
 
 # Render from an absolute path
-bun run cli -- result.html "C:/path/to/my_logic.csdl"
+bun run cli -- result.html "C:/path/to/my_logic.acdl"
 ```
 
 The `--style` flag applies a rendering style. Define new styles by adding `.style-[name]` classes to `styles.css`.
@@ -89,11 +89,11 @@ src/
   ui.ts               Collapsible block behavior
   editor/
     setup.ts           CodeMirror initialization
-    csdl-language.ts   CSDL language mode for CodeMirror
-    csdl-theme.ts      Editor syntax highlighting theme
-    csdl-lint.ts       Live parse-error linting
+    acdl-language.ts   ACDL language mode for CodeMirror
+    acdl-theme.ts      Editor syntax highlighting theme
+    acdl-lint.ts       Live parse-error linting
 
-Prompts/              Default home for .csdl source files
+Prompts/              Default home for .acdl source files
 styles.css            Shared stylesheet for all rendering modes
 index.html            Browser viewer shell
 ConceptualGuide.md    Language design and concepts
@@ -104,23 +104,23 @@ SyntaxReference.MD    Language syntax reference
 
 ## VSCode Extension
 
-A VSCode extension is included that provides full language support for `.csdl` files:
+A VSCode extension is included that provides full language support for `.acdl` files:
 
 - **Syntax highlighting** — color-coded keywords, roles, templates, context variables, strings, comments
 - **Bracket matching** and **auto-closing** pairs
 - **Comment toggling** (`Ctrl+/`)
 - **Code folding** for `{ }` blocks
 - **Live diagnostics** — parse errors shown as red underlines in real time
-- **Preview panel** — `Ctrl+Shift+P` → "CSDL: Show Preview" renders the visualization alongside the editor
+- **Preview panel** — `Ctrl+Shift+P` → "ACDL: Show Preview" renders the visualization alongside the editor
 - **Go-to-definition** — click on `prompt.X` references to jump to label definitions
 
 ### Install from the repo
 
 ```bash
-code --install-extension extension/csdl-language-0.1.0.vsix
+code --install-extension extension/acdl-language-0.1.0.vsix
 ```
 
-Or in VSCode: `Ctrl+Shift+P` → **Extensions: Install from VSIX...** → select `extension/csdl-language-0.1.0.vsix`.
+Or in VSCode: `Ctrl+Shift+P` → **Extensions: Install from VSIX...** → select `extension/acdl-language-0.1.0.vsix`.
 
 After installing, reload VSCode (`Ctrl+Shift+P` → **Developer: Reload Window**).
 

@@ -1,4 +1,4 @@
-# Context Structure Description Language - Conceptual Guide
+# Agentic Context Description Language - Conceptual Guide
 
 ## Overview
 

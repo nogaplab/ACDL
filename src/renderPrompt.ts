@@ -113,6 +113,35 @@ function renderExpressionTokens(tokens: ExpressionToken[]): string {
         if (t.value === "[") bracketDepth++;
         if (t.value === "]") bracketDepth--;
 
+        // Check for @ followed by identifier (time index pattern)
+        if (t.value === "@" && i + 1 < tokens.length) {
+          const nextTok = tokens[i + 1];
+          if (nextTok.type === "IDENT" || nextTok.type === "NUMBER") {
+            // Collect the full time index (e.g., @i, @t, @i.k)
+            let timeIndexName = escapeHtml(nextTok.value);
+            i += 2; // skip @ and the identifier
+
+            // Check for compound indices like @i.k
+            while (i < tokens.length && tokens[i].value === "." &&
+                   i + 1 < tokens.length &&
+                   (tokens[i + 1].type === "IDENT" || tokens[i + 1].type === "NUMBER" || tokens[i + 1].value === "@")) {
+              timeIndexName += ".";
+              i++; // skip the dot
+              if (tokens[i].value === "@") {
+                timeIndexName += "@";
+                i++;
+              }
+              if (i < tokens.length && (tokens[i].type === "IDENT" || tokens[i].type === "NUMBER")) {
+                timeIndexName += escapeHtml(tokens[i].value);
+                i++;
+              }
+            }
+
+            contextVarTokens.push(`<span class="time-index">@${timeIndexName}</span>`);
+            continue;
+          }
+        }
+
         // Continue if we're inside parens/brackets
         if (parenDepth > 0 || bracketDepth > 0) {
           contextVarTokens.push(escapeHtml(t.value));
@@ -210,6 +239,35 @@ function renderExpressionTokens(tokens: ExpressionToken[]): string {
       continue;
     }
 
+    // Check for general function call pattern: identifier followed by (
+    if (tok.type === "IDENT" &&
+        i + 1 < tokens.length &&
+        tokens[i + 1].value === "(") {
+
+      const funcName = escapeHtml(tok.value);
+      i++; // skip function name
+      i++; // skip "("
+
+      // Collect all tokens inside the parentheses
+      const argTokens: ExpressionToken[] = [];
+      let depth = 1;
+      while (i < tokens.length && depth > 0) {
+        const t = tokens[i];
+        if (t.value === "(") depth++;
+        if (t.value === ")") depth--;
+        if (depth > 0) {
+          argTokens.push(t);
+        }
+        i++;
+      }
+
+      // Render the arguments recursively
+      const argsHtml = renderExpressionTokens(argTokens);
+
+      result.push(`<span class="func-block"><span class="func-name">${funcName}</span><span class="func-parens">(</span>${argsHtml}<span class="func-parens">)</span></span>`);
+      continue;
+    }
+
     // Combine consecutive logical operators (e.g., !=, <=, >=, ==)
     if (tok.type === "LOGIC_OP") {
       let combined = tok.value;
@@ -220,6 +278,35 @@ function renderExpressionTokens(tokens: ExpressionToken[]): string {
       }
       result.push(`<span class="expr-logic-op">${escapeHtml(combined)}</span>`);
       continue;
+    }
+
+    // Check for @ followed by identifier (time index) before regular rendering
+    if (tok.type === "SYMBOL" && tok.value === "@" && i + 1 < tokens.length) {
+      const nextTok = tokens[i + 1];
+      if (nextTok.type === "IDENT" || nextTok.type === "NUMBER") {
+        // Collect the full time index (e.g., @i, @t, @i.k)
+        let timeIndexName = escapeHtml(nextTok.value);
+        i += 2; // skip @ and the identifier
+
+        // Check for compound indices like @i.k
+        while (i < tokens.length && tokens[i].value === "." &&
+               i + 1 < tokens.length &&
+               (tokens[i + 1].type === "IDENT" || tokens[i + 1].type === "NUMBER" || tokens[i + 1].value === "@")) {
+          timeIndexName += ".";
+          i++; // skip the dot
+          if (tokens[i].value === "@") {
+            timeIndexName += "@";
+            i++;
+          }
+          if (i < tokens.length && (tokens[i].type === "IDENT" || tokens[i].type === "NUMBER")) {
+            timeIndexName += escapeHtml(tokens[i].value);
+            i++;
+          }
+        }
+
+        result.push(`<span class="time-index">@${timeIndexName}</span>`);
+        continue;
+      }
     }
 
     // Regular token rendering
@@ -240,6 +327,7 @@ function renderExpressionTokens(tokens: ExpressionToken[]): string {
 
       case "SYMBOL":
         if (tok.value === "@") {
+          // Standalone @ without following identifier
           result.push(`<span class="expr-at">@</span>`);
         } else {
           result.push(`<span class="expr-symbol">${escaped}</span>`);
@@ -287,7 +375,8 @@ function renderIndexValue(index: Index): string {
 
 function renderIndexList(indices: Index[]): string {
   if (indices.length === 0) return "";
-  return `[${indices.map(renderIndexValue).join(", ")}]`;
+  // Render each index in its own bracket set to preserve [@t][i] syntax
+  return indices.map(idx => `[${renderIndexValue(idx)}]`).join("");
 }
 
 
@@ -614,11 +703,14 @@ function renderContextVarBlock(block: ContextVar): string {
   // 3. Join segments with dots.
   const joined = segments.join(".");
 
+  // Add namespace-specific class for different styling (env, sys, resp)
+  const namespaceClass = `context-var-${block.base.toLowerCase()}`;
+
   if (block.comment) {
-    return `<span class="block-with-comment"><span class="context-var">${joined}</span><span class="inline-comment"> // ${escapeHtml(block.comment)}</span></span>`;
+    return `<span class="block-with-comment"><span class="context-var ${namespaceClass}">${joined}</span><span class="inline-comment"> // ${escapeHtml(block.comment)}</span></span>`;
   }
 
-  return `<span class="context-var">${joined}</span>`;
+  return `<span class="context-var ${namespaceClass}">${joined}</span>`;
 }
 
 

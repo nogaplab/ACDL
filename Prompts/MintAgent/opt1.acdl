@@ -1,0 +1,22 @@
+Prompt[@t]: {
+    U: {
+        TASK_DESCRIPTION(sys.max_total_steps)
+        env.tool_desc
+        env.in_context_example
+        env.task_prompt
+    } 
+
+    // only the result of the previous turns or the new query in them
+    ForEach(@i: range(1, @t-1)){
+        U: env.user_input[@i]  // could be a new query/task, or a response to a solution(success or failure)
+        A: resp.agent_answer[@i]
+    }
+
+    U: env.user_input[@t]
+
+    // all the tool calls and reponses from the current turn
+    ForEach(k: range(1, sys.steps[@t])){
+        A: sys.tool_used[@t.k]
+        T: sys.tool_used[@t.k].tool_response
+    }
+}

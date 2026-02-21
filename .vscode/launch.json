@@ -2,7 +2,7 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Launch CSDL Extension",
+      "name": "Launch ACDL Extension",
       "type": "extensionHost",
       "request": "launch",
       "args": [

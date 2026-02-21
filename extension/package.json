@@ -1,9 +1,9 @@
 {
-  "name": "csdl-language",
-  "displayName": "CSDL Language Support",
-  "description": "Syntax highlighting, diagnostics, preview, and go-to-definition for CSDL (Chat-Structured Definition Language)",
+  "name": "acdl-language",
+  "displayName": "ACDL Language Support",
+  "description": "Syntax highlighting, diagnostics, preview, and go-to-definition for ACDL (Agentic Context Description Language)",
   "version": "0.1.0",
-  "publisher": "csdl-research",
+  "publisher": "acdl-research",
   "engines": {
     "vscode": "^1.80.0"
   },
@@ -11,42 +11,42 @@
     "Programming Languages"
   ],
   "activationEvents": [
-    "onLanguage:csdl"
+    "onLanguage:acdl"
   ],
   "main": "./out/extension.js",
   "contributes": {
     "languages": [
       {
-        "id": "csdl",
+        "id": "acdl",
         "aliases": [
-          "CSDL",
-          "Chat-Structured Definition Language"
+          "ACDL",
+          "Agentic Context Description Language"
         ],
         "extensions": [
-          ".csdl"
+          ".acdl"
         ],
         "configuration": "./language-configuration.json"
       }
     ],
     "grammars": [
       {
-        "language": "csdl",
-        "scopeName": "source.csdl",
-        "path": "./syntaxes/csdl.tmLanguage.json"
+        "language": "acdl",
+        "scopeName": "source.acdl",
+        "path": "./syntaxes/acdl.tmLanguage.json"
       }
     ],
     "commands": [
       {
-        "command": "csdl.showPreview",
-        "title": "CSDL: Show Preview",
+        "command": "acdl.showPreview",
+        "title": "ACDL: Show Preview",
         "icon": "$(open-preview)"
       }
     ],
     "menus": {
       "editor/title": [
         {
-          "when": "resourceLangId == csdl",
-          "command": "csdl.showPreview",
+          "when": "resourceLangId == acdl",
+          "command": "acdl.showPreview",
           "group": "navigation"
         }
       ]

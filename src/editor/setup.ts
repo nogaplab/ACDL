@@ -5,9 +5,9 @@ import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirro
 import { bracketMatching, indentOnInput } from "@codemirror/language";
 import { closeBrackets, closeBracketsKeymap } from "@codemirror/autocomplete";
 import { searchKeymap, highlightSelectionMatches } from "@codemirror/search";
-import { csdlStreamLanguage } from "./csdl-language.js";
-import { csdlHighlighting } from "./csdl-theme.js";
-import { csdlLinter } from "./csdl-lint.js";
+import { acdlStreamLanguage } from "./acdl-language.js";
+import { acdlHighlighting } from "./acdl-theme.js";
+import { acdlLinter } from "./acdl-lint.js";
 
 export function createEditor(parent: HTMLElement, initialDoc: string): EditorView {
   return new EditorView({
@@ -23,9 +23,9 @@ export function createEditor(parent: HTMLElement, initialDoc: string): EditorVie
         closeBrackets(),
         indentOnInput(),
         highlightSelectionMatches(),
-        csdlHighlighting,
-        csdlStreamLanguage,
-        csdlLinter,
+        acdlHighlighting,
+        acdlStreamLanguage,
+        acdlLinter,
         keymap.of([
           ...closeBracketsKeymap,
           ...defaultKeymap,
