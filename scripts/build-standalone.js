@@ -19,221 +19,58 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
 
-// Embedded example prompts
-const PROMPTS = {
-  pokemon: `Prompt[@t]: {
-    U: env.image.hud // heads up display, a screenshot with things like HP, coordinates of the character on the map and ID codes for items printed on it
-    S: {
-        INTRO // you are playing pokemon blue
-        GOAL // beat the game
-        CONVENTIONS  // vision to text translation conventions, general gameplay tips
-    }
+// Example configuration: maps keys to file paths and display info
+// Edit this to change which examples are included in the standalone build
+const EXAMPLE_CONFIG = {
+  // Papers
+  genagents: { file: 'Prompts/Papers/GenAgents.acdl', label: 'Generative Agents', group: 'Papers' },
+  rlm: { file: 'Prompts/other/rlm.acdl', label: 'RLM (REPL Language Model)', group: 'Papers' },
 
-    History {
-        If @t>1 {
-            ForEach(i: range(@t-min(@t, 100), @t-1)) {
-                A: resp.action[@i]
-            }
+  // React Patterns
+  basic_react: { file: 'Prompts/React/react_base.acdl', label: 'Basic ReAct', group: 'React Patterns' },
+  react_summ: { file: 'Prompts/React/react_summ.acdl', label: 'ReAct with Summary', group: 'React Patterns' },
+  mintagent: { file: 'Prompts/MintAgent/original.acdl', label: 'MintAgent', group: 'React Patterns' },
 
-            If @t>100 {
-                Summary{
-                    A: summarize(range(@t-min(100+@t,200),@t-100))
-                }
+  // Chats
+  chat1: { file: 'Prompts/chats/chat1.acdl', label: 'Simple Chat', group: 'Chats' },
+  rag: { file: 'Prompts/RAG.acdl', label: 'RAG Chat', group: 'Chats' },
 
-
-                If @t>1000 {
-                    Compressed_Summary{
-                        A: compress_summaries(range(prompt.Summary[@t], prompt.Summary[@t-900], 100)) // In jumps of 100 between summary times
-                    }
-                }
-
-
-                ForEach(i: range(max(100, @t-900), @t-100, 100)) {
-                    A: prompt.Summary[@i]
-                }
-
-                If @t>1000 {
-                    ForEach(i: range(1000, @t-100, 1000)) {
-                        A: prompt.Compressed_Summary[@i]
-                    }
-                }
-            }
-        }
-    }
-
-    If @t%25==0 {
-        //response from critique agents tracking of subgoals (primary, secondary, tertiary, contingency plants, preparation, exploration, team composition)
-        A: critique_performance(prompt.History[@t]) // not sure what it gets, probably action history of some sort but they didnt say
-    }
-
-    U: env.xml_map[@t] // unseen coordinates are not viewable until explored
-    S: INSTRUCTION_TO_EXPLORE
-    S: CHOOSE_ACTION // instructions to choose next action and how
-}`,
-
-  genagents: `Prompt[@t, agent_name]: {
-	S: {sys.agent_desc}
-	U: {env.datetime[@t]}
-	U: {sys.status[@t]}
-	U: {env.general[@t]}
-	A: {get_context_summary(@t, sys.agent_name123, sys.topic_)}
-	ForEach(i: t - k ... t -1)   {
-		U: {env.agent_utterance[@i]}
-		A: {sys.my_utterance[@i]}
-	}
-	ForEach(agent_name: agent_names){
-		If env.in_dialog(agent_name) {
-			U: {get_dialog_history(sys.agent_name)}
-		}
-	}
-	S: {QUESTION // How would Eddy respond to John?}
-}`,
-
-  rlm: `RLM[@t]: {
-    // self.messages
-    S: {
-        AVAILABLE_TOOLS // context variable, llm query(subquery), python execution via REPL blocks
-        INTERACTION_RULES   // inspect context, iterate, dont answer early, how to return final answer
-    }
-
-    ForEach(i: range(1,@t)) {
-        // if used tools, adds a list of tool responses to history
-        If mem.code_blocks[@i] {
-            ForEach(k: range(1,sys.code_block[@i].len)){
-                U: {
-                    sys.code_block[@i.k]
-                    sys.code_block[@i.k].response
-                }
-            }
-        }
-
-        Else {
-            // if didnt use tools, adds the llm response to the history
-            A: LLM_RESP
-        }
-    }
-
-    // next action prompt
-    If sys.final_answer[@t] {
-        U: PROVIDE_FINAL_ANSWER
-    }
-    ElseIf @t == 1 {
-        U: {
-            USE_REPL        // this is your first interaction, there is no action history yet so use the repl env to view your context
-            REPL_INSTRUCTIONS(query)    // use the repl instructions to find the answer to the query. look for context var, or query sublm
-        }
-    }
-    Else {
-        U: {
-            HIST_EXPLANATION    // the history before is your previous interactions with the REPL env
-            REPL(sys.query)     // use the REPL to answer the query
-        }
-    }
-}`,
-
-  basic_react: `Prompt[@t]: {
-    U: {obs.user_question}
-    ForEach(i:0...t-1) {
-        A: {
-            AVAILABLE_TOOLS
-            resp.tool_reasoning[@i]
-            resp.tool[@i]
-        }
-        U: {obs.tool_resp[@i]}
-    }
-    S: {INSTRUCTION   // choose an action}
-}`,
-
-  mintagent: `Prompt[@t]: {
-    U: {
-        TASK_DESCRIPTION(sys.max_total_steps)
-        env.tool_desc
-        env.in_context_example
-        env.task_prompt
-    }
-
-    // only the result of the previous turns or the new query in them
-    ForEach(@k: range(1, @t-1)){
-        U: env.user_input[@k]  // could be a new query/task, or a response to a solution(success or failure)
-        A: resp.agent_answer[@k]
-    }
-
-    U: env.user_input[@t]
-
-    // all the tool calls and reponses from the current turn
-    ForEach(@i: range(1, sys.steps[@t])){
-        A: sys.tool_used[@t.@i]
-        T: sys.tool_used[@t.@i].tool_response
-    }
-}`,
-
-  chat1: `Chat1[@t]: {
-    S: INSTRUCTIONS
-    U: {
-        ForEach(i: range(1,t-1)) {
-            env.user_input[@i]
-            resp.llm_answer[@i]
-        }
-    }
-
-    U: env.user_input[@t]
-}`,
-
-  rag: `Prompt[t]: {
-    S: {ROLE_DESCRIPTION // you are an assistant who's job is...}
-    ForEach(i: range(1,t-1)) {
-	    U: {env.user_input[@i]}
-        U: {ForEach(k: range(1,(sys.RAG_resp).len())){
-            sys.RAG_resp[@i,k]}}
-        A: {resp.LLM_text[@i]}
-	}
-    Switch env.user_input[@t] {
-	    Case "bad" {
-		    U: {ForEach(i: range(1,improve_RAG_response(env.user_input[@t]).len())){
-                improve_RAG_response(env.user_input[@t])[i]}
-            }
-            S: {INSTRUCTIONS // not good enough, get better results}
-		}
-	    Default {
-            U: {ForEach(i: range(1,(sys.RAG_resp).len())) {
-			        sys.RAG_resp[@t,i]}
-            }
-        }
-    }
-}`,
-
-  yuval: `Prompt[@t]: {
-    S: {
-        INTRO  // context for the environment the agent is in
-        GOAL_DESC
-        INSTRUCTIONS  // explains to the agent which actions he can perform and how to do so
-    }
-    U: obs.game_state[@t]
-}`,
-
-  namedef: `Prompt[@t]: {
-    name summaries := [sys.Summary[@i] for i in range(@t-900, @t-100, 100)]
-
-    S: {
-        INTRO
-        GOAL
-    }
-
-    History {
-        ForEach(i: range(1, @t-1)) {
-            A: resp.action[@i]
-        }
-
-        If @t > 100 {
-            ForEach(summary: $summaries) {
-                A: $summary
-            }
-        }
-    }
-
-    U: env.observation[@t]
-}`
+  // Advanced
+  pokemon: { file: 'Prompts/Papers/pokemon2.acdl', label: 'Pokemon Blue Agent', group: 'Advanced' },
 };
+
+// Load prompts from files
+function loadPrompts() {
+  const prompts = {};
+  for (const [key, config] of Object.entries(EXAMPLE_CONFIG)) {
+    const filePath = path.join(rootDir, config.file);
+    try {
+      prompts[key] = fs.readFileSync(filePath, 'utf-8');
+    } catch (err) {
+      console.warn(`  Warning: Could not load ${config.file}: ${err.message}`);
+    }
+  }
+  return prompts;
+}
+
+// Generate the dropdown HTML from config
+function generateDropdownHTML() {
+  const groups = {};
+  for (const [key, config] of Object.entries(EXAMPLE_CONFIG)) {
+    if (!groups[config.group]) groups[config.group] = [];
+    groups[config.group].push({ key, label: config.label });
+  }
+
+  let html = `<option value="">-- Select --</option>\n`;
+  for (const [groupName, items] of Object.entries(groups)) {
+    html += `        <optgroup label="${groupName}">\n`;
+    for (const item of items) {
+      html += `          <option value="${item.key}">${item.label}</option>\n`;
+    }
+    html += `        </optgroup>\n`;
+  }
+  return html.trim();
+}
 
 async function buildStandalone() {
   console.log('Building standalone ACDL Visualizer...');
@@ -273,9 +110,13 @@ export { renderPrompt } from './renderPrompt';
     const cssPath = path.join(rootDir, 'styles.css');
     const cssContent = fs.readFileSync(cssPath, 'utf-8');
 
-    // 3. Generate HTML
+    // 3. Load prompts from files
+    console.log('  Loading prompts...');
+    const prompts = loadPrompts();
+
+    // 4. Generate HTML
     console.log('  Generating HTML...');
-    const html = generateStandaloneHTML(bundledJS, cssContent, PROMPTS);
+    const html = generateStandaloneHTML(bundledJS, cssContent, prompts);
 
     // 4. Write output
     const outputPath = path.join(rootDir, 'standalone.html');
@@ -693,24 +534,7 @@ body.resizing {
     <div class="prompt-selector">
       <label for="prompt-select">Examples:</label>
       <select id="prompt-select">
-        <option value="">-- Select --</option>
-        <optgroup label="Papers">
-          <option value="pokemon">Pokemon Blue Agent</option>
-          <option value="genagents">Generative Agents</option>
-          <option value="rlm">RLM (REPL Language Model)</option>
-        </optgroup>
-        <optgroup label="React Patterns">
-          <option value="basic_react">Basic ReAct</option>
-          <option value="mintagent">MintAgent</option>
-        </optgroup>
-        <optgroup label="Chats">
-          <option value="chat1">Simple Chat</option>
-          <option value="rag">RAG Chat</option>
-          <option value="yuval">Game Agent</option>
-        </optgroup>
-        <optgroup label="Advanced">
-          <option value="namedef">Name Definitions</option>
-        </optgroup>
+        ${generateDropdownHTML()}
       </select>
     </div>
   </header>

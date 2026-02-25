@@ -1,13 +1,13 @@
-Prompt[@t]:{
-    ForEach(i: range(1,@t-1)) {
-        U: {env.user_question[@i]}
-        A: {resp.tool_reasoning[@i]}
-        ForEach(k: range(1, sys.steps[@i])) {
-            A: {sys.tool_used[@i.k]}
-            U: {sys.tool_used[@i.k].tool_result[@i.k]}
+Prompt[@T]:{
+    ForEach(@t: range(1,@T-1)) {
+        U: {env.user_question[@t]}
+        A: {resp.tool_reasoning[@t]}
+        ForEach(i: range(1, sys.steps[@t])) {
+            A: sys.tool_used[@t.i]
+            U: sys.tool_used[@t.i].response
         }
     }
-    U: {env.user_question[@t]}
+    U: env.user_question[@T]
     S: {
         AVAILABLE_TOOLS
         INSTRUCTION // use tools until you can return an answer to the user question
