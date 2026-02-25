@@ -642,12 +642,37 @@
         // html2canvas doesn't render text inside inline-flex elements properly
         // in certain nesting contexts (e.g. context-vars inside ForEach loops).
         // Temporarily switch to inline-block for the capture.
-        const inlineFlexEls = content.querySelectorAll(".context-var, .template-block, .func-block");
+        const inlineFlexEls = content.querySelectorAll(".context-var, .template-block, .func-block, .expr-context-var");
         const savedDisplays = [];
         inlineFlexEls.forEach(el => {
           savedDisplays.push(el.style.display);
           el.style.display = "inline-block";
         });
+
+        // Fix time-index and other-index elements - html2canvas doesn't support CSS variables
+        // Apply inline styles directly for reliable rendering
+        const timeIndexEls = content.querySelectorAll(".time-index, .other-index");
+        const savedTimeIndexStyles = [];
+        timeIndexEls.forEach(el => {
+          savedTimeIndexStyles.push(el.style.cssText);
+          el.style.display = "inline";
+          el.style.color = "#0969da";
+          el.style.fontWeight = "700";
+          el.style.fontFamily = "'JetBrains Mono', 'SF Mono', monospace";
+        });
+
+        // Fix title to prevent wrapping
+        const titleH1 = content.querySelector(".prompt-title h1");
+        const savedTitleStyle = titleH1 ? titleH1.style.cssText : "";
+        if (titleH1) {
+          titleH1.style.whiteSpace = "nowrap";
+        }
+
+        // Fix container width - html2canvas doesn't support fit-content
+        const savedContainerWidth = content.style.width;
+        const savedContainerMinWidth = content.style.minWidth;
+        content.style.width = "auto";
+        content.style.minWidth = "200px";
 
         // html2canvas misrenders ::before pseudo-elements when display is
         // inline-block instead of inline-flex (the diamond loses flex
@@ -679,8 +704,9 @@
           content.getBoundingClientRect().height
         );
 
-        const captureWidth = Math.ceil(fullWidth) + 20;
-        const captureHeight = Math.ceil(fullHeight) + 20;
+        // Add padding to ensure nothing gets cropped (especially bottom)
+        const captureWidth = Math.ceil(fullWidth) + 40;
+        const captureHeight = Math.ceil(fullHeight) + 60;
 
         try {
           const canvas = await html2canvas(content, {
@@ -705,6 +731,20 @@
           inlineFlexEls.forEach((el, i) => {
             el.style.display = savedDisplays[i];
           });
+
+          // Restore time-index and other-index styles
+          timeIndexEls.forEach((el, i) => {
+            el.style.cssText = savedTimeIndexStyles[i];
+          });
+
+          // Restore title style
+          if (titleH1) {
+            titleH1.style.cssText = savedTitleStyle;
+          }
+
+          // Restore container width
+          content.style.width = savedContainerWidth;
+          content.style.minWidth = savedContainerMinWidth;
 
           // Remove the temporary export fix style
           exportFixStyle.remove();

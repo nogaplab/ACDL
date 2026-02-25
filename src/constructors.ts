@@ -26,7 +26,10 @@ import {
   LabelBlock,
   ArithmeticExpr,
   RangeExpr,
-  ExpressionToken
+  ExpressionToken,
+  NameDef,
+  NameRef,
+  ListComprehension
 } from "./types";
 
 
@@ -150,4 +153,16 @@ export function labelBlock(params: Omit<LabelBlock, "kind">): LabelBlock {
 
 export function arithmeticExpr(params: Omit<ArithmeticExpr, "kind">): ArithmeticExpr {
   return { ...params, kind: "arithmetic" };
+}
+
+export function nameDef(params: Omit<NameDef, "kind">): NameDef {
+  return { ...params, kind: "name-def" };
+}
+
+export function nameRef(params: Omit<NameRef, "kind">): NameRef {
+  return { ...params, kind: "name-ref" };
+}
+
+export function listComprehension(params: Omit<ListComprehension, "kind">): ListComprehension {
+  return { ...params, kind: "list-comprehension" };
 }

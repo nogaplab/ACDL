@@ -89,7 +89,7 @@ body {
    ====================================================== */
 
 .prompt-container {
-  width: fit-content;
+  display: inline-block;
   max-width: 900px;
   margin: 0 auto;
   position: relative;
@@ -117,6 +117,15 @@ body {
   font-weight: 600;
   color: var(--text-primary);
   font-family: 'JetBrains Mono', 'SF Mono', 'Consolas', monospace;
+  white-space: nowrap;
+}
+
+/* Ensure time-index is visible in title */
+.prompt-title .time-index {
+  display: inline;
+  font-size: inherit;
+  color: var(--accent-variable);
+  font-weight: 700;
 }
 
 /* ======================================================
@@ -124,48 +133,40 @@ body {
    ====================================================== */
 
 .role-message {
-  background: var(--bg-primary);
-  border: 1px solid var(--border-medium);
-  border-radius: 6px;
+  border: none;
+  border-left: 1px solid var(--border-medium);
+  border-radius: 0;
   margin: 4px 0;
   position: relative;
   overflow: hidden;
 }
 
-.role-message:hover {
-  border-color: var(--border-dark);
-}
-
-/* Role-specific styling */
 .role-message.system {
-  background: var(--system-bg);
-  border-color: var(--system-border);
+  border-left-color: var(--system-border);
 }
 
 .role-message.user {
-  background: var(--user-bg);
-  border-color: var(--user-border);
+  border-left-color: var(--user-border);
 }
 
 .role-message.assistant {
-  background: var(--assistant-bg);
-  border-color: var(--assistant-border);
+  border-left-color: var(--assistant-border);
 }
 
 .role-message.tool {
-  background: var(--tool-bg);
-  border-color: var(--tool-border);
+  border-left-color: var(--tool-border);
 }
 
-/* Role header badge */
+/* Role header badge - compact badge that wraps text */
 .role-message-header {
   display: inline-block;
-  padding: 2px 8px;
+  padding: 2px 12px;
+  margin: 4px 6px;
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.5px;
   text-transform: uppercase;
-  border-radius: 0 0 4px 0;
+  border-radius: 4px;
 }
 
 .role-message.system .role-message-header {
@@ -193,7 +194,6 @@ body {
    ====================================================== */
 
 .none-message {
-  background: var(--none-bg);
   border: 1px solid var(--none-border);
   border-radius: 6px;
   margin: 4px 0;
@@ -250,7 +250,6 @@ body {
 .func-block {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
   background: var(--accent-function-bg);
   border: 1px solid var(--accent-function);
   color: var(--accent-function);
@@ -374,6 +373,13 @@ body {
   font-family: 'JetBrains Mono', 'SF Mono', monospace;
 }
 
+/* Logical keywords in expressions (and, or) */
+.expr-keyword {
+  color: var(--text-primary);
+  font-weight: 600;
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+}
+
 /* Symbols like . [ ] , */
 .expr-symbol {
   color: var(--text-secondary);
@@ -429,11 +435,16 @@ body {
 .condition-expr,
 .switch-expr,
 .case-match {
+  display: inline-flex;
+  align-items: center;
   font-weight: 700;
+  white-space: nowrap;
 }
 
 /* Range expressions */
 .range-expr {
+  display: inline-flex;
+  align-items: center;
   font-family: 'JetBrains Mono', 'SF Mono', monospace;
   font-size: 12px;
 }
@@ -445,8 +456,24 @@ body {
 }
 
 .range-keyword {
-  color: var(--accent-function);
+  display: inline-flex;
+  align-items: center;
+  color: var(--text-primary);
   font-weight: 600;
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-size: 10px;
+  padding: 0 4px;
+}
+
+/* Built-in math functions (min, max) - neutral styling */
+.builtin-func {
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-size: 12px;
+  color: var(--text-primary);
+}
+
+.compact .builtin-func {
+  font-size: 9px;
 }
 
 /* Comments */
@@ -473,9 +500,80 @@ body {
 .comment-block {
   color: var(--accent-comment);
   font-style: italic;
-  padding: 2px 0;
+  padding: 1px 0;
   margin: 1px 0;
   font-size: 12px;
+}
+
+/* Name definitions: Name $varname := expr */
+.name-def {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+  margin: 2px 0;
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-size: 12px;
+}
+
+.name-var {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.name-assign {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* Name references: $varname - pink text */
+.name-ref {
+  color: #ec4899;
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* List comprehensions: [ element | var ∈ iterable ] */
+.list-comp-wrapper {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.list-comprehension {
+  display: inline-flex;
+  align-items: center;
+  color: var(--text-primary);
+  font-weight: 700;
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-size: 14px;
+}
+
+.list-comp-separator {
+  display: inline-flex;
+  align-items: center;
+  color: var(--text-primary);
+  font-weight: 700;
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  padding: 0 4px;
+}
+
+.list-comp-var {
+  display: inline-flex;
+  align-items: center;
+  color: var(--accent-variable);
+  font-weight: 700;
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+}
+
+.list-comp-in {
+  display: inline-flex;
+  align-items: center;
+  color: var(--text-primary);
+  font-weight: 600;
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  padding: 0 4px;
 }
 
 /* ======================================================
@@ -492,8 +590,7 @@ body {
   margin: 5px 0;
   border-radius: 4px;
   padding: 6px 12px 6px 16px;
-  border-left: 3px solid var(--control-border);
-  background: var(--control-bg);
+  border-left: 1px solid var(--control-border);
   overflow: hidden;
 }
 
@@ -510,7 +607,6 @@ body {
 /* Loop headers */
 .loop-block-outside-role-header,
 .loop-block-inside-role-header {
-  background: var(--control-header-bg);
   padding: 3px 10px;
   margin: -6px -12px 4px -16px;
   border-radius: 0 4px 0 0;
@@ -518,10 +614,10 @@ body {
   font-size: 11px;
   font-weight: 600;
   color: var(--control-text);
-  border-bottom: 1px solid var(--border-light);
   display: flex;
   align-items: center;
   gap: 6px;
+  white-space: nowrap;
 }
 
 .loop-block-outside-role-header::before,
@@ -533,7 +629,6 @@ body {
 
 /* Conditional headers (outside role) */
 .conditional-block-outside-role-header {
-  background: var(--control-header-bg);
   padding: 3px 10px;
   margin: -6px -12px 4px -16px;
   border-radius: 0 4px 0 0;
@@ -541,10 +636,10 @@ body {
   font-size: 11px;
   font-weight: 600;
   color: var(--control-text);
-  border-bottom: 1px solid var(--border-light);
   display: flex;
   align-items: center;
   gap: 6px;
+  white-space: nowrap;
 }
 
 .conditional-block-outside-role-header::before {
@@ -555,7 +650,6 @@ body {
 
 /* Conditional headers */
 .conditional-section-header {
-  background: var(--control-header-bg);
   padding: 3px 10px;
   margin: -4px -10px 3px -10px;
   border-radius: 4px 4px 0 0;
@@ -563,10 +657,10 @@ body {
   font-size: 11px;
   font-weight: 600;
   color: var(--control-text);
-  border-bottom: 1px solid var(--border-light);
   display: flex;
   align-items: center;
   gap: 6px;
+  white-space: nowrap;
 }
 
 .conditional-section-header::before {
@@ -578,7 +672,6 @@ body {
 /* Switch headers */
 .switch-block-outside-role-header,
 .switch-block-inside-role-header {
-  background: var(--control-header-bg);
   padding: 3px 10px;
   margin: -6px -12px 4px -16px;
   border-radius: 0 4px 0 0;
@@ -586,10 +679,10 @@ body {
   font-size: 11px;
   font-weight: 600;
   color: var(--control-text);
-  border-bottom: 1px solid var(--border-light);
   display: flex;
   align-items: center;
   gap: 6px;
+  white-space: nowrap;
 }
 
 .switch-block-outside-role-header::before,
@@ -603,37 +696,20 @@ body {
 .switch-default {
   margin: 3px 0;
   padding: 4px 10px;
-  background: var(--bg-primary);
-  border: 1px solid var(--border-light);
-  border-radius: 4px;
   overflow: hidden;
 }
 
 .switch-case-header,
 .switch-default-header {
-  background: var(--control-header-bg);
   padding: 2px 8px;
   margin: -4px -10px 3px -10px;
-  border-radius: 4px 4px 0 0;
   font-family: 'JetBrains Mono', 'SF Mono', monospace;
   font-size: 10px;
   font-weight: 600;
   color: var(--control-text);
-  border-bottom: 1px solid var(--border-light);
+  white-space: nowrap;
 }
 
-/* Nested control blocks - slightly darker background */
-.loop-block-outside-role .loop-block-outside-role,
-.loop-block-outside-role .conditional-block-outside-role,
-.loop-block-outside-role .switch-block-outside-role,
-.conditional-block-outside-role .loop-block-outside-role,
-.conditional-block-outside-role .conditional-block-outside-role,
-.conditional-block-outside-role .switch-block-outside-role,
-.switch-block-outside-role .loop-block-outside-role,
-.switch-block-outside-role .conditional-block-outside-role,
-.switch-block-outside-role .switch-block-outside-role {
-  background: var(--bg-tertiary);
-}
 
 /* ======================================================
    BLOCK CHILDREN
@@ -847,7 +923,7 @@ body {
    ====================================================== */
 
 .compact .prompt-container {
-  width: fit-content;
+  display: inline-block;
   max-width: 600px;
   padding-left: 10px;
   border-left-width: 1px;
@@ -868,9 +944,10 @@ body {
 /* Compact role messages */
 .compact .role-message,
 .compact .none-message {
-  margin: 1px 0;
+  margin: 4px 0;
   padding: 0;
-  border-radius: 3px;
+  border-radius: 0;
+  border-left-width: 1px;
 }
 
 .compact .role-message-header,
@@ -882,6 +959,7 @@ body {
   border-radius: 0 0 2px 0;
   line-height: 1;
   display: block;
+  width: fit-content;
 }
 
 .compact .role-body-block {
@@ -938,6 +1016,7 @@ body {
 .compact .expr-namespace,
 .compact .expr-ident,
 .compact .expr-number,
+.compact .expr-keyword,
 .compact .expr-symbol,
 .compact .expr-at,
 .compact .expr-logic-op,
@@ -954,10 +1033,38 @@ body {
 }
 
 .compact .comment-block {
-  padding: 1px 6px;
+  padding: 1px 0;
   margin: 1px 0;
   font-size: 7px;
-  border-left-width: 1px;
+}
+
+/* Compact name definitions */
+.compact .name-def {
+  gap: 3px;
+  padding: 1px 0;
+  margin: 1px 0;
+  font-size: 9px;
+}
+
+.compact .name-var,
+.compact .name-assign {
+  font-size: 9px;
+}
+
+.compact .name-ref {
+  font-size: 9px;
+}
+
+/* Compact list comprehensions */
+.compact .list-comprehension {
+  font-size: 10px;
+}
+
+.compact .list-comp-separator,
+.compact .list-comp-var,
+.compact .list-comp-in {
+  font-size: 9px;
+  padding: 0 2px;
 }
 
 /* Compact control flow blocks */
@@ -969,7 +1076,7 @@ body {
 .compact .switch-block-inside-role {
   margin: 2px 0;
   padding: 2px 6px 2px 8px;
-  border-left-width: 2px;
+  border-left-width: 1px;
   border-radius: 2px;
 }
 
@@ -1017,7 +1124,6 @@ body {
 .compact .switch-default {
   margin: 1px 0;
   padding: 2px 5px;
-  border-radius: 2px;
 }
 
 .compact .switch-case-header,
@@ -1094,5 +1200,5 @@ body {
 .compact .switch-case .role-message,
 .compact .switch-default .role-message,
 .compact .none-message {
-  margin: 1px 0;
+  margin: 4px 0;
 }

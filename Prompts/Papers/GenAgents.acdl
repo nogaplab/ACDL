@@ -1,0 +1,16 @@
+GenerativeAgents[@T, agent_name]: {
+	N: {
+		sys.agent_desc[agent_name] // a description of the agent's personality, goals, and background
+		env.datetime[@T]  // the current date and time in the Sims like environment
+		sys.status[@T] // what the agent is currently doing
+		env.current_observation[@T] // what the agent is currently observing in the environment
+		// retrieve the agent's relevant memories based on the conversation topic
+	    get_context_summary(@T, sys.agent_names[agent_name], sys.topic) 
+		ForEach(other_agent_name: sys.agent_names){
+			If env.in_dialog(Other_agent_name) {
+				get_dialog_history(sys.agent_names[other_agent_name]) // the recent dialog history with the other agent
+			}
+		}
+		QUESTION // e.g., "How would Eddy respond to John?"
+	}
+}

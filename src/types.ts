@@ -61,7 +61,28 @@ export type ArithmeticExpr = {
     right: TextArgs;
 }
 
-export type TextArgs = ContextVar | Index | Func | ArithmeticExpr;
+// List comprehension: [expr for var in iterable]
+export type ListComprehension = {
+    kind: "list-comprehension";
+    element: ContextVar | Func;   // the expression to collect (e.g., sys.Summary[@t])
+    variable: string;              // loop variable name (e.g., "t")
+    iterable: Iterable;            // the range/iterable
+}
+
+// Named variable definition: name x := expr
+export type NameDef = {
+    kind: "name-def";
+    name: string;           // variable name (e.g., "obs")
+    value: ContextVar | Func | ListComprehension;  // the assigned expression
+}
+
+// Named variable reference: $x
+export type NameRef = {
+    kind: "name-ref";
+    name: string;           // referenced variable name (without $)
+}
+
+export type TextArgs = ContextVar | Index | Func | ArithmeticExpr | NameRef;
 
 export type Func = {
     kind: "function";
@@ -110,7 +131,7 @@ export type LabelBlock = {
   body: Array<PromptBlock>;
 }
 
-export type PromptBlock = RoleMessage|LabelBlock|ConditionalBlockOutsideRole|LoopBlockOutsideRole|SwitchBlockOutsideRole|CommentBlock;
+export type PromptBlock = RoleMessage|LabelBlock|ConditionalBlockOutsideRole|LoopBlockOutsideRole|SwitchBlockOutsideRole|CommentBlock|NameDef;
 
 export type LoopBlockOutsideRole = {
   kind: "loop-block-outside-role";
@@ -155,7 +176,7 @@ export type DefaultCaseBlockOutsideRole = {
 
 // Inside Role Building Blocks
 
-export type RoleBuildingBlock = ConditionalBlockInsideRole|LoopBlockInsideRole|SwitchBlockInsideRole|Template|ContextVar|Func|CommentBlock;
+export type RoleBuildingBlock = ConditionalBlockInsideRole|LoopBlockInsideRole|SwitchBlockInsideRole|Template|ContextVar|Func|CommentBlock|NameDef|NameRef;
 
 export type LoopBlockInsideRole = {
   kind: "loop-block-inside-role";

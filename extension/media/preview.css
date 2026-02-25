@@ -22,17 +22,17 @@
   --system-border: #0969da;
   --system-text: #0550ae;
 
+  --assistant-bg: #e6fafa;
+  --assistant-border: #1acad1;
+  --assistant-text: #0a9196;
+
+  --tool-bg: #ffebe6;
+  --tool-border: #f7660b;
+  --tool-text: #800d00;
+
   --user-bg: #fff8e6;
-  --user-border: #bf8700;
+  --user-border: #e5990b;
   --user-text: #805600;
-
-  --assistant-bg: #f0fff4;
-  --assistant-border: #1a7f37;
-  --assistant-text: #116329;
-
-  --tool-bg: #faf0ff;
-  --tool-border: #8250df;
-  --tool-text: #6639ba;
 
   --none-bg: #f5f5f5;
   --none-border: #6e7781;
@@ -45,16 +45,26 @@
   --control-header-bg: #eaeef2;
 
   /* Accent colors for inline elements */
-  --accent-template: #0550ae;
-  --accent-template-bg: #ddf4ff;
-  --accent-function: #8250df;
-  --accent-function-bg: #fbefff;
-  --accent-context: #0d9488;
-  --accent-context-bg: #ccfbf1;
-  /* Environment variables - teal */
-  --accent-env: #0d9488;
-  --accent-env-bg: #ccfbf1;
-  --accent-index: #0969da;
+  --accent-template: #9333ea;
+  --accent-template-bg: #faf5ff;
+  /* Functions - purple */
+  --accent-function: #9333ea;
+  --accent-function-bg: #faf5ff;
+  /* Context variables - teal */
+  --accent-context: #0da66b;
+  --accent-context-bg: #e0ffdd;
+  /* Variables (all indexes, iterables) - light blue */
+  --accent-variable: #0969da;
+  --accent-variable-bg: rgba(9, 105, 218, 0.12);
+
+  /* Legacy aliases for backwards compatibility */
+  --accent-index: var(--accent-variable);
+  --accent-index-bg: var(--accent-variable-bg);
+  --accent-other-index: var(--accent-variable);
+  --accent-other-index-bg: var(--accent-variable-bg);
+  --accent-expr: #c2410c;
+  --accent-expr-bg: rgba(251, 146, 60, 0.15);
+  --accent-expr-border: #ea580c;
   --accent-comment: #6e7781;
 }
 
@@ -79,7 +89,7 @@ body {
    ====================================================== */
 
 .prompt-container {
-  width: fit-content;
+  display: inline-block;
   max-width: 900px;
   margin: 0 auto;
   position: relative;
@@ -107,6 +117,15 @@ body {
   font-weight: 600;
   color: var(--text-primary);
   font-family: 'JetBrains Mono', 'SF Mono', 'Consolas', monospace;
+  white-space: nowrap;
+}
+
+/* Ensure time-index is visible in title */
+.prompt-title .time-index {
+  display: inline;
+  font-size: inherit;
+  color: var(--accent-variable);
+  font-weight: 700;
 }
 
 /* ======================================================
@@ -114,48 +133,40 @@ body {
    ====================================================== */
 
 .role-message {
-  background: var(--bg-primary);
-  border: 1px solid var(--border-medium);
-  border-radius: 6px;
-  margin: 8px 0;
+  border: none;
+  border-left: 1px solid var(--border-medium);
+  border-radius: 0;
+  margin: 4px 0;
   position: relative;
   overflow: hidden;
 }
 
-.role-message:hover {
-  border-color: var(--border-dark);
-}
-
-/* Role-specific styling */
 .role-message.system {
-  background: var(--system-bg);
-  border-color: var(--system-border);
+  border-left-color: var(--system-border);
 }
 
 .role-message.user {
-  background: var(--user-bg);
-  border-color: var(--user-border);
+  border-left-color: var(--user-border);
 }
 
 .role-message.assistant {
-  background: var(--assistant-bg);
-  border-color: var(--assistant-border);
+  border-left-color: var(--assistant-border);
 }
 
 .role-message.tool {
-  background: var(--tool-bg);
-  border-color: var(--tool-border);
+  border-left-color: var(--tool-border);
 }
 
-/* Role header badge */
+/* Role header badge - compact badge that wraps text */
 .role-message-header {
   display: inline-block;
-  padding: 2px 8px;
+  padding: 2px 12px;
+  margin: 4px 6px;
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.5px;
   text-transform: uppercase;
-  border-radius: 0 0 4px 0;
+  border-radius: 4px;
 }
 
 .role-message.system .role-message-header {
@@ -183,10 +194,9 @@ body {
    ====================================================== */
 
 .none-message {
-  background: var(--none-bg);
   border: 1px solid var(--none-border);
   border-radius: 6px;
-  margin: 8px 0;
+  margin: 4px 0;
   position: relative;
   overflow: hidden;
 }
@@ -208,7 +218,7 @@ body {
 }
 
 .role-body-block {
-  padding: 8px 12px;
+  padding: 2px 12px;
   overflow-x: auto;
   white-space: nowrap;
 }
@@ -240,9 +250,14 @@ body {
 .func-block {
   display: inline-flex;
   align-items: center;
+  background: var(--accent-function-bg);
+  border: 1px solid var(--accent-function);
   color: var(--accent-function);
+  padding: 2px 8px;
+  border-radius: 4px;
   font-family: 'JetBrains Mono', 'SF Mono', monospace;
   font-size: 12px;
+  font-weight: 500;
 }
 
 .func-name {
@@ -250,7 +265,8 @@ body {
 }
 
 .func-parens {
-  color: var(--text-muted);
+  color: var(--accent-function);
+  opacity: 0.7;
 }
 
 .context-var {
@@ -277,36 +293,187 @@ body {
 
 /* Environment variables (env.*) - teal styling */
 .context-var.context-var-env {
-  background: var(--accent-env-bg);
-  border-color: var(--accent-env);
-  color: var(--accent-env);
+  background: var(--accent-context-bg);
+  border-color: var(--accent-context);
+  color: var(--accent-context);
 }
 
 .context-var.context-var-env .segment {
-  color: var(--accent-env);
+  color: var(--accent-context);
 }
 
-/* Indices */
+/* Indices - All variables use light blue, no background */
 .time-index {
-  color: var(--accent-index);
-  font-weight: 600;
+  color: var(--accent-variable);
+  font-weight: 700;
   font-family: 'JetBrains Mono', 'SF Mono', monospace;
   font-size: 12px;
 }
 
-/* Ensure time-index is blue even when nested inside context-var or other elements */
+/* Ensure time-index is styled correctly even when nested inside context-var */
 .context-var .time-index,
 .context-var .segment .time-index,
 .context-var-env .time-index,
 .context-var-env .segment .time-index,
 .expr-context-var .time-index {
-  color: var(--accent-index);
+  color: var(--accent-variable);
 }
 
 .other-index {
-  color: var(--text-secondary);
+  color: var(--accent-variable);
+  font-weight: 700;
   font-family: 'JetBrains Mono', 'SF Mono', monospace;
   font-size: 12px;
+}
+
+/* Control flow keywords - bold and prominent */
+.keyword {
+  color: #000000;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+}
+
+/* ======================================================
+   EXPRESSION TOKENS - Inside conditions, iterables, switches
+   ====================================================== */
+
+/* Context vars in expressions (env.foo, sys.bar(x), etc.) - green with box */
+.expr-context-var {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--accent-context-bg);
+  border: 1px solid var(--accent-context);
+  color: var(--accent-context);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* Namespace keywords (env, sys, resp, prompt) - green like context vars */
+.expr-namespace {
+  color: var(--accent-context);
+  font-weight: 700;
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+}
+
+/* Identifiers in expressions - light blue like all variables */
+.expr-ident {
+  color: var(--accent-variable);
+  font-weight: 600;
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+}
+
+/* Numbers in expressions - light blue like all variables */
+.expr-number {
+  color: var(--accent-variable);
+  font-weight: 600;
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+}
+
+/* Logical keywords in expressions (and, or) */
+.expr-keyword {
+  color: var(--text-primary);
+  font-weight: 600;
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+}
+
+/* Symbols like . [ ] , */
+.expr-symbol {
+  color: var(--text-secondary);
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+}
+
+/* @ symbol for time indices - light blue */
+.expr-at {
+  color: var(--accent-variable);
+  font-weight: 700;
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+}
+
+/* Logical operators (=, !, <, >, &, |, ^) */
+.expr-logic-op {
+  color: var(--text-primary);
+  font-weight: 700;
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-variant-ligatures: none;
+  padding: 0 2px;
+}
+
+/* Arithmetic operators (+, -, *, /, %) */
+.expr-arith-op {
+  color: var(--text-primary);
+  font-weight: 600;
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  padding: 0 1px;
+}
+
+/* Range operators (... or …) */
+.expr-range {
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  padding: 0 2px;
+}
+
+/* String literals */
+.expr-string {
+  color: #a31515;
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+}
+
+/* Control flow expressions - high visibility */
+.loop-var {
+  color: var(--accent-variable);
+  font-weight: 700;
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+}
+
+.loop-iterable,
+.condition-expr,
+.switch-expr,
+.case-match {
+  display: inline-flex;
+  align-items: center;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* Range expressions */
+.range-expr {
+  display: inline-flex;
+  align-items: center;
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-size: 12px;
+}
+
+.range-dots {
+  color: var(--text-secondary);
+  font-weight: 600;
+  padding: 0 2px;
+}
+
+.range-keyword {
+  display: inline-flex;
+  align-items: center;
+  color: var(--text-primary);
+  font-weight: 600;
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-size: 10px;
+  padding: 0 4px;
+}
+
+/* Built-in math functions (min, max) - neutral styling */
+.builtin-func {
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-size: 12px;
+  color: var(--text-primary);
+}
+
+.compact .builtin-func {
+  font-size: 9px;
 }
 
 /* Comments */
@@ -333,11 +500,80 @@ body {
 .comment-block {
   color: var(--accent-comment);
   font-style: italic;
-  padding: 6px 12px;
-  margin: 6px 0;
-  border-left: 2px solid var(--accent-comment);
-  background: var(--bg-tertiary);
+  padding: 1px 0;
+  margin: 1px 0;
   font-size: 12px;
+}
+
+/* Name definitions: Name $varname := expr */
+.name-def {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+  margin: 2px 0;
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-size: 12px;
+}
+
+.name-var {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.name-assign {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* Name references: $varname - pink text */
+.name-ref {
+  color: #ec4899;
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* List comprehensions: [ element | var ∈ iterable ] */
+.list-comp-wrapper {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.list-comprehension {
+  display: inline-flex;
+  align-items: center;
+  color: var(--text-primary);
+  font-weight: 700;
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-size: 14px;
+}
+
+.list-comp-separator {
+  display: inline-flex;
+  align-items: center;
+  color: var(--text-primary);
+  font-weight: 700;
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  padding: 0 4px;
+}
+
+.list-comp-var {
+  display: inline-flex;
+  align-items: center;
+  color: var(--accent-variable);
+  font-weight: 700;
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+}
+
+.list-comp-in {
+  display: inline-flex;
+  align-items: center;
+  color: var(--text-primary);
+  font-weight: 600;
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  padding: 0 4px;
 }
 
 /* ======================================================
@@ -351,41 +587,37 @@ body {
 .conditional-block-outside-role,
 .conditional-block-inside-role {
   position: relative;
-  margin: 10px 0;
+  margin: 5px 0;
   border-radius: 4px;
-  padding: 8px 12px 8px 16px;
-  border-left: 3px solid var(--control-border);
-  background: var(--control-bg);
+  padding: 6px 12px 6px 16px;
+  border-left: 1px solid var(--control-border);
   overflow: hidden;
 }
 
 .conditional-section {
   position: relative;
-  margin: 6px 0;
-  padding: 6px 10px;
+  margin: 3px 0;
+  padding: 4px 10px;
   background: var(--bg-primary);
   border: 1px solid var(--border-light);
   border-radius: 4px;
   overflow: hidden;
 }
 
-/* Loop and Conditional headers */
+/* Loop headers */
 .loop-block-outside-role-header,
-.loop-block-inside-role-header,
-.conditional-block-outside-role-header,
-.conditional-block-inside-role-header {
-  background: var(--control-header-bg);
-  padding: 4px 10px;
-  margin: -8px -12px 8px -16px;
+.loop-block-inside-role-header {
+  padding: 3px 10px;
+  margin: -6px -12px 4px -16px;
   border-radius: 0 4px 0 0;
   font-family: 'JetBrains Mono', 'SF Mono', monospace;
   font-size: 11px;
   font-weight: 600;
   color: var(--control-text);
-  border-bottom: 1px solid var(--border-light);
   display: flex;
   align-items: center;
   gap: 6px;
+  white-space: nowrap;
 }
 
 .loop-block-outside-role-header::before,
@@ -395,8 +627,22 @@ body {
   color: var(--control-border);
 }
 
-.conditional-block-outside-role-header::before,
-.conditional-block-inside-role-header::before {
+/* Conditional headers (outside role) */
+.conditional-block-outside-role-header {
+  padding: 3px 10px;
+  margin: -6px -12px 4px -16px;
+  border-radius: 0 4px 0 0;
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--control-text);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.conditional-block-outside-role-header::before {
   content: '◇';
   font-size: 10px;
   color: var(--control-border);
@@ -404,18 +650,17 @@ body {
 
 /* Conditional headers */
 .conditional-section-header {
-  background: var(--control-header-bg);
-  padding: 4px 10px;
-  margin: -6px -10px 6px -10px;
+  padding: 3px 10px;
+  margin: -4px -10px 3px -10px;
   border-radius: 4px 4px 0 0;
   font-family: 'JetBrains Mono', 'SF Mono', monospace;
   font-size: 11px;
   font-weight: 600;
   color: var(--control-text);
-  border-bottom: 1px solid var(--border-light);
   display: flex;
   align-items: center;
   gap: 6px;
+  white-space: nowrap;
 }
 
 .conditional-section-header::before {
@@ -427,18 +672,17 @@ body {
 /* Switch headers */
 .switch-block-outside-role-header,
 .switch-block-inside-role-header {
-  background: var(--control-header-bg);
-  padding: 4px 10px;
-  margin: -8px -12px 8px -16px;
+  padding: 3px 10px;
+  margin: -6px -12px 4px -16px;
   border-radius: 0 4px 0 0;
   font-family: 'JetBrains Mono', 'SF Mono', monospace;
   font-size: 11px;
   font-weight: 600;
   color: var(--control-text);
-  border-bottom: 1px solid var(--border-light);
   display: flex;
   align-items: center;
   gap: 6px;
+  white-space: nowrap;
 }
 
 .switch-block-outside-role-header::before,
@@ -450,47 +694,30 @@ body {
 
 .switch-case,
 .switch-default {
-  margin: 6px 0;
-  padding: 6px 10px;
-  background: var(--bg-primary);
-  border: 1px solid var(--border-light);
-  border-radius: 4px;
+  margin: 3px 0;
+  padding: 4px 10px;
   overflow: hidden;
 }
 
 .switch-case-header,
 .switch-default-header {
-  background: var(--control-header-bg);
-  padding: 3px 8px;
-  margin: -6px -10px 6px -10px;
-  border-radius: 4px 4px 0 0;
+  padding: 2px 8px;
+  margin: -4px -10px 3px -10px;
   font-family: 'JetBrains Mono', 'SF Mono', monospace;
   font-size: 10px;
   font-weight: 600;
   color: var(--control-text);
-  border-bottom: 1px solid var(--border-light);
+  white-space: nowrap;
 }
 
-/* Nested control blocks - slightly darker background */
-.loop-block-outside-role .loop-block-outside-role,
-.loop-block-outside-role .conditional-block-outside-role,
-.loop-block-outside-role .switch-block-outside-role,
-.conditional-block-outside-role .loop-block-outside-role,
-.conditional-block-outside-role .conditional-block-outside-role,
-.conditional-block-outside-role .switch-block-outside-role,
-.switch-block-outside-role .loop-block-outside-role,
-.switch-block-outside-role .conditional-block-outside-role,
-.switch-block-outside-role .switch-block-outside-role {
-  background: var(--bg-tertiary);
-}
 
 /* ======================================================
    BLOCK CHILDREN
    ====================================================== */
 
 .block-children {
-  padding: 4px 0;
-  margin: 4px 0;
+  padding: 2px 0 2px 12px;
+  margin: 2px 0;
 }
 
 .conditional-child,
@@ -499,8 +726,8 @@ body {
 .role-switch-child,
 .loop-child,
 .role-loop-child {
-  margin: 4px 0;
-  padding: 2px 0;
+  margin: 2px 0;
+  padding: 1px 0;
 }
 
 /* ======================================================
@@ -553,109 +780,6 @@ body {
 }
 
 /* ======================================================
-   UPLOAD ZONE
-   ====================================================== */
-
-#drop-zone {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  border: 2px dashed var(--border-medium);
-  border-radius: 8px;
-  padding: 40px;
-  margin: 40px auto;
-  max-width: 400px;
-  background: var(--bg-secondary);
-  color: var(--text-secondary);
-  font-weight: 500;
-  transition: all 0.2s ease;
-  cursor: pointer;
-}
-
-#drop-zone:hover,
-#drop-zone.hover {
-  background: var(--bg-tertiary);
-  border-color: var(--system-border);
-  color: var(--text-primary);
-}
-
-.upload-button {
-  display: inline-block;
-  padding: 10px 20px;
-  background: var(--system-border);
-  color: white;
-  border-radius: 6px;
-  cursor: pointer;
-  margin-top: 12px;
-  font-weight: 600;
-  font-size: 13px;
-  border: none;
-  transition: all 0.2s ease;
-}
-
-.upload-button:hover {
-  background: var(--system-text);
-}
-
-/* ======================================================
-   APP LAYOUT
-   ====================================================== */
-
-#app {
-  display: flex;
-  min-height: 100vh;
-  background: var(--bg-primary);
-}
-
-#sidebar {
-  width: 400px;
-  background: var(--bg-secondary);
-  padding: 24px;
-  display: flex;
-  flex-direction: column;
-  border-right: 1px solid var(--border-light);
-}
-
-#acdl-editor {
-  width: 100%;
-  flex-grow: 1;
-  font-family: 'JetBrains Mono', 'SF Mono', monospace;
-  font-size: 12px;
-  padding: 12px;
-  margin: 12px 0;
-  border: 1px solid var(--border-medium);
-  border-radius: 6px;
-  resize: none;
-  background: var(--bg-primary);
-  color: var(--text-primary);
-  line-height: 1.5;
-}
-
-#acdl-editor:focus {
-  outline: none;
-  border-color: var(--system-border);
-  box-shadow: 0 0 0 2px rgba(9, 105, 218, 0.15);
-}
-
-#render-btn {
-  width: 100%;
-  padding: 12px;
-  background: var(--system-border);
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 13px;
-  transition: all 0.2s ease;
-}
-
-#render-btn:hover {
-  background: var(--system-text);
-}
-
-/* ======================================================
    SCROLLBAR STYLING
    ====================================================== */
 
@@ -696,44 +820,50 @@ body {
    ====================================================== */
 
 .compact .prompt-container {
-  width: fit-content;
+  display: inline-block;
   max-width: 600px;
-  padding-left: 12px;
+  padding-left: 10px;
   border-left-width: 1px;
 }
 
 .compact .prompt-title {
-  padding: 6px 10px;
-  margin-bottom: 8px;
-  margin-left: -12px;
-  padding-left: 12px;
-  border-radius: 4px;
+  padding: 3px 8px;
+  margin-bottom: 4px;
+  margin-left: -10px;
+  padding-left: 10px;
+  border-radius: 3px;
 }
 
 .compact .prompt-title h1 {
-  font-size: 11px;
+  font-size: 10px;
 }
 
 /* Compact role messages */
 .compact .role-message,
 .compact .none-message {
-  margin: 3px 0;
-  border-radius: 4px;
+  margin: 4px 0;
+  padding: 0;
+  border-radius: 0;
+  border-left-width: 1px;
 }
 
 .compact .role-message-header,
 .compact .none-message-header {
-  padding: 1px 6px;
-  font-size: 8px;
-  letter-spacing: 0.3px;
-  border-radius: 0 0 3px 0;
+  padding: 0 4px;
+  margin: 0;
+  font-size: 7px;
+  letter-spacing: 0.2px;
+  border-radius: 0 0 2px 0;
+  line-height: 1;
+  display: block;
+  width: fit-content;
 }
 
 .compact .role-body-block {
-  padding: 4px 8px;
+  padding: 2px 6px;
   display: flex;
   flex-wrap: wrap;
-  gap: 2px 4px;
+  gap: 1px 3px;
   align-items: center;
 }
 
@@ -753,7 +883,8 @@ body {
   font-size: 9px;
 }
 
-.compact .context-var {
+.compact .context-var,
+.compact .expr-context-var {
   padding: 1px 5px;
   border-radius: 3px;
   font-size: 9px;
@@ -761,21 +892,76 @@ body {
 }
 
 .compact .time-index,
-.compact .other-index {
+.compact .other-index,
+.compact .loop-var {
+  font-size: 9px;
+}
+
+.compact .loop-iterable,
+.compact .condition-expr,
+.compact .switch-expr,
+.compact .case-match {
+  font-size: 9px;
+}
+
+.compact .keyword {
+  font-size: 9px;
+}
+
+/* Compact expression tokens */
+.compact .expr-context-var,
+.compact .expr-namespace,
+.compact .expr-ident,
+.compact .expr-number,
+.compact .expr-keyword,
+.compact .expr-symbol,
+.compact .expr-at,
+.compact .expr-logic-op,
+.compact .expr-arith-op,
+.compact .expr-range,
+.compact .expr-string {
   font-size: 9px;
 }
 
 .compact .comment,
 .compact .inline-comment {
-  font-size: 8px;
-  margin-left: 4px;
+  font-size: 7px;
+  margin-left: 2px;
 }
 
 .compact .comment-block {
-  padding: 3px 8px;
-  margin: 3px 0;
-  font-size: 8px;
-  border-left-width: 1px;
+  padding: 1px 0;
+  margin: 1px 0;
+  font-size: 7px;
+}
+
+/* Compact name definitions */
+.compact .name-def {
+  gap: 3px;
+  padding: 1px 0;
+  margin: 1px 0;
+  font-size: 9px;
+}
+
+.compact .name-var,
+.compact .name-assign {
+  font-size: 9px;
+}
+
+.compact .name-ref {
+  font-size: 9px;
+}
+
+/* Compact list comprehensions */
+.compact .list-comprehension {
+  font-size: 10px;
+}
+
+.compact .list-comp-separator,
+.compact .list-comp-var,
+.compact .list-comp-in {
+  font-size: 9px;
+  padding: 0 2px;
 }
 
 /* Compact control flow blocks */
@@ -785,10 +971,10 @@ body {
 .compact .conditional-block-inside-role,
 .compact .switch-block-outside-role,
 .compact .switch-block-inside-role {
-  margin: 4px 0;
-  padding: 4px 8px 4px 10px;
-  border-left-width: 2px;
-  border-radius: 3px;
+  margin: 2px 0;
+  padding: 2px 6px 2px 8px;
+  border-left-width: 1px;
+  border-radius: 2px;
 }
 
 .compact .loop-block-outside-role-header,
@@ -797,11 +983,11 @@ body {
 .compact .switch-block-inside-role-header,
 .compact .conditional-block-outside-role-header,
 .compact .conditional-block-inside-role-header {
-  padding: 2px 6px;
-  margin: -4px -8px 4px -10px;
-  border-radius: 0 3px 0 0;
-  font-size: 8px;
-  gap: 4px;
+  padding: 1px 4px;
+  margin: -2px -6px 2px -8px;
+  border-radius: 0 2px 0 0;
+  font-size: 7px;
+  gap: 3px;
 }
 
 .compact .loop-block-outside-role-header::before,
@@ -810,46 +996,45 @@ body {
 .compact .switch-block-inside-role-header::before,
 .compact .conditional-block-outside-role-header::before,
 .compact .conditional-block-inside-role-header::before {
-  font-size: 9px;
+  font-size: 8px;
 }
 
 .compact .conditional-section {
-  padding: 3px 6px;
-  margin: 3px 0;
-  border-radius: 3px;
+  padding: 2px 5px;
+  margin: 1px 0;
+  border-radius: 2px;
 }
 
 .compact .conditional-section-header {
-  padding: 2px 6px;
-  margin: -3px -6px 3px -6px;
-  border-radius: 3px 3px 0 0;
-  font-size: 8px;
-  gap: 3px;
+  padding: 1px 4px;
+  margin: -2px -5px 2px -5px;
+  border-radius: 2px 2px 0 0;
+  font-size: 7px;
+  gap: 2px;
 }
 
 .compact .conditional-section-header::before {
-  font-size: 8px;
+  font-size: 7px;
 }
 
 .compact .switch-case,
 .compact .switch-default {
-  margin: 3px 0;
-  padding: 3px 6px;
-  border-radius: 3px;
+  margin: 1px 0;
+  padding: 2px 5px;
 }
 
 .compact .switch-case-header,
 .compact .switch-default-header {
-  padding: 2px 6px;
-  margin: -3px -6px 3px -6px;
-  border-radius: 3px 3px 0 0;
+  padding: 1px 4px;
+  margin: -2px -5px 2px -5px;
+  border-radius: 2px 2px 0 0;
   font-size: 7px;
 }
 
 /* Compact block children */
 .compact .block-children {
-  padding: 0;
-  margin: 2px 0;
+  padding: 0 0 0 6px;
+  margin: 1px 0;
 }
 
 .compact .conditional-child,
@@ -858,31 +1043,31 @@ body {
 .compact .role-switch-child,
 .compact .loop-child,
 .compact .role-loop-child {
-  margin: 2px 0;
+  margin: 1px 0;
   padding: 0;
 }
 
 /* Compact label blocks */
 .compact .label-block {
-  margin: 8px 0;
+  margin: 4px 0;
 }
 
 .compact .label-start,
 .compact .label-end {
-  font-size: 8px;
-  padding: 1px 0;
+  font-size: 7px;
+  padding: 0;
 }
 
 .compact .label-block-body {
-  margin-left: 4px;
-  padding-left: 8px;
+  margin-left: 3px;
+  padding-left: 6px;
   border-left-width: 1px;
 }
 
 /* Compact line height */
 .compact,
 .compact * {
-  line-height: 1.2 !important;
+  line-height: 1.1 !important;
 }
 
 /* Remove margins on inline elements in compact mode */
@@ -912,5 +1097,5 @@ body {
 .compact .switch-case .role-message,
 .compact .switch-default .role-message,
 .compact .none-message {
-  margin: 2px 0;
+  margin: 4px 0;
 }

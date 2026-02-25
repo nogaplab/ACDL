@@ -19,4 +19,12 @@ Prompt[@t]: {
         A: sys.tool_used[@t.k]
         T: sys.tool_used[@t.k].tool_response
     }
+
+    If @i<@t {
+            A: {
+                resp.solution_reasoning[@i]
+                resp.solution[@i]
+            }
+            U: env.feedback[@i] // response if the answer was right or wrong, remaining tries if failed
+        }
 }

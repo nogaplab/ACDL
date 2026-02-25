@@ -2,7 +2,7 @@ import { StreamLanguage, StringStream } from "@codemirror/language";
 
 const NAMESPACE_KEYWORDS = new Set(["env", "sys", "resp", "prompt"]);
 const CONTROL_KEYWORDS = new Set([
-  "If", "ElseIf", "Else", "ForEach", "Switch", "Case", "Default", "break", "continue",
+  "If", "ElseIf", "Else", "ForEach", "Switch", "Case", "Default", "break", "continue", "name", "for", "in",
 ]);
 const ROLE_LETTERS = new Set(["S", "U", "A", "T", "N"]);
 

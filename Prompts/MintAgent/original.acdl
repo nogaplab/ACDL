@@ -7,7 +7,7 @@ Original[@t]: {
     }
 
     ForEach(i: range(1,@t-1)) {
-        ForEach(k: range(1,sys.step[@i])){
+        ForEach(k: range(1,sys.substeps[@i])){
             A: {
                 resp.tool_reasoning[@i.k]
                 sys.tool_used[@i.k]
@@ -20,6 +20,14 @@ Original[@t]: {
         }
         U: env.feedback[@i.k] // response if the answer was right or wrong, remaining tries if failed
         }
+    }
+
+    ForEach(k: range(1,sys.substeps[@t])){
+        A: {
+            resp.tool_reasoning[@t.k]
+            resp.tool_used[@t.k]
+        }
+        U: sys.tool_used[@t.k].tool_response
     }
 
 }

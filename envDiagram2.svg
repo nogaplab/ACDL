@@ -1,0 +1,70 @@
+<?xml version="1.0"?>
+<svg width="520" height="290" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg">
+ <defs>
+  <marker id="arrowhead" markerHeight="6" markerWidth="8" orient="auto" refX="7" refY="3">
+   <polygon fill="#37474F" id="svg_1" points="0 0, 8 3, 0 6"/>
+  </marker>
+  <marker id="arrowhead-indigo" markerHeight="6" markerWidth="8" orient="auto" refX="7" refY="3">
+   <polygon fill="#1A237E" id="svg_2" points="0 0, 8 3, 0 6"/>
+  </marker>
+  <marker id="arrowhead-red" markerHeight="6" markerWidth="8" orient="auto" refX="7" refY="3">
+   <polygon fill="#ff5656" points="0 0, 8 3, 0 6"/>
+  </marker>
+ </defs>
+ <!-- CIRCLES -->
+ <!-- ARROWS -->
+ <g class="layer">
+  <title>Layer 1</title>
+  <rect fill="white" height="290" id="svg_3" transform="matrix(1 0 0 1 -6 0)" width="520"/>
+  <g id="environment" transform="matrix(1 0 0 1 -4 -33)">
+   <ellipse cx="70" cy="125" fill="#B3E5FC" id="env-circle" rx="55" ry="35" stroke="#03A9F4" stroke-width="2"/>
+   <text fill="#03A9F4" font-family="Arial" font-size="13" font-weight="500" id="env-label" text-anchor="middle" x="70" y="130">Environment</text>
+  </g>
+  <!-- Agent System Box -->
+  <g id="agent-system-box" transform="matrix(1 0 0 1 0 0) matrix(1 0 0 1 0 0) matrix(1 0 0 1 0 0) matrix(1 0 0 1 0 0) translate(175 17.5253) scale(1 0.918439) translate(-175 -17.5253) matrix(1 0 0 1 0 0) matrix(1 0 0 1 0 0) matrix(1 0 0 1 0 0) matrix(1 0 0 1 0 0) matrix(1 0 0 1 0 0) matrix(1 0 0 1 0 0)">
+   <rect fill="none" height="235" id="svg_4" rx="10" ry="10" stroke="#d4aaff" stroke-width="2" transform="matrix(0.957576 0 0 0.95906 21.4243 10.4807)" width="330" x="175" y="40"/>
+   <text fill="#d4aaff" font-family="Arial" font-size="14" font-weight="600" id="svg_6" text-anchor="middle" transform="matrix(1 0 0 1 -30 10)" x="340" y="30">Agent System</text>
+  </g>
+  <g id="llm" transform="translate(0 1) translate(0 1) matrix(1 0 0 1 12 -35)">
+   <ellipse cx="430" cy="125" fill="#B2DFDB" id="llm-circle" rx="55" ry="35" stroke="#26A69A" stroke-width="2"/>
+   <text fill="#26A69A" font-family="Arial" font-size="13" font-weight="500" id="llm-label" text-anchor="middle" x="430" y="130">LLM</text>
+  </g>
+  <g id="memory" transform="translate(0 -1) translate(0 -1) translate(0 -1) translate(0 -1) translate(0 -1) translate(0 -1) translate(0 -1) translate(0 -1) translate(0 -1) translate(0 -1) matrix(1 0 0 1 0 0)">
+   <ellipse cx="250" cy="220" fill="#C5CAE9" id="mem-circle" rx="55" ry="35" stroke="#3F51B5" stroke-width="2"/>
+   <text fill="#3F51B5" font-family="Arial" font-size="13" font-weight="500" id="mem-label" text-anchor="middle" x="250" y="225">Memory</text>
+  </g>
+  <g id="arrow-observations" transform="matrix(0.918566 -0.389472 0.40151 0.880131 -19.9609 73.1592)">
+   <text fill="#37474F" font-family="Arial" font-size="9" id="obs-label" style="cursor: move;" text-anchor="middle" transform="matrix(0.916034 0.401101 -0.401101 0.916034 38.8591 -58.0468)" x="166.43" y="61.16">observations</text>
+  </g>
+  <g id="arrow-actions" transform="rotate(-1.69122 157.174 121.796) matrix(1 0 0 1 0 0) matrix(1 0 0 1 0 0) matrix(1 0 0 1 0 0)">
+   <text fill="#37474F" font-family="Arial" font-size="9" id="act-label" text-anchor="middle" transform="matrix(1.03854 0.0397247 -0.0424719 1.09352 -3.90335 -21.0094)" x="160.2" y="127.9">actions</text>
+  </g>
+  <g id="arrow-query" transform="matrix(0.916563 0 0 1 22.2945 5)">
+   <path d="m311.65,100c22,-14 52,-14 73,0" fill="none" id="query-path" marker-end="url(#arrowhead)" stroke="#37474F" stroke-width="1.5" transform="matrix(1.12799 -0.000001539 0.00000173598 1 -39.8224 -23.9995)"/>
+   <text fill="#37474F" font-family="Arial" font-size="9" id="query-label" text-anchor="middle" transform="matrix(1 0 0 1 2 -32)" x="350" y="92">query</text>
+   <path d="m206.16,182.08c22,-14 52,-14 73,0" fill="none" id="svg_7" marker-end="url(#arrowhead)" stroke="#37474F" stroke-width="1.5" transform="matrix(1.05681 -0.000001539 0.00000162643 1 -108.339 -106)"/>
+  </g>
+  <g id="acdl-highlight" transform="matrix(1.0338 0 0 1.08701 2.84213 -25.032)">
+   <ellipse cx="342" cy="90" fill="none" id="acdl-ellipse" rx="50" ry="18" stroke="#ff5656" stroke-dasharray="4,2" stroke-width="2" transform="matrix(0.786455 0 0 1.19101 62.8931 -14.4046)"/>
+   <text fill="#ff5656" font-family="Arial" font-size="12" font-weight="600" id="acdl-label" text-anchor="middle" transform="matrix(1 0 0 1 -34.9394 -5.62121)" x="415" y="55">ACDL</text>
+   <path d="m400,58l-18,16" fill="none" id="acdl-pointer" marker-end="url(#arrowhead-red)" stroke="#ff5656" stroke-width="1.5" transform="matrix(0.979134 -0.203217 0.203217 0.979134 -28.89 78.1077)"/>
+  </g>
+  <g id="arrow-response" transform="translate(-2 5)">
+   <path d="m370.57,132c-17.84,12 -42.81,12 -65.1,0" fill="none" id="resp-path" marker-end="url(#arrowhead)" stroke="#37474F" stroke-width="1.5" transform="matrix(1.1312 0 0 1 -35.165 -37)"/>
+   <text fill="#37474F" font-family="Arial" font-size="9" id="resp-label" text-anchor="middle" transform="matrix(1 0 0 1 5 -37)" x="346" y="153">response</text>
+   <path d="m187.65,108.18c-23.68,2.94 -51.94,-6.1 -68.37,-24.42" fill="none" id="svg_5" marker-end="url(#arrowhead)" stroke="#37474F" stroke-width="1.5" transform="matrix(0.943472 -0.313131 0.286769 1.06566 -12.4459 46.12)"/>
+  </g>
+  <g id="arrow-store" transform="translate(0 1) translate(0 -1) translate(0 -1) translate(0 -1) translate(0 -1) translate(0 -1) translate(0 -1) translate(0 -1) translate(0 -1) translate(0 -1) translate(0 -1) matrix(1 0 0 1 0 0) matrix(1 0 0 1 3 0)">
+   <path d="m230,165c-5,15 -5,25 0,40" fill="none" id="store-path" marker-end="url(#arrowhead)" stroke="#37474F" stroke-width="1.5" transform="matrix(1 0 0 1 4 -26)"/>
+   <text fill="#37474F" font-family="Arial" font-size="9" id="store-label" text-anchor="middle" transform="matrix(1 0 0 1 0 -34)" x="215" y="195">store</text>
+  </g>
+  <g id="arrow-retrieve" transform="translate(0 -1) translate(0 -1) translate(0 -1) translate(0 -1) translate(0 -1) translate(0 -1) translate(0 -1) translate(0 -1) translate(0 -1) translate(0 -1) matrix(1 0 0 1 0 0) matrix(1 0 0 1 3 0)">
+   <path d="m270,185c5,-15 5,-25 0,-40" fill="none" id="retrieve-path" marker-end="url(#arrowhead)" stroke="#37474F" stroke-width="1.5" transform="matrix(1 0 0 1 -12 -5)"/>
+   <text fill="#37474F" font-family="Arial" font-size="9" id="retrieve-label" text-anchor="middle" transform="matrix(1 0 0 1 -1 -10)" x="285" y="175">retrieve</text>
+  </g>
+  <g id="svg_8" transform="translate(-1 0) translate(1 0) translate(-1 0) translate(-1 0) translate(-1 0) translate(1 0) matrix(1 0 0 1 0 0) translate(1 0) translate(-1 0) translate(-1 0) translate(-1 0) translate(-1 0) matrix(1 0 0 1 2.665 -129.166)">
+   <ellipse cx="250" cy="220" fill="#C5CAE9" id="svg_9" rx="55" ry="35" stroke="#3F51B5" stroke-width="2"/>
+   <text fill="#3F51B5" font-family="Arial" font-size="13" font-weight="500" id="svg_10" text-anchor="middle" x="250" y="225">Agent Loop</text>
+  </g>
+ </g>
+</svg>

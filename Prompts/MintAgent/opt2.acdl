@@ -7,20 +7,24 @@ Mint2[@t]: {
     } 
     
     // all the tool calls and reponses from all turns
-    ForEach(@i: range(1,@t)) {
+    ForEach(@i: range(1,@t-1)) {
         A: { 
-            ForEach(k: range(1, sys.steps[@i])){
+            ForEach(k: range(1, sys.substeps[@i])){
                 sys.tool_used[@i.k]
                 sys.tool_used[@i.k].tool_response
             }
         }
-        If @i<@t {
-            A: {
-                resp.solution_reasoning[@i]
-                resp.solution[@i]
-            }
-            U: env.feedback[@i] // response if the answer was right or wrong, remaining tries if failed
+        A: {
+            resp.solution_reasoning[@i]
+            resp.solution[@i]
         }
+        U: env.feedback[@i] // response if the answer was right or wrong, remaining tries if failed
+    } 
     
-    }  
+    ForEach(k: range(1, sys.substeps[@t])){
+        A: {
+            sys.tool_used[@t.k]
+            sys.tool_used[@t.k].tool_response
+        }
+    }
 }

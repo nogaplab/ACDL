@@ -27,6 +27,9 @@ import {
   ExpressionToken,
   Iterable,
   RangeExpr,
+  NameDef,
+  NameRef,
+  ListComprehension,
 } from "./types";
 
 
@@ -57,11 +60,7 @@ export function renderPrompt(
   // - CSS class selection
   // - layout variants
   // - compact vs expanded rendering
-  return `
-<div class="prompt-container prompt-style-${style}">
-  ${titleHtml}
-  ${bodyHtml}
-</div>`;
+  return `<div class="prompt-container prompt-style-${style}">${titleHtml}${bodyHtml}</div>`;
 }
 
 /**
@@ -85,6 +84,12 @@ function escapeHtml(text: string): string {
 function renderExpressionTokens(tokens: ExpressionToken[]): string {
   const result: string[] = [];
   let i = 0;
+
+  // Check if expression contains and/or - if so, we'll wrap sub-expressions in parens
+  const hasLogicalOps = tokens.some(t => t.type === "IDENT" && (t.value === "and" || t.value === "or"));
+  if (hasLogicalOps) {
+    result.push("(");
+  }
 
   while (i < tokens.length) {
     const tok = tokens[i];
@@ -264,7 +269,13 @@ function renderExpressionTokens(tokens: ExpressionToken[]): string {
       // Render the arguments recursively
       const argsHtml = renderExpressionTokens(argTokens);
 
-      result.push(`<span class="func-block"><span class="func-name">${funcName}</span><span class="func-parens">(</span>${argsHtml}<span class="func-parens">)</span></span>`);
+      // Special handling for min/max - render without function coloring
+      const isBuiltinMath = tok.value === "min" || tok.value === "max";
+      if (isBuiltinMath) {
+        result.push(`<span class="builtin-func">${funcName}(${argsHtml})</span>`);
+      } else {
+        result.push(`<span class="func-block"><span class="func-name">${funcName}</span><span class="func-parens">(</span>${argsHtml}<span class="func-parens">)</span></span>`);
+      }
       continue;
     }
 
@@ -318,7 +329,12 @@ function renderExpressionTokens(tokens: ExpressionToken[]): string {
         break;
 
       case "IDENT":
-        result.push(`<span class="expr-ident">${escaped}</span>`);
+        // Add spacing and parentheses around logical keywords (and, or)
+        if (tok.value === "and" || tok.value === "or") {
+          result.push(`) <span class="expr-keyword">${escaped}</span> (`);
+        } else {
+          result.push(`<span class="expr-ident">${escaped}</span>`);
+        }
         break;
 
       case "NUMBER":
@@ -352,6 +368,11 @@ function renderExpressionTokens(tokens: ExpressionToken[]): string {
     i++;
   }
 
+  // Close the final sub-expression paren if we had logical operators
+  if (hasLogicalOps) {
+    result.push(")");
+  }
+
   return result.join("");
 }
 
@@ -361,10 +382,7 @@ function renderPromptTitle(title: PromptTitle): string {
   // Build something like:  prompt[@t][agent_name]
   const indexSuffix = renderIndexList(title.indices);
 
-  return `
-<div class="prompt-title">
-  <h1>${escapeHtml(title.name)}${indexSuffix}</h1>
-</div>`;
+  return `<div class="prompt-title"><h1>${escapeHtml(title.name)}${indexSuffix}</h1></div>`;
 }
 
 function renderIndexValue(index: Index): string {
@@ -442,11 +460,55 @@ function renderTopLevelBlock(block: PromptBlock): string {
 
     case "label-block":
       return renderLabelBlock(block);
+
+    case "name-def":
+      return renderNameDef(block);
   }
 }
 
 function renderCommentBlock(block: CommentBlock): string {
   return `<div class="comment-block">// ${escapeHtml(block.text)}</div>`;
+}
+
+/**
+ * Render a NameDef block: name varname := value
+ */
+function renderNameDef(block: NameDef): string {
+  const varName = escapeHtml(block.name);
+  let valueHtml: string;
+
+  if (block.value.kind === "context-var") {
+    valueHtml = renderContextVarBlock(block.value);
+  } else if (block.value.kind === "function") {
+    valueHtml = renderFuncBlock(block.value);
+  } else {
+    valueHtml = renderListComprehension(block.value);
+  }
+
+  return `<div class="name-def"><span class="keyword">name</span> <span class="name-ref"><span class="segment">${varName}</span></span> <span class="name-assign">:=</span> ${valueHtml}</div>`;
+}
+
+/**
+ * Render a ListComprehension: [ element | var ∈ iterable ]
+ */
+function renderListComprehension(block: ListComprehension): string {
+  // Render the element expression
+  const elementHtml = block.element.kind === "context-var"
+    ? renderContextVarBlock(block.element)
+    : renderFuncBlock(block.element);
+
+  // Render the iterable
+  const iterableHtml = renderIterable(block.iterable);
+
+  // Render as: [ element | var ∈ iterable ] - wrapped in flex container for alignment
+  return `<span class="list-comp-wrapper"><span class="list-comprehension">[</span> ${elementHtml} <span class="list-comp-separator">|</span> <span class="list-comp-var">${escapeHtml(block.variable)}</span> <span class="list-comp-in">∈</span> ${iterableHtml} <span class="list-comprehension">]</span></span>`;
+}
+
+/**
+ * Render a NameRef: renders the variable name in a pink box (no $ prefix)
+ */
+function renderNameRef(block: NameRef): string {
+  return `<span class="name-ref"><span class="segment">${escapeHtml(block.name)}</span></span>`;
 }
 
 /**
@@ -522,10 +584,13 @@ function renderRoleBuildingBlock(block: RoleBuildingBlock): string {
       return renderSwitchInsideRole(block);
 
     case "comment-block":
-      return renderCommentBlock(block)
+      return renderCommentBlock(block);
 
-  //  default:
-  //    return `<code>Error! unknown or disallowed role block</code>`;
+    case "name-def":
+      return renderNameDef(block);
+
+    case "name-ref":
+      return renderNameRef(block);
   }
 }
 
@@ -567,7 +632,11 @@ function renderFuncBlock(block: Func): string {
     block.indices && block.indices.length > 0
       ? renderIndexList(block.indices) : "";
 
-  const funcCore = `<span class="func-block"><span class="func-name">${escapeHtml(block.name)}</span><span class="func-parens">(</span>${argsText}<span class="func-parens">)</span>${resultIndices}</span>`;
+  // Special handling for min/max - render without function coloring
+  const isBuiltinMath = block.name === "min" || block.name === "max";
+  const funcCore = isBuiltinMath
+    ? `<span class="builtin-func">${escapeHtml(block.name)}(${argsText})${resultIndices}</span>`
+    : `<span class="func-block"><span class="func-name">${escapeHtml(block.name)}</span><span class="func-parens">(</span>${argsText}<span class="func-parens">)</span>${resultIndices}</span>`;
 
   if (block.comment) {
     return `<span class="block-with-comment">${funcCore}<span class="inline-comment"> // ${escapeHtml(block.comment)}</span></span>`;
@@ -601,6 +670,9 @@ function renderTextArgs(arg: TextArgs): string {
       const ops = arg.operator.join("");
       const right = renderTextArgs(arg.right);
       return `<span class="arithmetic-expr">${left}${escapeHtml(ops)}${right}</span>`;
+
+    case "name-ref":
+      return renderNameRef(arg);
   }
 }
 
@@ -769,7 +841,7 @@ function renderRangeExpr(range: RangeExpr): string {
 function renderLoopOutsideRole(block: LoopBlockOutsideRole): string {
   const indexHtml = `<span class="loop-var">${escapeHtml(block.index.name)}</span>`;
   const iterableHtml = `<span class="loop-iterable">${renderIterable(block.iterable)}</span>`;
-  const header = `<span class="keyword">ForEach</span>(${indexHtml}: ${iterableHtml}):`;
+  const header = `<span class="keyword">ForEach</span> ${indexHtml}: ${iterableHtml}`;
 
   const bodyHtml = block.body
     .map(child =>
@@ -810,7 +882,7 @@ function renderLoopOutsideRole(block: LoopBlockOutsideRole): string {
 function renderLoopInsideRole(block: LoopBlockInsideRole): string {
   const indexHtml = `<span class="loop-var">${escapeHtml(block.index.name)}</span>`;
   const iterableHtml = `<span class="loop-iterable">${renderIterable(block.iterable)}</span>`;
-  const header = `<span class="keyword">ForEach</span>(${indexHtml}: ${iterableHtml}):`;
+  const header = `<span class="keyword">ForEach</span> ${indexHtml}: ${iterableHtml}`;
   const bodyHtml = block.body
     .map((child: any) =>
       `<div class="role-loop-child">${renderRoleBuildingBlock(child)}</div>`

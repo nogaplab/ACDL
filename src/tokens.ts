@@ -15,7 +15,10 @@ export type ControlKeyword =
   | "Case"
   | "Default"
   | "break"
-  | "continue";
+  | "continue"
+  | "name"
+  | "for"
+  | "in";
 
 export type Keyword = NamespaceKeyword | ControlKeyword;
 

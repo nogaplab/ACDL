@@ -209,6 +209,7 @@ export class Parser {
         case "If": return this.parseConditionalOutside();
         case "ForEach": return this.parseLoopOutside();
         case "Switch": return this.parseSwitchOutside();
+        case "name": return this.parseNameDef();
       }
     }
 
@@ -225,7 +226,7 @@ export class Parser {
   }
 
   /**
-   * Parse a LabelBlock: LabelName { PromptBlock+ }
+   * Parse a LabelBlock: Labelname { PromptBlock+ }
    * Labels can contain one or more PromptBlocks (but not other LabelBlocks).
    */
   private parseLabelBlock(): AST.LabelBlock {
@@ -308,7 +309,7 @@ export class Parser {
         throw new Error(`[${tok.line}:${tok.col}] Control flow statements not allowed in single-line role syntax`);
       }
 
-      // Context Namespaces
+      // Context namespaces
       const namespaces = ["env", "sys", "resp", "prompt"];
       if (namespaces.includes(val as string)) {
         return this.parseContextVar();
@@ -332,36 +333,138 @@ export class Parser {
     const tok = this.peek();
     const val = tok.value;
     console.log("started role building block")
-    
+
     // Check for standalone comments FIRST
     if (tok.type === "COMMENT") {
         const text = this.consume("COMMENT").value as string;
         return Create.commentBlock({ text });
     }
-    
+
+    // Check for name reference: $varname
+    if (tok.type === "SYMBOL" && val === "$") {
+      return this.parseNameRef();
+    }
+
     if (tok.type === "KEYWORD") {
       // 1. Check for Control Flow
       if (val === "If") return this.parseConditionalInside();
       if (val === "ForEach") return this.parseLoopInside();
       if (val === "Switch") return this.parseSwitchInside();
 
-      // 2. Handle break and continue as template-like keywords
+      // 2. Check for name definition
+      if (val === "name") return this.parseNameDef();
+
+      // 3. Handle break and continue as template-like keywords
       if (val === "break" || val === "continue") {
         const name = this.consume("KEYWORD").value as string;
         return Create.template({ name, arguments: [], comment: undefined });
       }
 
-      // 3. Check for Context Namespaces
+      // 4. Check for Context namespaces
       const namespaces = ["env", "sys", "resp", "prompt"];
       if (namespaces.includes(val as string)) {
         return this.parseContextVar();
       }
     }
 
-    // 4. Handle Templates/Functions (IDENT)
+    // 5. Handle Templates/Functions (IDENT)
     if (tok.type === "IDENT") return this.parseTemplateOrFunc();
 
     throw new Error(`[${tok.line}:${tok.col}] Unexpected ${tok.type} (${val}) inside role.`);
+  }
+
+  /* ───────────────── Name Definitions ───────────────── */
+
+  /**
+   * Parse a name definition: name varname := expr
+   * where expr is a ContextVar, Func, or ListComprehension
+   */
+  private parseNameDef(): AST.NameDef {
+    this.consume("KEYWORD", "name");
+    const varName = this.consume("IDENT").value as string;
+    this.consume("SYMBOL", ":");
+    this.consume("LOGIC_OP", "=");
+
+    // Parse the value - ContextVar, Func, or ListComprehension
+    const tok = this.peek();
+    let value: AST.ContextVar | AST.Func | AST.ListComprehension;
+
+    // Check for list comprehension: [expr for var in iterable]
+    if (tok.type === "SYMBOL" && tok.value === "[") {
+      value = this.parseListComprehension();
+    } else if (tok.type === "KEYWORD" && ["env", "sys", "resp", "prompt"].includes(tok.value as string)) {
+      value = this.parseContextVar();
+    } else if (tok.type === "IDENT") {
+      const parsed = this.parseTemplateOrFunc();
+      if (parsed.kind !== "function") {
+        throw new Error(`[${tok.line}:${tok.col}] name definitions require a ContextVar, Func, or list comprehension, got template "${parsed.name}"`);
+      }
+      value = parsed;
+    } else {
+      throw new Error(`[${tok.line}:${tok.col}] Expected ContextVar, Func, or list comprehension after :=, got ${tok.type}`);
+    }
+
+    return Create.nameDef({ name: varName, value });
+  }
+
+  /**
+   * Parse a list comprehension: [expr for var in iterable]
+   * Example: [sys.Summary[@t] for t in range(T, T-900, 100)]
+   */
+  private parseListComprehension(): AST.ListComprehension {
+    this.consume("SYMBOL", "[");
+
+    // Parse the element expression (ContextVar or Func)
+    const elemTok = this.peek();
+    let element: AST.ContextVar | AST.Func;
+
+    if (elemTok.type === "KEYWORD" && ["env", "sys", "resp", "prompt"].includes(elemTok.value as string)) {
+      element = this.parseContextVar();
+    } else if (elemTok.type === "IDENT") {
+      const parsed = this.parseTemplateOrFunc();
+      if (parsed.kind !== "function") {
+        throw new Error(`[${elemTok.line}:${elemTok.col}] List comprehension element must be ContextVar or Func, got template "${parsed.name}"`);
+      }
+      element = parsed;
+    } else {
+      throw new Error(`[${elemTok.line}:${elemTok.col}] Expected ContextVar or Func in list comprehension, got ${elemTok.type}`);
+    }
+
+    // Parse "for"
+    this.consume("KEYWORD", "for");
+
+    // Parse loop variable
+    const variable = this.consume("IDENT").value as string;
+
+    // Parse "in"
+    this.consume("KEYWORD", "in");
+
+    // Parse iterable (range expression or other)
+    let iterable: AST.Iterable;
+    if (this.peek().value === "range" && this.peekNext().value === "(") {
+      iterable = this.parseRangeExpr();
+    } else {
+      // Capture iterable tokens until ]
+      const iterTokens: AST.ExpressionToken[] = [];
+      while (this.peek().value !== "]") {
+        if (this.isEOF()) throw new Error("Unterminated list comprehension");
+        iterTokens.push(toExprToken(this.consume()));
+      }
+      iterable = Create.Iterable({ tokens: iterTokens });
+    }
+
+    this.consume("SYMBOL", "]");
+
+    return Create.listComprehension({ element, variable, iterable });
+  }
+
+  /**
+   * Parse a name reference: $varname
+   */
+  private parseNameRef(): AST.NameRef {
+    this.consume("SYMBOL", "$");
+    const varName = this.consume("IDENT").value as string;
+    return Create.nameRef({ name: varName });
   }
 
   /* ───────────────── Expressions & Shared Rules ───────────────── */
@@ -452,13 +555,18 @@ export class Parser {
     return left;
   }
 
-  /** Parse an atomic value: number, time index, context var, or function/identifier */
+  /** Parse an atomic value: number, time index, context var, name ref, or function/identifier */
   private parseAtom(): AST.TextArgs {
     const tok = this.peek();
 
     if (this.match("SYMBOL", "@")) {
       // Time index like @t
       return Create.timeIndex({ name: this.consume("IDENT").value as string });
+    }
+
+    // Name reference: $varname
+    if (tok.type === "SYMBOL" && tok.value === "$") {
+      return this.parseNameRef();
     }
 
     if (tok.type === "KEYWORD" && ["env", "sys", "resp", "prompt"].includes(tok.value as string)) {

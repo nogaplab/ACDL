@@ -20,7 +20,10 @@ const CONTROL_KEYWORDS = new Set<ControlKeyword>([
   "Case",
   "Default",
   "break",
-  "continue"
+  "continue",
+  "name",
+  "for",
+  "in"
 ]);
 
 /* ───────────────── operators ───────────────── */
