@@ -21,6 +21,32 @@ async function renderToPdf(htmlContent: string, outputPath: string): Promise<voi
     // Wait for fonts to load
     await page.evaluateHandle('document.fonts.ready');
 
+    // Convert CSS ::before pseudo-elements to real text for better PDF text selection
+    await page.evaluate(() => {
+        // Map selectors to their ::before content symbols
+        const symbolMap: Record<string, string> = {
+            '.loop-block-outside-role-header': '↻',
+            '.loop-block-inside-role-header': '↻',
+            '.conditional-section-header': '◇',
+            '.conditional-block-outside-role-header': '◇',
+            '.switch-block-outside-role-header': '⎇',
+            '.switch-block-inside-role-header': '⎇',
+            '.template-block': '◆'
+        };
+
+        Object.entries(symbolMap).forEach(([selector, symbol]) => {
+            document.querySelectorAll(selector).forEach(el => {
+                if (!el.getAttribute('data-symbol-added')) {
+                    const span = document.createElement('span');
+                    span.textContent = symbol;
+                    span.className = 'pdf-symbol';
+                    el.insertBefore(span, el.firstChild);
+                    el.setAttribute('data-symbol-added', 'true');
+                }
+            });
+        });
+    });
+
     // Step 1: Find the width of the widest non-comment content
     const contentWidth = await page.evaluate(() => {
         // Hide all comments temporarily to measure content width
@@ -47,37 +73,25 @@ async function renderToPdf(htmlContent: string, outputPath: string): Promise<voi
         }
     }, contentWidth);
 
-    // Inject dompdf.js from CDN
-    await page.addScriptTag({
-        url: 'https://cdn.jsdelivr.net/npm/dompdf.js@latest/dist/dompdf.js'
+    // Get final dimensions after comments have wrapped
+    const contentBox = await page.evaluate(() => {
+        const container = document.querySelector('.prompt-container');
+        if (!container) return { width: 400, height: 200 };
+
+        const rect = container.getBoundingClientRect();
+        return {
+            width: Math.ceil(rect.width) + 2,
+            height: Math.ceil(rect.height) + 2
+        };
     });
 
-    // Wait for dompdf to be available
-    await page.waitForFunction(() => typeof (window as any).dompdf !== 'undefined');
-
-    // Generate PDF using dompdf.js and get it as base64
-    const pdfBase64 = await page.evaluate(async () => {
-        const element = document.querySelector('#output') || document.body;
-        const blob = await (window as any).dompdf(element, {
-            useCORS: true,
-            compress: true
-        });
-
-        // Convert blob to base64
-        return new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                const base64 = (reader.result as string).split(',')[1];
-                resolve(base64);
-            };
-            reader.onerror = reject;
-            reader.readAsDataURL(blob);
-        });
+    await page.pdf({
+        path: outputPath,
+        width: `${contentBox.width}px`,
+        height: `${contentBox.height}px`,
+        printBackground: true,
+        margin: { top: '0', right: '0', bottom: '0', left: '0' }
     });
-
-    // Write the PDF to file
-    const pdfBuffer = Buffer.from(pdfBase64, 'base64');
-    fs.writeFileSync(outputPath, pdfBuffer);
 
     await browser.close();
 }
@@ -115,6 +129,53 @@ function generateHtml(acdlContent: string, fileName: string): string {
             padding: 0;
             margin: 0;
             background: white;
+        }
+
+        /* Hide CSS pseudo-elements - we inject them as real text for PDF */
+        .loop-block-outside-role-header::before,
+        .loop-block-inside-role-header::before,
+        .conditional-section-header::before,
+        .conditional-block-outside-role-header::before,
+        .switch-block-outside-role-header::before,
+        .switch-block-inside-role-header::before,
+        .template-block::before {
+            content: none !important;
+        }
+
+        /* Style the injected PDF symbols to match original pseudo-elements */
+        .pdf-symbol {
+            margin-right: 4px;
+            color: var(--control-border, #6e7781);
+        }
+        .template-block .pdf-symbol {
+            font-size: 6px;
+            opacity: 0.7;
+            color: inherit;
+        }
+        .compact .template-block .pdf-symbol {
+            font-size: 5px;
+        }
+        .loop-block-outside-role-header .pdf-symbol,
+        .loop-block-inside-role-header .pdf-symbol {
+            font-size: 12px;
+        }
+        .conditional-section-header .pdf-symbol,
+        .conditional-block-outside-role-header .pdf-symbol {
+            font-size: 10px;
+        }
+        .switch-block-outside-role-header .pdf-symbol,
+        .switch-block-inside-role-header .pdf-symbol {
+            font-size: 12px;
+        }
+        .compact .loop-block-outside-role-header .pdf-symbol,
+        .compact .loop-block-inside-role-header .pdf-symbol,
+        .compact .switch-block-outside-role-header .pdf-symbol,
+        .compact .switch-block-inside-role-header .pdf-symbol,
+        .compact .conditional-block-outside-role-header .pdf-symbol {
+            font-size: 8px;
+        }
+        .compact .conditional-section-header .pdf-symbol {
+            font-size: 7px;
         }
 
         /* Comments wrap within the constrained width */
@@ -291,4 +352,18 @@ Examples:
         }
     }
 
-    console.log(`\n📄 ACDL to PDF Batch Render
+    console.log(`\n📄 ACDL to PDF Batch Renderer\n`);
+    console.log(`Input folder: ${folderPath}`);
+    console.log(`Output directory: ${outputDir}`);
+    console.log(`Sync to Overleaf: ${shouldSync ? 'Yes' : 'No'}\n`);
+
+    const pdfFiles = await processFolder(folderPath, outputDir, shouldSync);
+
+    if (pdfFiles.length > 0 && shouldSync) {
+        await syncToOverleaf(pdfFiles);
+    }
+
+    console.log(`\n✨ Done! Generated ${pdfFiles.length} PDF(s).`);
+}
+
+main().catch(console.error);
