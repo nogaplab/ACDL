@@ -604,6 +604,16 @@ body {
   overflow: hidden;
 }
 
+/* Style control flow blocks inside role blocks to match outside-role style (border-left only) */
+.conditional-block-inside-role .conditional-section,
+.switch-block-inside-role .switch-case,
+.switch-block-inside-role .switch-default {
+  background: transparent !important;
+  border: none !important;
+  border-left: 1px solid var(--control-border) !important;
+  border-radius: 0 !important;
+}
+
 /* Loop headers */
 .loop-block-outside-role-header,
 .loop-block-inside-role-header {
@@ -1106,6 +1116,16 @@ body {
   padding: 2px 5px;
   margin: 1px 0;
   border-radius: 2px;
+}
+
+/* Style control flow blocks inside role blocks to match outside-role style (compact) */
+.compact .conditional-block-inside-role .conditional-section,
+.compact .switch-block-inside-role .switch-case,
+.compact .switch-block-inside-role .switch-default {
+  background: transparent !important;
+  border: none !important;
+  border-left: 1px solid var(--control-border) !important;
+  border-radius: 0 !important;
 }
 
 .compact .conditional-section-header {

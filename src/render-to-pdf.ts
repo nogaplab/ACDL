@@ -3,6 +3,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import puppeteer from 'puppeteer';
+import { PDFDocument, AFRelationship } from 'pdf-lib';
 import { Parser } from './parser';
 import { renderPrompt } from './renderPrompt';
 
@@ -76,12 +77,20 @@ async function renderToPdf(htmlContent: string, outputPath: string): Promise<voi
     // Get final dimensions after comments have wrapped
     const contentBox = await page.evaluate(() => {
         const container = document.querySelector('.prompt-container');
+        const footer = document.querySelector('.source-link-footer');
         if (!container) return { width: 400, height: 200 };
 
-        const rect = container.getBoundingClientRect();
+        const containerRect = container.getBoundingClientRect();
+        const footerRect = footer?.getBoundingClientRect();
+
+        // Include footer height in total height
+        const totalHeight = footerRect
+            ? footerRect.bottom
+            : containerRect.bottom;
+
         return {
-            width: Math.ceil(rect.width) + 2,
-            height: Math.ceil(rect.height) + 2
+            width: Math.ceil(containerRect.width) + 2,
+            height: Math.ceil(totalHeight) + 2
         };
     });
 
@@ -96,6 +105,25 @@ async function renderToPdf(htmlContent: string, outputPath: string): Promise<voi
     await browser.close();
 }
 
+async function embedSourceAttachment(pdfPath: string, acdlContent: string, fileName: string): Promise<void> {
+    const pdfBytes = fs.readFileSync(pdfPath);
+    const pdfDoc = await PDFDocument.load(pdfBytes);
+
+    // Embed the ACDL source as a file attachment
+    await pdfDoc.attach(
+        Buffer.from(acdlContent, 'utf-8'),
+        `${fileName}.acdl`,
+        {
+            mimeType: 'text/plain',
+            description: `Original ACDL source for ${fileName}`,
+            afRelationship: AFRelationship.Source
+        }
+    );
+
+    const modifiedPdfBytes = await pdfDoc.save();
+    fs.writeFileSync(pdfPath, modifiedPdfBytes);
+}
+
 function generateHtml(acdlContent: string, fileName: string): string {
     const parser = new Parser(acdlContent);
     const ast = parser.parsePrompt();
@@ -104,6 +132,10 @@ function generateHtml(acdlContent: string, fileName: string): string {
     const cssContent = fs.existsSync('./styles.css')
         ? fs.readFileSync('./styles.css', 'utf-8')
         : '';
+
+    // Create a data URL for downloading the original ACDL source
+    const base64Source = Buffer.from(acdlContent, 'utf-8').toString('base64');
+    const downloadUrl = `data:text/plain;base64,${base64Source}`;
 
     // Apply the same structure as the web version's PNG export
     return `
@@ -193,11 +225,34 @@ function generateHtml(acdlContent: string, fileName: string): string {
             flex-wrap: wrap;
             align-items: flex-start;
         }
+
+        /* Source link footer */
+        .source-link-footer {
+            margin-top: 8px;
+            padding-top: 6px;
+            border-top: 1px solid #e0e0e0;
+            font-family: 'Inter', sans-serif;
+            font-size: 9px;
+        }
+        .source-link-footer a {
+            color: #666;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .source-link-footer a:hover {
+            color: #333;
+            text-decoration: underline;
+        }
     </style>
 </head>
 <body>
     <div id="output" class="compact">
         ${renderedPrompt}
+    </div>
+    <div class="source-link-footer">
+        📎 <strong>${fileName}.acdl</strong> attached
     </div>
 </body>
 </html>`;
@@ -243,8 +298,9 @@ async function processFolder(folderPath: string, outputDir: string, syncToOverle
             const content = fs.readFileSync(inputPath, 'utf-8');
             const html = generateHtml(content, baseName);
             await renderToPdf(html, outputPath);
+            await embedSourceAttachment(outputPath, content, baseName);
             generatedPdfs.push(outputPath);
-            console.log(`    ✓ Generated: ${outputPath}`);
+            console.log(`    ✓ Generated: ${outputPath} (with embedded source)`);
         } catch (err: any) {
             console.error(`    ✗ Error processing ${file}: ${err.message}`);
         }

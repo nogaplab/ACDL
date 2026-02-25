@@ -1,4 +1,4 @@
-Mint2[@t]: {
+Mint2[@T]: {
     U: {
         TASK_DESCRIPTION(sys.max_total_steps)
         env.tool_desc
@@ -7,24 +7,24 @@ Mint2[@t]: {
     } 
     
     // all the tool calls and reponses from all turns
-    ForEach(@i: range(1,@t-1)) {
+    ForEach(@t: range(1,@T-1)) {
         A: { 
-            ForEach(k: range(1, sys.substeps[@i])){
-                sys.tool_used[@i.k]
-                sys.tool_used[@i.k].tool_response
+            ForEach(k: range(1, sys.substeps[@t])){
+                sys.tool_used[@t.k]
+                sys.tool_used[@t.k].tool_response
             }
         }
         A: {
-            resp.solution_reasoning[@i]
-            resp.solution[@i]
+            resp.solution_reasoning[@t]
+            resp.solution[@t]
         }
-        U: env.feedback[@i] // response if the answer was right or wrong, remaining tries if failed
+        U: env.feedback[@t] // response if the answer was right or wrong, remaining tries if failed
     } 
     
-    ForEach(k: range(1, sys.substeps[@t])){
+    ForEach(k: range(1, sys.substeps[@T])){
         A: {
-            sys.tool_used[@t.k]
-            sys.tool_used[@t.k].tool_response
+            sys.tool_used[@T.k]
+            sys.tool_used[@T.k].tool_response
         }
     }
 }

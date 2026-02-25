@@ -1,17 +1,17 @@
-RLM[@t]: {
+RLM[@T]: {
     // self.messages
     S: {
         AVAILABLE_TOOLS // context variable, llm query(subquery), python execution via REPL blocks
         INTERACTION_RULES   // inspect context, iterate, dont answer early, how to return final answer
     }
      
-    ForEach(i: range(1,@t)) {
+    ForEach(@t: range(1,@T)) {
         // if used tools, adds a list of tool responses to history
-        If sys.code_blocks[@i] {
-            ForEach(k: range(1,sys.code_block[@i].len)){
+        If sys.code_blocks[@t] {
+            ForEach(i: range(1,sys.code_block[@t].len)){
                 U: {
-                    sys.code_block[@i.k] 
-                    sys.code_block[@i.k].response
+                    sys.code_block[@t.i] 
+                    sys.code_block[@t.i].response
                 }
             }
         }
@@ -23,10 +23,10 @@ RLM[@t]: {
     }
 
     // next action prompt
-    If sys.final_answer[@t] {
+    If sys.final_answer[@T] {
         U: PROVIDE_FINAL_ANSWER
     }
-    ElseIf @t == 1 {
+    ElseIf @T == 1 {
         U: {
             USE_REPL        // this is your first interaction, there is no action history yet so use the repl env to view your context
             REPL_INSTRUCTIONS(sys.query)    // use the repl instructions to find the answer to the query. look for context var, or query sublm

@@ -16,7 +16,8 @@ Pokemon[@T]: {
                 If @T%100==0 {
                     summarize(range(@T-100, @T))
                     If @T>999 and @T%1000==0 {
-                        compress_summaries(range(sys.summary[@T], sys.summary[@T-900], 100))
+                        name relevant_summaries := [sys.summary[@t] for t in range(@T, @T-900, 100)]
+                        compress_summaries($relevant_summaries)
                     }  
                 }
                 If @T>99 {
@@ -24,7 +25,7 @@ Pokemon[@T]: {
                         sys.summary[@i]
                     }
                     
-                    If @T>999 {
+                    If @T>999 and @T%1000!=0 {
                         ForEach(i: range(max(1000, @T-@T%1000-900), @T-(@T%1000), 1000)) { 
                             sys.compressed_summary[@i]
                         } 

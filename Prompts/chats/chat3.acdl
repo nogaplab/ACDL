@@ -1,11 +1,11 @@
-Chat3[@t]: {
+Chat3[@T]: {
     S: INSTRUCTIONS 
     U: {
-        ForEach(i: range(1,t-1)) {
-            env.user_input[@i]
-            resp.llm_answer[@i]
+        ForEach(t: range(1,T-1)) {
+            env.user_input[@t]
+            resp.llm_answer[@t]
         }
-        env.user_input[@t]
+        env.user_input[@T]
     }
     
 }

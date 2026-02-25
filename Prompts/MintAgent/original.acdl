@@ -1,4 +1,4 @@
-Original[@t]: {
+Original[@T]: {
     U: {
         TASK_DESCRIPTION(sys.max_total_steps)
         env.tool_descriptions // description of each tool, how to use them, and when to use them
@@ -6,28 +6,28 @@ Original[@t]: {
         env.task_prompt // the question you need to answer, or task you need to complete
     }
 
-    ForEach(i: range(1,@t-1)) {
-        ForEach(k: range(1,sys.substeps[@i])){
+    ForEach(@t: range(1,@T-1)) {
+        ForEach(i: range(1,sys.substeps[@t])){
             A: {
-                resp.tool_reasoning[@i.k]
-                sys.tool_used[@i.k]
+                resp.tool_reasoning[@t.i]
+                sys.tool_used[@t.i]
             }
-            U: sys.tool_used[@i.k].tool_response
+            U: sys.tool_used[@t.i].tool_response
     
         A: {
-            resp.solution_reasoning[@i]
-            resp.solution
+            resp.solution_reasoning[@t]
+            resp.solution[@t]
         }
-        U: env.feedback[@i.k] // response if the answer was right or wrong, remaining tries if failed
+        U: env.feedback[@t.i] // response if the answer was right or wrong, remaining tries if failed
         }
     }
 
-    ForEach(k: range(1,sys.substeps[@t])){
+    ForEach(k: range(1,sys.substeps[@T])){
         A: {
-            resp.tool_reasoning[@t.k]
-            resp.tool_used[@t.k]
+            resp.tool_reasoning[@T.k]
+            resp.tool_used[@T.k]
         }
-        U: sys.tool_used[@t.k].tool_response
+        U: sys.tool_used[@T.k].tool_response
     }
 
 }

@@ -7,16 +7,24 @@ Prompt[@t]: {
     } 
     
     // all the tool calls and reponses from all turns
-    ForEach(@i: range(1,@t)) {
-        U: env.user_input[@i]
-        ForEach(k: range(1, sys.steps[@i])){
+    ForEach(@t: range(1,@T)) {
+        ForEach(i: range(1, sys.steps[@t])){
             A: {
-                sys.tool_used[@i.k]
-                sys.tool_used[@i.k].tool_response
+                sys.tool_used[@t.i]
+                sys.tool_used[@t.i].tool_response
             }
         }
-        If @i<@t {
-            A: resp.agent_answer[@i]
+        A: {
+            resp.solution_reasoning[@t]
+            resp.solution[@t]
         }
+        U: env.feedback[@t] // response if the answer was right or wrong, remaining tries if failed
     }  
+
+    ForEach(k: range(1, sys.substeps[@T])){
+        A: {
+            sys.tool_used[@T.k]
+            sys.tool_used[@T.k].tool_response
+        }
+    }
 }

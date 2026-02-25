@@ -53,9 +53,10 @@
     }
   },
   "scripts": {
-    "build": "node esbuild.mjs",
-    "watch": "node esbuild.mjs --watch",
-    "package": "npx vsce package"
+    "sync-css": "node -e \"require('fs').copyFileSync('../styles.css', 'media/preview.css')\"",
+    "build": "npm run sync-css && node esbuild.mjs",
+    "watch": "npm run sync-css && node esbuild.mjs --watch",
+    "package": "npm run sync-css && npx vsce package"
   },
   "devDependencies": {
     "@types/vscode": "^1.80.0",

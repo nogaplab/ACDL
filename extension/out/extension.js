@@ -54,7 +54,10 @@ var CONTROL_KEYWORDS = /* @__PURE__ */ new Set([
   "Case",
   "Default",
   "break",
-  "continue"
+  "continue",
+  "name",
+  "for",
+  "in"
 ]);
 var LOGIC_OP = /* @__PURE__ */ new Set([
   "=",
@@ -397,6 +400,15 @@ function labelBlock(params) {
 function arithmeticExpr(params) {
   return { ...params, kind: "arithmetic" };
 }
+function nameDef(params) {
+  return { ...params, kind: "name-def" };
+}
+function nameRef(params) {
+  return { ...params, kind: "name-ref" };
+}
+function listComprehension(params) {
+  return { ...params, kind: "list-comprehension" };
+}
 
 // ../src/parser.ts
 function toExprToken(tok) {
@@ -562,6 +574,8 @@ var Parser = class {
           return this.parseLoopOutside();
         case "Switch":
           return this.parseSwitchOutside();
+        case "name":
+          return this.parseNameDef();
       }
     }
     if (tok.type === "COMMENT") {
@@ -574,7 +588,7 @@ var Parser = class {
     throw new Error(`[${tok.line}:${tok.col}] Syntax Error: Unexpected token "${val}" in global scope.`);
   }
   /**
-   * Parse a LabelBlock: LabelName { PromptBlock+ }
+   * Parse a LabelBlock: Labelname { PromptBlock+ }
    * Labels can contain one or more PromptBlocks (but not other LabelBlocks).
    */
   parseLabelBlock() {
@@ -652,6 +666,9 @@ var Parser = class {
       const text = this.consume("COMMENT").value;
       return commentBlock({ text });
     }
+    if (tok.type === "SYMBOL" && val === "$") {
+      return this.parseNameRef();
+    }
     if (tok.type === "KEYWORD") {
       if (val === "If")
         return this.parseConditionalInside();
@@ -659,6 +676,8 @@ var Parser = class {
         return this.parseLoopInside();
       if (val === "Switch")
         return this.parseSwitchInside();
+      if (val === "name")
+        return this.parseNameDef();
       if (val === "break" || val === "continue") {
         const name = this.consume("KEYWORD").value;
         return template({ name, arguments: [], comment: void 0 });
@@ -671,6 +690,78 @@ var Parser = class {
     if (tok.type === "IDENT")
       return this.parseTemplateOrFunc();
     throw new Error(`[${tok.line}:${tok.col}] Unexpected ${tok.type} (${val}) inside role.`);
+  }
+  /* ───────────────── Name Definitions ───────────────── */
+  /**
+   * Parse a name definition: name varname := expr
+   * where expr is a ContextVar, Func, or ListComprehension
+   */
+  parseNameDef() {
+    this.consume("KEYWORD", "name");
+    const varName = this.consume("IDENT").value;
+    this.consume("SYMBOL", ":");
+    this.consume("LOGIC_OP", "=");
+    const tok = this.peek();
+    let value;
+    if (tok.type === "SYMBOL" && tok.value === "[") {
+      value = this.parseListComprehension();
+    } else if (tok.type === "KEYWORD" && ["env", "sys", "resp", "prompt"].includes(tok.value)) {
+      value = this.parseContextVar();
+    } else if (tok.type === "IDENT") {
+      const parsed = this.parseTemplateOrFunc();
+      if (parsed.kind !== "function") {
+        throw new Error(`[${tok.line}:${tok.col}] name definitions require a ContextVar, Func, or list comprehension, got template "${parsed.name}"`);
+      }
+      value = parsed;
+    } else {
+      throw new Error(`[${tok.line}:${tok.col}] Expected ContextVar, Func, or list comprehension after :=, got ${tok.type}`);
+    }
+    return nameDef({ name: varName, value });
+  }
+  /**
+   * Parse a list comprehension: [expr for var in iterable]
+   * Example: [sys.Summary[@t] for t in range(T, T-900, 100)]
+   */
+  parseListComprehension() {
+    this.consume("SYMBOL", "[");
+    const elemTok = this.peek();
+    let element;
+    if (elemTok.type === "KEYWORD" && ["env", "sys", "resp", "prompt"].includes(elemTok.value)) {
+      element = this.parseContextVar();
+    } else if (elemTok.type === "IDENT") {
+      const parsed = this.parseTemplateOrFunc();
+      if (parsed.kind !== "function") {
+        throw new Error(`[${elemTok.line}:${elemTok.col}] List comprehension element must be ContextVar or Func, got template "${parsed.name}"`);
+      }
+      element = parsed;
+    } else {
+      throw new Error(`[${elemTok.line}:${elemTok.col}] Expected ContextVar or Func in list comprehension, got ${elemTok.type}`);
+    }
+    this.consume("KEYWORD", "for");
+    const variable = this.consume("IDENT").value;
+    this.consume("KEYWORD", "in");
+    let iterable;
+    if (this.peek().value === "range" && this.peekNext().value === "(") {
+      iterable = this.parseRangeExpr();
+    } else {
+      const iterTokens = [];
+      while (this.peek().value !== "]") {
+        if (this.isEOF())
+          throw new Error("Unterminated list comprehension");
+        iterTokens.push(toExprToken(this.consume()));
+      }
+      iterable = Iterable({ tokens: iterTokens });
+    }
+    this.consume("SYMBOL", "]");
+    return listComprehension({ element, variable, iterable });
+  }
+  /**
+   * Parse a name reference: $varname
+   */
+  parseNameRef() {
+    this.consume("SYMBOL", "$");
+    const varName = this.consume("IDENT").value;
+    return nameRef({ name: varName });
   }
   /* ───────────────── Expressions & Shared Rules ───────────────── */
   parseContextVar() {
@@ -739,11 +830,14 @@ var Parser = class {
     }
     return left;
   }
-  /** Parse an atomic value: number, time index, context var, or function/identifier */
+  /** Parse an atomic value: number, time index, context var, name ref, or function/identifier */
   parseAtom() {
     const tok = this.peek();
     if (this.match("SYMBOL", "@")) {
       return timeIndex({ name: this.consume("IDENT").value });
+    }
+    if (tok.type === "SYMBOL" && tok.value === "$") {
+      return this.parseNameRef();
     }
     if (tok.type === "KEYWORD" && ["env", "sys", "resp", "prompt"].includes(tok.value)) {
       return this.parseContextVar();
@@ -1188,11 +1282,7 @@ function wrapBlock(cls, headerHtml, bodyHtml) {
 function renderPrompt(prompt2, style = "default") {
   const titleHtml = renderPromptTitle(prompt2.title);
   const bodyHtml = renderPromptBody(prompt2.body);
-  return `
-<div class="prompt-container prompt-style-${style}">
-  ${titleHtml}
-  ${bodyHtml}
-</div>`;
+  return `<div class="prompt-container prompt-style-${style}">${titleHtml}${bodyHtml}</div>`;
 }
 function escapeHtml(text) {
   return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
@@ -1200,6 +1290,10 @@ function escapeHtml(text) {
 function renderExpressionTokens(tokens) {
   const result = [];
   let i = 0;
+  const hasLogicalOps = tokens.some((t) => t.type === "IDENT" && (t.value === "and" || t.value === "or"));
+  if (hasLogicalOps) {
+    result.push("(");
+  }
   while (i < tokens.length) {
     const tok = tokens[i];
     if (tok.type === "KEYWORD" && ["env", "sys", "resp", "prompt"].includes(tok.value) && i + 1 < tokens.length && tokens[i + 1].type === "SYMBOL" && tokens[i + 1].value === ".") {
@@ -1325,7 +1419,12 @@ function renderExpressionTokens(tokens) {
         i++;
       }
       const argsHtml = renderExpressionTokens(argTokens);
-      result.push(`<span class="func-block"><span class="func-name">${funcName}</span><span class="func-parens">(</span>${argsHtml}<span class="func-parens">)</span></span>`);
+      const isBuiltinMath = tok.value === "min" || tok.value === "max";
+      if (isBuiltinMath) {
+        result.push(`<span class="builtin-func">${funcName}(${argsHtml})</span>`);
+      } else {
+        result.push(`<span class="func-block"><span class="func-name">${funcName}</span><span class="func-parens">(</span>${argsHtml}<span class="func-parens">)</span></span>`);
+      }
       continue;
     }
     if (tok.type === "LOGIC_OP") {
@@ -1365,7 +1464,11 @@ function renderExpressionTokens(tokens) {
         result.push(`<span class="keyword">${escaped}</span>`);
         break;
       case "IDENT":
-        result.push(`<span class="expr-ident">${escaped}</span>`);
+        if (tok.value === "and" || tok.value === "or") {
+          result.push(`) <span class="expr-keyword">${escaped}</span> (`);
+        } else {
+          result.push(`<span class="expr-ident">${escaped}</span>`);
+        }
         break;
       case "NUMBER":
         result.push(`<span class="expr-number">${escaped}</span>`);
@@ -1391,15 +1494,15 @@ function renderExpressionTokens(tokens) {
     }
     i++;
   }
+  if (hasLogicalOps) {
+    result.push(")");
+  }
   return result.join("");
 }
 function renderPromptTitle(title) {
   const indices = title.indices;
   const indexSuffix = renderIndexList(title.indices);
-  return `
-<div class="prompt-title">
-  <h1>${escapeHtml(title.name)}${indexSuffix}</h1>
-</div>`;
+  return `<div class="prompt-title"><h1>${escapeHtml(title.name)}${indexSuffix}</h1></div>`;
 }
 function renderIndexValue(index2) {
   return index2.kind === "time-index" ? `<span class="time-index">@${escapeHtml(index2.name)}</span>` : `<span class="other-index">${escapeHtml(index2.name)}</span>`;
@@ -1446,10 +1549,32 @@ function renderTopLevelBlock(block) {
       return renderCommentBlock(block);
     case "label-block":
       return renderLabelBlock(block);
+    case "name-def":
+      return renderNameDef(block);
   }
 }
 function renderCommentBlock(block) {
   return `<div class="comment-block">// ${escapeHtml(block.text)}</div>`;
+}
+function renderNameDef(block) {
+  const varName = escapeHtml(block.name);
+  let valueHtml;
+  if (block.value.kind === "context-var") {
+    valueHtml = renderContextVarBlock(block.value);
+  } else if (block.value.kind === "function") {
+    valueHtml = renderFuncBlock(block.value);
+  } else {
+    valueHtml = renderListComprehension(block.value);
+  }
+  return `<div class="name-def"><span class="keyword">name</span> <span class="name-ref"><span class="segment">${varName}</span></span> <span class="name-assign">:=</span> ${valueHtml}</div>`;
+}
+function renderListComprehension(block) {
+  const elementHtml = block.element.kind === "context-var" ? renderContextVarBlock(block.element) : renderFuncBlock(block.element);
+  const iterableHtml = renderIterable(block.iterable);
+  return `<span class="list-comp-wrapper"><span class="list-comprehension">[</span> ${elementHtml} <span class="list-comp-separator">|</span> <span class="list-comp-var">${escapeHtml(block.variable)}</span> <span class="list-comp-in">\u2208</span> ${iterableHtml} <span class="list-comprehension">]</span></span>`;
+}
+function renderNameRef(block) {
+  return `<span class="name-ref"><span class="segment">${escapeHtml(block.name)}</span></span>`;
 }
 function renderLabelBlock(block) {
   const labelName = escapeHtml(block.label);
@@ -1492,6 +1617,10 @@ function renderRoleBuildingBlock(block) {
       return renderSwitchInsideRole(block);
     case "comment-block":
       return renderCommentBlock(block);
+    case "name-def":
+      return renderNameDef(block);
+    case "name-ref":
+      return renderNameRef(block);
   }
 }
 function renderFuncBlock(block) {
@@ -1507,7 +1636,8 @@ function renderFuncBlock(block) {
   }
   const argsText = block.arguments.map(renderTextArgs).join(", ");
   const resultIndices = block.indices && block.indices.length > 0 ? renderIndexList(block.indices) : "";
-  const funcCore = `<span class="func-block"><span class="func-name">${escapeHtml(block.name)}</span><span class="func-parens">(</span>${argsText}<span class="func-parens">)</span>${resultIndices}</span>`;
+  const isBuiltinMath = block.name === "min" || block.name === "max";
+  const funcCore = isBuiltinMath ? `<span class="builtin-func">${escapeHtml(block.name)}(${argsText})${resultIndices}</span>` : `<span class="func-block"><span class="func-name">${escapeHtml(block.name)}</span><span class="func-parens">(</span>${argsText}<span class="func-parens">)</span>${resultIndices}</span>`;
   if (block.comment) {
     return `<span class="block-with-comment">${funcCore}<span class="inline-comment"> // ${escapeHtml(block.comment)}</span></span>`;
   }
@@ -1528,6 +1658,8 @@ function renderTextArgs(arg) {
       const ops = arg.operator.join("");
       const right = renderTextArgs(arg.right);
       return `<span class="arithmetic-expr">${left}${escapeHtml(ops)}${right}</span>`;
+    case "name-ref":
+      return renderNameRef(arg);
   }
 }
 function renderTemplateBlock(block) {
@@ -1579,7 +1711,7 @@ function renderRangeExpr(range) {
 function renderLoopOutsideRole(block) {
   const indexHtml = `<span class="loop-var">${escapeHtml(block.index.name)}</span>`;
   const iterableHtml = `<span class="loop-iterable">${renderIterable(block.iterable)}</span>`;
-  const header = `<span class="keyword">ForEach</span>(${indexHtml}: ${iterableHtml}):`;
+  const header = `<span class="keyword">ForEach</span> ${indexHtml}: ${iterableHtml}`;
   const bodyHtml = block.body.map(
     (child) => `<div class="loop-child">${renderTopLevelBlock(child)}</div>`
   ).join("\n");
@@ -1592,7 +1724,7 @@ function renderLoopOutsideRole(block) {
 function renderLoopInsideRole(block) {
   const indexHtml = `<span class="loop-var">${escapeHtml(block.index.name)}</span>`;
   const iterableHtml = `<span class="loop-iterable">${renderIterable(block.iterable)}</span>`;
-  const header = `<span class="keyword">ForEach</span>(${indexHtml}: ${iterableHtml}):`;
+  const header = `<span class="keyword">ForEach</span> ${indexHtml}: ${iterableHtml}`;
   const bodyHtml = block.body.map(
     (child) => `<div class="role-loop-child">${renderRoleBuildingBlock(child)}</div>`
   ).join("\n");

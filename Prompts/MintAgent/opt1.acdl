@@ -1,4 +1,4 @@
-Prompt[@t]: {
+Prompt[@T]: {
     U: {
         TASK_DESCRIPTION(sys.max_total_steps)
         env.tool_desc
@@ -7,24 +7,17 @@ Prompt[@t]: {
     } 
 
     // only the result of the previous turns or the new query in them
-    ForEach(@i: range(1, @t-1)){
-        U: env.user_input[@i]  // could be a new query/task, or a response to a solution(success or failure)
-        A: resp.agent_answer[@i]
+    ForEach(@t: range(1, @T-1)){
+        A: {
+                resp.solution_reasoning[@t]
+                resp.solution[@t]
+        }
+        U: env.feedback[@t] // response if the answer was right or wrong, remaining tries if failed
     }
-
-    U: env.user_input[@t]
 
     // all the tool calls and reponses from the current turn
-    ForEach(k: range(1, sys.steps[@t])){
-        A: sys.tool_used[@t.k]
-        T: sys.tool_used[@t.k].tool_response
+    ForEach(i: range(1, sys.steps[@T])){
+        A: sys.tool_used[@T.i]
+        T: sys.tool_used[@T.i].tool_response
     }
-
-    If @i<@t {
-            A: {
-                resp.solution_reasoning[@i]
-                resp.solution[@i]
-            }
-            U: env.feedback[@i] // response if the answer was right or wrong, remaining tries if failed
-        }
 }

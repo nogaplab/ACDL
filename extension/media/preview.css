@@ -21,7 +21,7 @@
   --system-bg: #f0f7ff;
   --system-border: #0969da;
   --system-text: #0550ae;
-
+  
   --assistant-bg: #e6fafa;
   --assistant-border: #1acad1;
   --assistant-text: #0a9196;
@@ -604,6 +604,16 @@ body {
   overflow: hidden;
 }
 
+/* Style control flow blocks inside role blocks to match outside-role style (border-left only) */
+.conditional-block-inside-role .conditional-section,
+.switch-block-inside-role .switch-case,
+.switch-block-inside-role .switch-default {
+  background: transparent !important;
+  border: none !important;
+  border-left: 1px solid var(--control-border) !important;
+  border-radius: 0 !important;
+}
+
 /* Loop headers */
 .loop-block-outside-role-header,
 .loop-block-inside-role-header {
@@ -777,6 +787,109 @@ body {
   content: ' ▸';
   font-size: 10px;
   opacity: 0.6;
+}
+
+/* ======================================================
+   UPLOAD ZONE
+   ====================================================== */
+
+#drop-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed var(--border-medium);
+  border-radius: 8px;
+  padding: 40px;
+  margin: 40px auto;
+  max-width: 400px;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-weight: 500;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+#drop-zone:hover,
+#drop-zone.hover {
+  background: var(--bg-tertiary);
+  border-color: var(--system-border);
+  color: var(--text-primary);
+}
+
+.upload-button {
+  display: inline-block;
+  padding: 10px 20px;
+  background: var(--system-border);
+  color: white;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-top: 12px;
+  font-weight: 600;
+  font-size: 13px;
+  border: none;
+  transition: all 0.2s ease;
+}
+
+.upload-button:hover {
+  background: var(--system-text);
+}
+
+/* ======================================================
+   APP LAYOUT
+   ====================================================== */
+
+#app {
+  display: flex;
+  min-height: 100vh;
+  background: var(--bg-primary);
+}
+
+#sidebar {
+  width: 400px;
+  background: var(--bg-secondary);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border-light);
+}
+
+#acdl-editor {
+  width: 100%;
+  flex-grow: 1;
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-size: 12px;
+  padding: 12px;
+  margin: 12px 0;
+  border: 1px solid var(--border-medium);
+  border-radius: 6px;
+  resize: none;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+
+#acdl-editor:focus {
+  outline: none;
+  border-color: var(--system-border);
+  box-shadow: 0 0 0 2px rgba(9, 105, 218, 0.15);
+}
+
+#render-btn {
+  width: 100%;
+  padding: 12px;
+  background: var(--system-border);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+  transition: all 0.2s ease;
+}
+
+#render-btn:hover {
+  background: var(--system-text);
 }
 
 /* ======================================================
@@ -1003,6 +1116,16 @@ body {
   padding: 2px 5px;
   margin: 1px 0;
   border-radius: 2px;
+}
+
+/* Style control flow blocks inside role blocks to match outside-role style (compact) */
+.compact .conditional-block-inside-role .conditional-section,
+.compact .switch-block-inside-role .switch-case,
+.compact .switch-block-inside-role .switch-default {
+  background: transparent !important;
+  border: none !important;
+  border-left: 1px solid var(--control-border) !important;
+  border-radius: 0 !important;
 }
 
 .compact .conditional-section-header {

@@ -1,4 +1,4 @@
-Prompt[@t]: {
+Prompt[@T]: {
 	S: {
         TASK_INTRO    // scenario description and high level description of task
         MAP_DESCRIPTION     // textual map description, connections between rooms
@@ -11,21 +11,21 @@ Prompt[@t]: {
 	    ROLE	// telling the agent which player it is playing as
 	}
 	U: {
-        env.round_number[@t]
-	   	env.team_score[@t]
-	    env.general[@t]
+        env.round_number[@T]
+	   	env.team_score[@T]
+	    env.general[@T]
         ForEach(teammate: env.teammates){
-	 		sys.teammate_locations[@t].teammate
+	 		sys.teammate_locations[@T].teammate
         }
         env.room_connectivity
 	    ForEach(bomb: env.bombs) {
-	     	env.bomb_location[@t, bomb]
-	     	env.bomb_details[@t, bomb]
+	     	env.bomb_location[@T, bomb]
+	     	env.bomb_details[@T, bomb]
         }
 	
 		ForEach(agent: env.agents) {
-	    	env.agent_inventory[@t, agent]
+	    	env.agent_inventory[@T, agent]
         }
-        env.available_actions[@t]
+        env.available_actions[@T]
        }
 }
