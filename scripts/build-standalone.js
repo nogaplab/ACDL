@@ -33,7 +33,7 @@ const EXAMPLE_CONFIG = {
 
   // Chats
   chat1: { file: 'Prompts/chats/chat1.acdl', label: 'Simple Chat', group: 'Chats' },
-  rag: { file: 'Prompts/RAG.acdl', label: 'RAG Chat', group: 'Chats' },
+  rag: { file: 'Prompts/Paper/basicRAG.acdl', label: 'RAG Chat', group: 'Chats' },
 
   // Advanced
   pokemon: { file: 'Prompts/Papers/pokemon2.acdl', label: 'Pokemon Blue Agent', group: 'Advanced' },
@@ -725,6 +725,17 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   renderBtn.addEventListener("click", doRender);
+
+  // Tab key handling for editor - insert spaces instead of moving focus
+  editor.addEventListener("keydown", (e) => {
+    if (e.key === "Tab") {
+      e.preventDefault();
+      const start = editor.selectionStart;
+      const end = editor.selectionEnd;
+      editor.value = editor.value.substring(0, start) + "  " + editor.value.substring(end);
+      editor.selectionStart = editor.selectionEnd = start + 2;
+    }
+  });
 
   // Resizer
   resizer.addEventListener("mousedown", (e) => {

@@ -1,0 +1,14 @@
+BasicRAG[@T]: {
+    S: INSTRUCTIONS
+    U: {
+        env.user_input
+        If retrieve(env.user_input).len > 0 {
+            ForEach(i: range(1,retrieve(env.user_input).len)) {
+                retrieve(env.user_input)[i]
+            }
+        }
+        Else {
+            NO_RETRIEVALS 
+        }
+    }
+}

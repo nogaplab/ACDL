@@ -3,11 +3,12 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Prompt Export - default</title>
+    <title>Side-by-Side: prunedReasoning vs original</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-    <style>/* ======================================================
+    <style>
+        /* ======================================================
    ACDL PROMPT VISUALIZER - ACADEMIC PAPER STYLE
    Clean, professional design for research publications
    ====================================================== */
@@ -333,19 +334,6 @@ body {
   font-weight: 700;
   font-family: 'JetBrains Mono', 'SF Mono', monospace;
   font-size: 12px;
-}
-
-/* Index content - numbers and identifiers inside indices */
-.index-number,
-.index-identifier {
-  color: var(--accent-variable);
-  font-weight: 700;
-}
-
-/* Arithmetic operators inside indices - black/neutral */
-.arith-op {
-  color: var(--text-primary);
-  font-weight: 400;
 }
 
 /* Control flow keywords - bold and prominent */
@@ -1244,97 +1232,200 @@ body {
 .compact .none-message {
   margin: 4px 0;
 }
-</style>
+
+
+        body {
+            background: white;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .comparison-container {
+            display: inline-flex;
+            gap: 30px;
+            align-items: flex-start;
+        }
+
+        .panel {
+            display: inline-block;
+        }
+
+        /* Override prompt container to shrink to content */
+        .panel .prompt-container {
+            max-width: none;
+            display: inline-block;
+        }
+
+        /* Hide CSS pseudo-elements - we inject them as real text for PDF */
+        .loop-block-outside-role-header::before,
+        .loop-block-inside-role-header::before,
+        .conditional-section-header::before,
+        .conditional-block-outside-role-header::before,
+        .switch-block-outside-role-header::before,
+        .switch-block-inside-role-header::before,
+        .template-block::before {
+            content: none !important;
+        }
+
+        /* Style the injected PDF symbols to match original pseudo-elements */
+        .pdf-symbol {
+            margin-right: 4px;
+            color: var(--control-border, #6e7781);
+        }
+        .template-block .pdf-symbol {
+            font-size: 6px;
+            opacity: 0.7;
+            color: inherit;
+        }
+        .compact .template-block .pdf-symbol {
+            font-size: 5px;
+        }
+        .loop-block-outside-role-header .pdf-symbol,
+        .loop-block-inside-role-header .pdf-symbol {
+            font-size: 12px;
+        }
+        .conditional-section-header .pdf-symbol,
+        .conditional-block-outside-role-header .pdf-symbol {
+            font-size: 10px;
+        }
+        .switch-block-outside-role-header .pdf-symbol,
+        .switch-block-inside-role-header .pdf-symbol {
+            font-size: 12px;
+        }
+        .compact .loop-block-outside-role-header .pdf-symbol,
+        .compact .loop-block-inside-role-header .pdf-symbol,
+        .compact .switch-block-outside-role-header .pdf-symbol,
+        .compact .switch-block-inside-role-header .pdf-symbol,
+        .compact .conditional-block-outside-role-header .pdf-symbol {
+            font-size: 8px;
+        }
+        .compact .conditional-section-header .pdf-symbol {
+            font-size: 7px;
+        }
+    </style>
 </head>
-<body class="style-default">
-    <header class="export-header">
-        <h1>ACDL Prompt Visualization</h1>
-        <span class="style-badge">Style: default</span>
-    </header>
-    <section class="prompt-section"><h3>Source: openClaw.acdl</h3><div class="prompt-container prompt-style-default"><div class="prompt-title"><h1>OpenClaw[<span class="time-index">@<span class="index-identifier">T.I</span></span>]</h1></div><div class="comment-block">// TODO:</div>
-<div class="comment-block">// - system</div>
-<div class="comment-block">// - [[reply to current]]</div>
-<div class="comment-block">// - system messages in user roles</div>
-
-<div class="role-message system">
-  <div class="role-message-header">Role: system</div>
-  <div class="role-body-block"><span class="other-index"><span class="index-identifier">SystemPrompt</span></span></div>
-<div class="role-body-block"><div class="comment-block">// TODO the long system prompt</div></div>
-</div>
-<div class="comment-block">// summarized early conversation (if exists)</div>
-
-<div class="conditional-block-outside-role">
-  <div class="conditional-block-outside-role-header"><span class="keyword">If</span> (<span class="condition-expr"><span class="expr-symbol">(</span><span class="expr-context-var">sys.last_compaction_turn[<span class="time-index">@T</span>]</span><span class="expr-logic-op">&gt;</span><span class="expr-number">0</span><span class="expr-symbol">)</span></span>):</div>
-  <div class="block-children">
-    <div class="conditional-child">
+<body>
+    <div class="comparison-container">
+        <div class="panel compact">
+            <div class="prompt-container prompt-style-default"><div class="prompt-title"><h1>MintPrunedReasoning[<span class="time-index">@T</span>]</h1></div>
 <div class="role-message user">
   <div class="role-message-header">Role: user</div>
-  <div class="role-body-block"><span class="template-block">THIS_IS_A_SUMMARY</span></div>
-<div class="role-body-block"><span class="block-with-comment"><span class="func-block"><span class="func-name">ConversationSummary</span><span class="func-parens">(</span><span class="func-parens">)</span>[<span class="time-index">@<span class="context-var context-var-sys"><span class="segment base">sys</span>.<span class="segment">last_compaction_turn</span></span></span>]</span><span class="inline-comment"> // XXX how do we represent this?</span></span></div>
-</div></div>
-<div class="conditional-child">
-<div class="role-message assistant">
-  <div class="role-message-header">Role: assistant</div>
-  <div class="role-body-block"><span class="block-with-comment"><span class="context-var context-var-resp"><span class="segment base">resp</span>.<span class="segment">response[<span class="time-index">@<span class="context-var context-var-sys"><span class="segment base">sys</span>.<span class="segment">last_compaction_turn</span></span></span>]</span></span><span class="inline-comment"> // XXX  should it be resp.response?</span></span></div>
-</div></div>
-  </div>
-</div>
-<div class="comment-block">// conversation history</div>
-
-<div class="role-message user">
-  <div class="role-message-header">Role: user</div>
-  <div class="role-body-block"><span class="context-var context-var-sys"><span class="segment base">sys</span>.<span class="segment">date_time[<span class="time-index">@<span class="arithmetic-expr"><span class="context-var context-var-sys"><span class="segment base">sys</span>.<span class="segment">last_compaction_turn</span></span><span class="arith-op">+</span><span class="index-number">1</span></span></span>]</span></span></div>
-<div class="role-body-block"><span class="context-var context-var-env"><span class="segment base">env</span>.<span class="segment">user_query[<span class="time-index">@<span class="arithmetic-expr"><span class="context-var context-var-sys"><span class="segment base">sys</span>.<span class="segment">last_compaction_turn</span></span><span class="arith-op">+</span><span class="index-number">1</span></span></span>]</span></span></div>
+  <div class="role-body-block"><span class="template-block">TASK_DESCRIPTION(<span class="context-var context-var-sys"><span class="segment base">sys</span>.<span class="segment">max_total_steps</span></span>)</span></div>
+<div class="role-body-block"><span class="block-with-comment"><span class="context-var context-var-env"><span class="segment base">env</span>.<span class="segment">tool_descriptions</span></span><span class="inline-comment"> // description of each tool, how to use them, and when to use them</span></span></div>
+<div class="role-body-block"><span class="context-var context-var-env"><span class="segment base">env</span>.<span class="segment">in_context_examples</span></span></div>
+<div class="role-body-block"><span class="block-with-comment"><span class="context-var context-var-env"><span class="segment base">env</span>.<span class="segment">task_prompt</span></span><span class="inline-comment"> // the question you need to answer, or task you need to complete</span></span></div>
 </div>
 
 <div class="loop-block-outside-role">
-  <div class="loop-block-outside-role-header"><span class="keyword">ForEach</span> <span class="loop-var"><span class="index-identifier">t</span></span>: <span class="loop-iterable"><span class="range-expr"><span class="expr-at">@</span><span class="expr-context-var">sys.last_compaction_turn</span><span class="expr-arith-op">+</span><span class="expr-number">1</span><span class="range-dots">...</span><span class="time-index">@T</span></span></span></div>
-  <div class="block-children">
-    <div class="loop-child"><div class="comment-block">// XXX i like @t.substeps better than alternative</div></div>
-<div class="loop-child"><div class="comment-block">// tool-using loop history</div></div>
-<div class="loop-child">
-<div class="loop-block-outside-role">
-  <div class="loop-block-outside-role-header"><span class="keyword">ForEach</span> <span class="loop-var"><span class="index-identifier">i</span></span>: <span class="loop-iterable"><span class="range-expr"><span class="expr-number">1</span><span class="range-dots">...</span><span class="expr-context-var">sys.substeps[<span class="time-index">@t</span>]</span></span></span></div>
-  <div class="block-children">
-    <div class="loop-child"><div class="comment-block">// multiple requests in one assistant message</div></div>
-<div class="loop-child">
-<div class="role-message assistant">
-  <div class="role-message-header">Role: assistant</div>
-  <div class="role-body-block">
-<div class="loop-block-inside-role">
-  <div class="loop-block-inside-role-header"><span class="keyword">ForEach</span> <span class="loop-var"><span class="index-identifier">tool</span></span>: <span class="loop-iterable"><span class="expr-context-var">sys.tool_requests[<span class="time-index">@t.i</span>]</span></span></div>
-  <div class="block-children">
-    <div class="role-loop-child"><span class="block-with-comment"><span class="context-var context-var-sys"><span class="segment base">sys</span>.<span class="segment">tool</span>.<span class="segment">id_name_and_args</span></span><span class="inline-comment"> // XXX its actually an array of these tool calls, called &quot;tool_calls&quot;</span></span></div>
-  </div>
-</div></div>
-</div></div>
-<div class="loop-child"><div class="comment-block">// Loop of tool responses, each in own tool msg</div></div>
-<div class="loop-child">
-<div class="loop-block-outside-role">
-  <div class="loop-block-outside-role-header"><span class="keyword">ForEach</span> <span class="loop-var"><span class="index-identifier">tool</span></span>: <span class="loop-iterable"><span class="expr-context-var">sys.tool_requests[<span class="time-index">@t.i</span>]</span></span></div>
+  <div class="loop-block-outside-role-header"><span class="keyword">ForEach</span> <span class="loop-var">@t</span>: <span class="loop-iterable"><span class="range-expr"><span class="expr-number">1</span><span class="range-dots">...</span><span class="time-index">@T</span><span class="expr-arith-op">-</span><span class="expr-number">1</span></span></span></div>
   <div class="block-children">
     <div class="loop-child">
-<div class="role-message tool">
-  <div class="role-message-header">Role: tool</div>
-  <div class="role-body-block"><span class="block-with-comment"><span class="context-var context-var-sys"><span class="segment base">sys</span>.<span class="segment">tool</span>.<span class="segment">id_and_response</span></span><span class="inline-comment"> // XXX i don&#39;t want sys., but it requires it</span></span></div>
+<div class="loop-block-outside-role">
+  <div class="loop-block-outside-role-header"><span class="keyword">ForEach</span> <span class="loop-var">i</span>: <span class="loop-iterable"><span class="range-expr"><span class="expr-number">1</span><span class="range-dots">...</span><span class="expr-context-var">sys.substeps[<span class="time-index">@t</span>]</span></span></span></div>
+  <div class="block-children">
+    <div class="loop-child">
+<div class="role-message assistant">
+  <div class="role-message-header">Role: assistant</div>
+  <div class="role-body-block"><span class="context-var context-var-sys"><span class="segment base">sys</span>.<span class="segment">tool_used[<span class="time-index">@t.i</span>]</span></span></div>
 </div></div>
-  </div>
-</div></div>
-  </div>
+<div class="loop-child">
+<div class="role-message user">
+  <div class="role-message-header">Role: user</div>
+  <div class="role-body-block"><span class="context-var context-var-sys"><span class="segment base">sys</span>.<span class="segment">tool_used[<span class="time-index">@t.i</span>]</span>.<span class="segment">tool_response</span></span></div>
 </div></div>
 <div class="loop-child">
 <div class="role-message assistant">
   <div class="role-message-header">Role: assistant</div>
-  <div class="role-body-block"><span class="block-with-comment"><span class="context-var context-var-resp"><span class="segment base">resp</span>.<span class="segment">response[<span class="time-index">@<span class="index-identifier">t</span></span>]</span></span><span class="inline-comment"> // XXX should it be resp.response?</span></span></div>
+  <div class="role-body-block"><span class="context-var context-var-resp"><span class="segment base">resp</span>.<span class="segment">solution_reasoning[<span class="time-index">@t</span>]</span></span></div>
+<div class="role-body-block"><span class="context-var context-var-resp"><span class="segment base">resp</span>.<span class="segment">solution[<span class="time-index">@t</span>]</span></span></div>
 </div></div>
-<div class="loop-child"><div class="comment-block">// what if we are at middle of tool calling loop?</div></div>
 <div class="loop-child">
 <div class="role-message user">
   <div class="role-message-header">Role: user</div>
-  <div class="role-body-block"><span class="context-var context-var-sys"><span class="segment base">sys</span>.<span class="segment">date_time[<span class="time-index">@<span class="arithmetic-expr"><span class="context-var context-var-sys"><span class="segment base">sys</span>.<span class="segment">last_compaction_turn</span></span><span class="arith-op">+</span><span class="index-number">1</span></span></span>]</span></span></div>
-<div class="role-body-block"><span class="context-var context-var-env"><span class="segment base">env</span>.<span class="segment">user_query[<span class="time-index">@<span class="arithmetic-expr"><span class="context-var context-var-sys"><span class="segment base">sys</span>.<span class="segment">last_compaction_turn</span></span><span class="arith-op">+</span><span class="index-number">1</span></span></span>]</span></span></div>
+  <div class="role-body-block"><span class="block-with-comment"><span class="context-var context-var-env"><span class="segment base">env</span>.<span class="segment">feedback[<span class="time-index">@t.i</span>]</span></span><span class="inline-comment"> // response if the answer was right or wrong, remaining tries if failed</span></span></div>
 </div></div>
   </div>
-</div></div></section><hr>
+</div></div>
+  </div>
+</div>
+
+<div class="loop-block-outside-role">
+  <div class="loop-block-outside-role-header"><span class="keyword">ForEach</span> <span class="loop-var">k</span>: <span class="loop-iterable"><span class="range-expr"><span class="expr-number">1</span><span class="range-dots">...</span><span class="expr-context-var">sys.substeps[<span class="time-index">@T</span>]</span></span></span></div>
+  <div class="block-children">
+    <div class="loop-child">
+<div class="role-message assistant">
+  <div class="role-message-header">Role: assistant</div>
+  <div class="role-body-block"><span class="context-var context-var-sys"><span class="segment base">sys</span>.<span class="segment">tool_used[<span class="time-index">@T.k</span>]</span></span></div>
+</div></div>
+<div class="loop-child">
+<div class="role-message user">
+  <div class="role-message-header">Role: user</div>
+  <div class="role-body-block"><span class="context-var context-var-sys"><span class="segment base">sys</span>.<span class="segment">tool_used[<span class="time-index">@T.k</span>]</span>.<span class="segment">tool_response</span></span></div>
+</div></div>
+  </div>
+</div></div>
+        </div>
+        <div class="panel compact">
+            <div class="prompt-container prompt-style-default"><div class="prompt-title"><h1>MintOriginal[<span class="time-index">@T</span>]</h1></div>
+<div class="role-message user">
+  <div class="role-message-header">Role: user</div>
+  <div class="role-body-block"><span class="template-block">TASK_DESCRIPTION(<span class="context-var context-var-sys"><span class="segment base">sys</span>.<span class="segment">max_total_steps</span></span>)</span></div>
+<div class="role-body-block"><span class="block-with-comment"><span class="context-var context-var-env"><span class="segment base">env</span>.<span class="segment">tool_descriptions</span></span><span class="inline-comment"> // description of each tool, how to use them, and when to use them</span></span></div>
+<div class="role-body-block"><span class="context-var context-var-env"><span class="segment base">env</span>.<span class="segment">in_context_examples</span></span></div>
+<div class="role-body-block"><span class="block-with-comment"><span class="context-var context-var-env"><span class="segment base">env</span>.<span class="segment">task_prompt</span></span><span class="inline-comment"> // the question you need to answer, or task you need to complete</span></span></div>
+</div>
+
+<div class="loop-block-outside-role">
+  <div class="loop-block-outside-role-header"><span class="keyword">ForEach</span> <span class="loop-var">@t</span>: <span class="loop-iterable"><span class="range-expr"><span class="expr-number">1</span><span class="range-dots">...</span><span class="time-index">@T</span><span class="expr-arith-op">-</span><span class="expr-number">1</span></span></span></div>
+  <div class="block-children">
+    <div class="loop-child">
+<div class="loop-block-outside-role">
+  <div class="loop-block-outside-role-header"><span class="keyword">ForEach</span> <span class="loop-var">i</span>: <span class="loop-iterable"><span class="range-expr"><span class="expr-number">1</span><span class="range-dots">...</span><span class="expr-context-var">sys.substeps[<span class="time-index">@t</span>]</span></span></span></div>
+  <div class="block-children">
+    <div class="loop-child">
+<div class="role-message assistant">
+  <div class="role-message-header">Role: assistant</div>
+  <div class="role-body-block"><span class="context-var context-var-resp"><span class="segment base">resp</span>.<span class="segment">tool_reasoning[<span class="time-index">@t.i</span>]</span></span></div>
+<div class="role-body-block"><span class="context-var context-var-sys"><span class="segment base">sys</span>.<span class="segment">tool_used[<span class="time-index">@t.i</span>]</span></span></div>
+</div></div>
+<div class="loop-child">
+<div class="role-message user">
+  <div class="role-message-header">Role: user</div>
+  <div class="role-body-block"><span class="context-var context-var-sys"><span class="segment base">sys</span>.<span class="segment">tool_used[<span class="time-index">@t.i</span>]</span>.<span class="segment">tool_response</span></span></div>
+</div></div>
+<div class="loop-child">
+<div class="role-message assistant">
+  <div class="role-message-header">Role: assistant</div>
+  <div class="role-body-block"><span class="context-var context-var-resp"><span class="segment base">resp</span>.<span class="segment">solution_reasoning[<span class="time-index">@t</span>]</span></span></div>
+<div class="role-body-block"><span class="context-var context-var-resp"><span class="segment base">resp</span>.<span class="segment">solution[<span class="time-index">@t</span>]</span></span></div>
+</div></div>
+<div class="loop-child">
+<div class="role-message user">
+  <div class="role-message-header">Role: user</div>
+  <div class="role-body-block"><span class="block-with-comment"><span class="context-var context-var-env"><span class="segment base">env</span>.<span class="segment">feedback[<span class="time-index">@t.i</span>]</span></span><span class="inline-comment"> // response if the answer was right or wrong, remaining tries if failed</span></span></div>
+</div></div>
+  </div>
+</div></div>
+  </div>
+</div>
+
+<div class="loop-block-outside-role">
+  <div class="loop-block-outside-role-header"><span class="keyword">ForEach</span> <span class="loop-var">k</span>: <span class="loop-iterable"><span class="range-expr"><span class="expr-number">1</span><span class="range-dots">...</span><span class="expr-context-var">sys.substeps[<span class="time-index">@T</span>]</span></span></span></div>
+  <div class="block-children">
+    <div class="loop-child">
+<div class="role-message assistant">
+  <div class="role-message-header">Role: assistant</div>
+  <div class="role-body-block"><span class="context-var context-var-resp"><span class="segment base">resp</span>.<span class="segment">tool_reasoning[<span class="time-index">@T.k</span>]</span></span></div>
+<div class="role-body-block"><span class="context-var context-var-resp"><span class="segment base">resp</span>.<span class="segment">tool_used[<span class="time-index">@T.k</span>]</span></span></div>
+</div></div>
+<div class="loop-child">
+<div class="role-message user">
+  <div class="role-message-header">Role: user</div>
+  <div class="role-body-block"><span class="context-var context-var-sys"><span class="segment base">sys</span>.<span class="segment">tool_used[<span class="time-index">@T.k</span>]</span>.<span class="segment">tool_response</span></span></div>
+</div></div>
+  </div>
+</div></div>
+        </div>
+    </div>
 </body>
 </html>

@@ -342,6 +342,19 @@ body {
   font-size: 12px;
 }
 
+/* Index content - numbers and identifiers inside indices */
+.index-number,
+.index-identifier {
+  color: var(--accent-variable);
+  font-weight: 700;
+}
+
+/* Arithmetic operators inside indices - black/neutral */
+.arith-op {
+  color: var(--text-primary);
+  font-weight: 400;
+}
+
 /* Control flow keywords - bold and prominent */
 .keyword {
   color: #000000;
@@ -644,6 +657,7 @@ body {
   align-items: center;
   gap: 6px;
   white-space: nowrap;
+  background: var(--control-header-bg);
 }
 
 .loop-block-outside-role-header::before,
@@ -666,6 +680,7 @@ body {
   align-items: center;
   gap: 6px;
   white-space: nowrap;
+  background: var(--control-header-bg);
 }
 
 .conditional-block-outside-role-header::before {
@@ -687,6 +702,7 @@ body {
   align-items: center;
   gap: 6px;
   white-space: nowrap;
+  background: var(--control-header-bg);
 }
 
 .conditional-section-header::before {
@@ -709,6 +725,7 @@ body {
   align-items: center;
   gap: 6px;
   white-space: nowrap;
+  background: var(--control-header-bg);
 }
 
 .switch-block-outside-role-header::before,
@@ -778,6 +795,46 @@ body {
   border-left: 2px solid var(--border-light);
   margin-left: 6px;
   padding-left: 12px;
+}
+
+/* ======================================================
+   MARK BLOCKS - Right-side bracket with number
+   ====================================================== */
+
+.mark-block {
+  display: flex;
+  align-items: stretch;
+  margin: 8px 0;
+  position: relative;
+}
+
+.mark-block-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.mark-block-bracket {
+  display: flex;
+  align-items: center;
+  margin-left: 8px;
+  position: relative;
+}
+
+.mark-bracket-line {
+  display: block;
+  width: 8px;
+  height: 100%;
+  border: 3px solid #000000;
+  border-left: none;
+  border-radius: 0 4px 4px 0;
+}
+
+.mark-bracket-number {
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-size: 12px;
+  font-weight: 700;
+  color: #000000;
+  margin-left: 4px;
 }
 
 /* ======================================================
@@ -1117,6 +1174,7 @@ body {
   border-radius: 0 2px 0 0;
   font-size: 7px;
   gap: 3px;
+  background: var(--control-header-bg);
 }
 
 .compact .loop-block-outside-role-header::before,
@@ -1150,6 +1208,7 @@ body {
   border-radius: 2px 2px 0 0;
   font-size: 7px;
   gap: 2px;
+  background: var(--control-header-bg);
 }
 
 .compact .conditional-section-header::before {
@@ -1201,6 +1260,22 @@ body {
   margin-left: 3px;
   padding-left: 6px;
   border-left-width: 1px;
+}
+
+/* Compact mark blocks */
+.compact .mark-block {
+  margin: 4px 0;
+}
+
+.compact .mark-bracket-line {
+  width: 5px;
+  border-width: 2px;
+  border-radius: 0 2px 2px 0;
+}
+
+.compact .mark-bracket-number {
+  font-size: 9px;
+  margin-left: 2px;
 }
 
 /* Compact line height */
@@ -1756,7 +1831,8 @@ var ACDL = (() => {
     "continue",
     "name",
     "for",
-    "in"
+    "in",
+    "MARK"
   ]);
   var LOGIC_OP = /* @__PURE__ */ new Set([
     "=",
@@ -2021,14 +2097,14 @@ var ACDL = (() => {
   function promptTitle(params) {
     return { ...params, kind: "title" };
   }
-  function index(kind, name) {
-    return { kind, name };
+  function identifier(params) {
+    return { ...params, kind: "identifier" };
   }
-  function timeIndex(params) {
-    return { ...params, kind: "time-index" };
+  function timeIndex(value) {
+    return { kind: "time-index", value };
   }
-  function otherIndex(params) {
-    return { ...params, kind: "other-index" };
+  function otherIndex(value) {
+    return { kind: "other-index", value };
   }
   function chatPromptBody(params) {
     return { ...params, kind: "chat-prompt-body" };
@@ -2095,6 +2171,12 @@ var ACDL = (() => {
   }
   function labelBlock(params) {
     return { ...params, kind: "label-block" };
+  }
+  function markBlock(params) {
+    return { ...params, kind: "mark-block" };
+  }
+  function markBlockInsideRole(params) {
+    return { ...params, kind: "mark-block-inside-role" };
   }
   function arithmeticExpr(params) {
     return { ...params, kind: "arithmetic" };
@@ -2275,6 +2357,8 @@ var ACDL = (() => {
             return this.parseSwitchOutside();
           case "name":
             return this.parseNameDef();
+          case "MARK":
+            return this.parseMarkBlock();
         }
       }
       if (tok.type === "COMMENT") {
@@ -2306,6 +2390,50 @@ var ACDL = (() => {
       } while (this.peek().value !== "}");
       this.consume("SYMBOL", "}");
       return labelBlock({ label, body: blocks });
+    }
+    /**
+     * Parse a MarkBlock: MARK number { PromptBlock+ }
+     * Mark blocks are like label blocks but rendered with a bracket on the right.
+     */
+    parseMarkBlock() {
+      this.consume("KEYWORD", "MARK");
+      const numberTok = this.consume("NUMBER");
+      const markNumber = parseInt(numberTok.value, 10);
+      this.consume("SYMBOL", "{");
+      const blocks = [];
+      do {
+        if (this.peek().type === "COMMENT") {
+          const text = this.consume("COMMENT").value;
+          blocks.push(commentBlock({ text }));
+          continue;
+        }
+        const innerBlock = this.parseTopLevelBlock();
+        blocks.push(innerBlock);
+      } while (this.peek().value !== "}");
+      this.consume("SYMBOL", "}");
+      return markBlock({ markNumber, body: blocks });
+    }
+    /**
+     * Parse a MarkBlockInsideRole: MARK number { RoleBuildingBlock+ }
+     * Mark blocks inside roles contain role building blocks.
+     */
+    parseMarkBlockInside() {
+      this.consume("KEYWORD", "MARK");
+      const numberTok = this.consume("NUMBER");
+      const markNumber = parseInt(numberTok.value, 10);
+      this.consume("SYMBOL", "{");
+      const blocks = [];
+      do {
+        if (this.peek().type === "COMMENT") {
+          const text = this.consume("COMMENT").value;
+          blocks.push(commentBlock({ text }));
+          continue;
+        }
+        const innerBlock = this.parseRoleBuildingBlock();
+        blocks.push(innerBlock);
+      } while (this.peek().value !== "}");
+      this.consume("SYMBOL", "}");
+      return markBlockInsideRole({ markNumber, body: blocks });
     }
     /*
      * RoleMessage = ROLE_ID: { RoleBuildingBlock* } | ROLE_ID: RoleBuildingBlock
@@ -2371,6 +2499,7 @@ var ACDL = (() => {
         if (val === "If") return this.parseConditionalInside();
         if (val === "ForEach") return this.parseLoopInside();
         if (val === "Switch") return this.parseSwitchInside();
+        if (val === "MARK") return this.parseMarkBlockInside();
         if (val === "name") return this.parseNameDef();
         if (val === "break" || val === "continue") {
           const name = this.consume("KEYWORD").value;
@@ -2403,7 +2532,8 @@ var ACDL = (() => {
       } else if (tok.type === "IDENT") {
         const parsed = this.parseTemplateOrFunc();
         if (parsed.kind !== "function") {
-          throw new Error(`[${tok.line}:${tok.col}] name definitions require a ContextVar, Func, or list comprehension, got template "${parsed.name}"`);
+          const parsedName = parsed.kind === "template" ? parsed.name : "identifier";
+          throw new Error(`[${tok.line}:${tok.col}] name definitions require a ContextVar, Func, or list comprehension, got ${parsed.kind} "${parsedName}"`);
         }
         value = parsed;
       } else {
@@ -2424,7 +2554,8 @@ var ACDL = (() => {
       } else if (elemTok.type === "IDENT") {
         const parsed = this.parseTemplateOrFunc();
         if (parsed.kind !== "function") {
-          throw new Error(`[${elemTok.line}:${elemTok.col}] List comprehension element must be ContextVar or Func, got template "${parsed.name}"`);
+          const parsedName = parsed.kind === "template" ? parsed.name : "identifier";
+          throw new Error(`[${elemTok.line}:${elemTok.col}] List comprehension element must be ContextVar or Func, got ${parsed.kind} "${parsedName}"`);
         }
         element = parsed;
       } else {
@@ -2485,19 +2616,29 @@ var ACDL = (() => {
     }
     parseTemplateOrFunc() {
       const name = this.consume("IDENT").value;
-      let args = [];
+      if (name === name.toUpperCase()) {
+        let args = [];
+        if (this.peek().value === "(") {
+          this.consume("SYMBOL", "(");
+          args = this.parseTextArgs();
+          this.consume("SYMBOL", ")");
+        }
+        const comment = this.peek().type === "COMMENT" ? this.consume("COMMENT").value : void 0;
+        return template({ name, arguments: args, comment });
+      }
       if (this.peek().value === "(") {
         this.consume("SYMBOL", "(");
-        args = this.parseTextArgs();
+        const args = this.parseTextArgs();
         this.consume("SYMBOL", ")");
+        const indices = this.parseOptionalIndices();
+        const comment = this.peek().type === "COMMENT" ? this.consume("COMMENT").value : void 0;
+        return func({ name, arguments: args, indices, comment });
       }
-      if (name === name.toUpperCase()) {
-        const comment2 = this.peek().type === "COMMENT" ? this.consume("COMMENT").value : void 0;
-        return template({ name, arguments: args, comment: comment2 });
+      let path;
+      if (this.match("SYMBOL", ".")) {
+        path = this.parsePathDesc();
       }
-      const indices = this.parseOptionalIndices();
-      const comment = this.peek().type === "COMMENT" ? this.consume("COMMENT").value : void 0;
-      return func({ name, arguments: args, indices, comment });
+      return otherIndex(identifier({ name, path }));
     }
     parseTextArgs() {
       const args = [];
@@ -2525,7 +2666,7 @@ var ACDL = (() => {
     parseAtom() {
       const tok = this.peek();
       if (this.match("SYMBOL", "@")) {
-        return timeIndex({ name: this.consume("IDENT").value });
+        return timeIndex(identifier({ name: this.consume("IDENT").value }));
       }
       if (tok.type === "SYMBOL" && tok.value === "$") {
         return this.parseNameRef();
@@ -2534,13 +2675,13 @@ var ACDL = (() => {
         return this.parseContextVar();
       }
       if (tok.type === "NUMBER") {
-        return otherIndex({ name: this.consume("NUMBER").value });
+        return identifier({ name: this.consume("NUMBER").value });
       }
       if (tok.type === "IDENT") {
         if (this.peekNext().value === "(") {
           return this.parseTemplateOrFunc();
         }
-        return otherIndex({ name: this.consume("IDENT").value });
+        return identifier({ name: this.consume("IDENT").value });
       }
       throw new Error(`[${tok.line}:${tok.col}] Unexpected token in arguments: ${tok.type} (${tok.value})`);
     }
@@ -2554,56 +2695,76 @@ var ACDL = (() => {
         while (this.match("SYMBOL", ",")) {
           indices.push(this.parseIndex());
         }
-        if (this.peek().value === "]") {
-          console.log(`parseOptionalIndices: consuming ]`);
-          this.consume("SYMBOL", "]");
-        }
+        console.log(`parseOptionalIndices: consuming ], peek=${this.peek().type}:${this.peek().value}`);
+        this.consume("SYMBOL", "]");
       }
       console.log(`parseOptionalIndices: returning ${indices.length} indices, peek=${this.peek().type}:${this.peek().value}`);
       return indices;
     }
     parseIndex() {
       console.log(`parseIndex: starting, peek=${this.peek().type}:${this.peek().value}`);
-      let time = this.match("SYMBOL", "@");
+      const time = this.match("SYMBOL", "@");
       console.log(`parseIndex: time=${time}, peek after @check=${this.peek().type}:${this.peek().value}`);
-      let idx = "";
-      while (true) {
-        const tok = this.peek();
-        const tokType = tok.type;
-        const tokValue = tok.value;
-        console.log(`parseIndex loop: tok=${tokType}:${tokValue}, idx so far="${idx}"`);
-        if (tokType === "IDENT" || tokType === "ARITH_OP" || tokType === "NUMBER") {
-          idx += this.consume().value;
-          continue;
-        }
-        if (tokType === "SYMBOL" && tokValue === ".") {
-          const next = this.peekNext();
-          console.log(`parseIndex: at dot, next=${next?.type}:${next?.value}`);
-          if (next && (next.type === "IDENT" || next.value === "@")) {
-            idx += this.consume().value;
-            continue;
-          }
-        }
-        if (tokType === "SYMBOL" && tokValue === "@") {
-          idx += this.consume().value;
-          continue;
-        }
-        console.log(`parseIndex: breaking, final idx="${idx}"`);
-        break;
-      }
-      console.log(`parseIndex: returning ${time ? "time" : "other"}-index with name="${idx}"`);
+      const value = this.parseIndexValue();
+      console.log(`parseIndex: returning ${time ? "time" : "other"}-index`);
       if (time) {
-        return index("time-index", idx);
+        return timeIndex(value);
       } else {
-        return index("other-index", idx);
+        return otherIndex(value);
       }
+    }
+    /**
+     * Parse the value inside an index bracket.
+     * Can be: ContextVar, Func, Identifier, ArithmeticExpr, NameRef
+     */
+    parseIndexValue() {
+      let left = this.parseIndexAtom();
+      if (this.peek().type === "ARITH_OP") {
+        const operators = [];
+        while (this.peek().type === "ARITH_OP") {
+          operators.push(this.consume("ARITH_OP").value);
+        }
+        const right = this.parseIndexValue();
+        return arithmeticExpr({ operator: operators, left, right });
+      }
+      return left;
+    }
+    /**
+     * Parse an atomic value inside an index (without arithmetic).
+     */
+    parseIndexAtom() {
+      const tok = this.peek();
+      if (tok.type === "SYMBOL" && tok.value === "$") {
+        return this.parseNameRef();
+      }
+      if (tok.type === "KEYWORD" && ["sys", "env", "resp", "prompt"].includes(tok.value)) {
+        return this.parseContextVar();
+      }
+      if (tok.type === "NUMBER") {
+        return identifier({ name: this.consume("NUMBER").value });
+      }
+      if (tok.type === "IDENT") {
+        const name = this.consume("IDENT").value;
+        if (this.peek().value === "(") {
+          this.consume("SYMBOL", "(");
+          const args = this.parseTextArgs();
+          this.consume("SYMBOL", ")");
+          const indices = this.parseOptionalIndices();
+          return func({ name, arguments: args, indices });
+        }
+        let path;
+        if (this.match("SYMBOL", ".")) {
+          path = this.parsePathDesc();
+        }
+        return identifier({ name, path });
+      }
+      throw new Error(`[${tok.line}:${tok.col}] Unexpected token in index: ${tok.type} (${tok.value})`);
     }
     /* ───────────────── Control Flow ───────────────── */
     parseLoopOutside() {
       this.consume("KEYWORD", "ForEach");
       this.consume("SYMBOL", "(");
-      let idx = this.peek().value === "@" ? "@" : "";
-      const index2 = index("other-index", idx + this.parseIndex().name);
+      const index = this.parseIndex();
       this.consume("SYMBOL", ":");
       let iterable;
       if (this.peek().value === "range" && this.peekNext().value === "(") {
@@ -2623,7 +2784,7 @@ var ACDL = (() => {
         body.push(this.parseTopLevelBlock());
       }
       this.consume("SYMBOL", "}");
-      return loopBlockOutsideRole({ index: index2, iterable, body });
+      return loopBlockOutsideRole({ index, iterable, body });
     }
     parseRangeExpr() {
       this.consume("IDENT", "range");
@@ -2716,8 +2877,7 @@ var ACDL = (() => {
     parseLoopInside() {
       this.consume("KEYWORD", "ForEach");
       this.consume("SYMBOL", "(");
-      let idx = this.peek().value === "@" ? "@" : "";
-      const index2 = index("other-index", idx + this.parseIndex().name);
+      const index = this.parseIndex();
       this.consume("SYMBOL", ":");
       let iterable;
       if (this.peek().value === "range" && this.peekNext().value === "(") {
@@ -2735,7 +2895,7 @@ var ACDL = (() => {
       const body = [];
       while (this.peek().value !== "}") body.push(this.parseRoleBuildingBlock());
       this.consume("SYMBOL", "}");
-      return loopBlockInsideRole({ index: index2, iterable, body });
+      return loopBlockInsideRole({ index, iterable, body });
     }
     parseConditionalInside() {
       this.consume("KEYWORD", "If");
@@ -3106,8 +3266,42 @@ var ACDL = (() => {
     const indexSuffix = renderIndexList(title.indices);
     return `<div class="prompt-title"><h1>${escapeHtml(title.name)}${indexSuffix}</h1></div>`;
   }
-  function renderIndexValue(index2) {
-    return index2.kind === "time-index" ? `<span class="time-index">@${escapeHtml(index2.name)}</span>` : `<span class="other-index">${escapeHtml(index2.name)}</span>`;
+  function renderPathDesc(path) {
+    const segments = [];
+    let current = path;
+    while (current) {
+      const segIndexText = current.indices.length > 0 ? renderIndexList(current.indices) : "";
+      segments.push(`${escapeHtml(current.base)}${segIndexText}`);
+      current = current.next;
+    }
+    return segments.join(".");
+  }
+  function renderIndexContent(value) {
+    switch (value.kind) {
+      case "identifier":
+        let result = escapeHtml(value.name);
+        if (value.path) {
+          result += "." + renderPathDesc(value.path);
+        }
+        const isNumber = /^\d+$/.test(value.name);
+        const className = isNumber ? "index-number" : "index-identifier";
+        return `<span class="${className}">${result}</span>`;
+      case "context-var":
+        return renderContextVarBlock(value);
+      case "function":
+        return renderFuncBlock(value);
+      case "arithmetic":
+        const left = renderIndexContent(value.left);
+        const ops = value.operator.join("");
+        const right = renderIndexContent(value.right);
+        return `<span class="arithmetic-expr">${left}<span class="arith-op">${escapeHtml(ops)}</span>${right}</span>`;
+      case "name-ref":
+        return renderNameRef(value);
+    }
+  }
+  function renderIndexValue(index) {
+    const content = renderIndexContent(index.value);
+    return index.kind === "time-index" ? `<span class="time-index">@${content}</span>` : `<span class="other-index">${content}</span>`;
   }
   function renderIndexList(indices) {
     if (indices.length === 0) return "";
@@ -3134,6 +3328,9 @@ var ACDL = (() => {
     if (item.kind === "label-block") {
       return renderLabelBlock(item);
     }
+    if (item.kind === "mark-block") {
+      return renderMarkBlock(item);
+    }
     return renderTopLevelBlock(item);
   }
   function renderTopLevelBlock(block) {
@@ -3150,6 +3347,8 @@ var ACDL = (() => {
         return renderCommentBlock(block);
       case "label-block":
         return renderLabelBlock(block);
+      case "mark-block":
+        return renderMarkBlock(block);
       case "name-def":
         return renderNameDef(block);
     }
@@ -3191,6 +3390,32 @@ var ACDL = (() => {
   ${labelEnd}
 </div>`;
   }
+  function renderMarkBlock(block) {
+    const bodyHtml = block.body.map((b) => renderTopLevelBlock(b)).join("\n");
+    return `
+<div class="mark-block">
+  <div class="mark-block-content">
+    ${bodyHtml}
+  </div>
+  <div class="mark-block-bracket">
+    <span class="mark-bracket-line"></span>
+    <span class="mark-bracket-number">${block.markNumber}</span>
+  </div>
+</div>`;
+  }
+  function renderMarkBlockInsideRole(block) {
+    const bodyHtml = block.body.map((b) => renderRoleBuildingBlock(b)).join("\n");
+    return `
+<div class="mark-block">
+  <div class="mark-block-content">
+    ${bodyHtml}
+  </div>
+  <div class="mark-block-bracket">
+    <span class="mark-bracket-line"></span>
+    <span class="mark-bracket-number">${block.markNumber}</span>
+  </div>
+</div>`;
+  }
   function renderRoleMessage(msg) {
     const roleClass = escapeHtml(msg.role);
     const bodyHtml = msg.body.map((b) => {
@@ -3216,12 +3441,16 @@ var ACDL = (() => {
         return renderLoopInsideRole(block);
       case "switch-block-inside-role":
         return renderSwitchInsideRole(block);
+      case "mark-block-inside-role":
+        return renderMarkBlockInsideRole(block);
       case "comment-block":
         return renderCommentBlock(block);
       case "name-def":
         return renderNameDef(block);
       case "name-ref":
         return renderNameRef(block);
+      case "other-index":
+        return renderIndexValue(block);
     }
   }
   function renderFuncBlock(block) {
@@ -3251,9 +3480,14 @@ var ACDL = (() => {
       case "function":
         return renderFuncBlock(arg);
       case "time-index":
-        return `<span class="time-index">@${escapeHtml(arg.name)}</span>`;
       case "other-index":
-        return `<span class="other-index">${escapeHtml(arg.name)}</span>`;
+        return renderIndexValue(arg);
+      case "identifier":
+        let result = escapeHtml(arg.name);
+        if (arg.path) {
+          result += "." + renderPathDesc(arg.path);
+        }
+        return `<span class="identifier">${result}</span>`;
       case "arithmetic":
         const left = renderTextArgs(arg.left);
         const ops = arg.operator.join("");
@@ -3310,7 +3544,7 @@ var ACDL = (() => {
     return `<span class="range-expr">${startHtml}<span class="range-dots">...</span>${endHtml}${stepHtml}</span>`;
   }
   function renderLoopOutsideRole(block) {
-    const indexHtml = `<span class="loop-var">${escapeHtml(block.index.name)}</span>`;
+    const indexHtml = `<span class="loop-var">${renderIndexContent(block.index.value)}</span>`;
     const iterableHtml = `<span class="loop-iterable">${renderIterable(block.iterable)}</span>`;
     const header = `<span class="keyword">ForEach</span> ${indexHtml}: ${iterableHtml}`;
     const bodyHtml = block.body.map(
@@ -3323,7 +3557,7 @@ var ACDL = (() => {
     );
   }
   function renderLoopInsideRole(block) {
-    const indexHtml = `<span class="loop-var">${escapeHtml(block.index.name)}</span>`;
+    const indexHtml = `<span class="loop-var">${renderIndexContent(block.index.value)}</span>`;
     const iterableHtml = `<span class="loop-iterable">${renderIterable(block.iterable)}</span>`;
     const header = `<span class="keyword">ForEach</span> ${indexHtml}: ${iterableHtml}`;
     const bodyHtml = block.body.map(
@@ -3452,9 +3686,9 @@ const PROMPTS = {
   "rlm": "RLM[@T]: {\r\n    // self.messages\r\n    S: {\r\n        AVAILABLE_TOOLS // context variable, llm query(subquery), python execution via REPL blocks\r\n        INTERACTION_RULES   // inspect context, iterate, dont answer early, how to return final answer\r\n    }\r\n     \r\n    ForEach(@t: range(1,@T)) {\r\n        // if used tools, adds a list of tool responses to history\r\n        If sys.code_blocks[@t] {\r\n            ForEach(i: range(1,sys.code_block[@t].len)){\r\n                U: {\r\n                    sys.code_block[@t.i] \r\n                    sys.code_block[@t.i].response\r\n                }\r\n            }\r\n        }\r\n        \r\n        Else {\r\n            // if didnt use tools, adds the llm response to the history\r\n            A: LLM_RESP\r\n        }\r\n    }\r\n\r\n    // next action prompt\r\n    If sys.final_answer[@T] {\r\n        U: PROVIDE_FINAL_ANSWER\r\n    }\r\n    ElseIf @T == 1 {\r\n        U: {\r\n            USE_REPL        // this is your first interaction, there is no action history yet so use the repl env to view your context\r\n            REPL_INSTRUCTIONS(sys.query)    // use the repl instructions to find the answer to the query. look for context var, or query sublm\r\n        }\r\n    }\r\n    Else {\r\n        U: {\r\n            HIST_EXPLANATION    // the history before is your previous interactions with the REPL env\r\n            REPL(sys.query)     // use the REPL to answer the query\r\n        }\r\n    }\r\n\r\n}\r\n\r\nSubPrompt[@t]: {\r\n    // gets a prompt written by the rootlm in the repl env\r\n}",
   "basic_react": "ReactBase[@T]: {\r\n    S: TASK_DESC  // you are an assistant who's job is...\r\n    S: AVAILABLE_TOOLS\r\n    U: {env.user_question}\r\n    ForEach(@t: range(1,@T-1)) {\r\n        A: {\r\n            resp.tool_reasoning[@t]\r\n            sys.tool_used[@t]\r\n        }\r\n        T: sys.tool_used[@t].tool_response\r\n    }\r\n    S: INSTRUCTION   // choose an action, use ReACT\r\n}",
   "react_summ": "Prompt[@T, k]: {\r\n    U: {env.user_question}\r\n    S: {\r\n        SUMMARY_INTRO // here is a summary of the history\r\n        summarize_hist(@T-k)\r\n    }\r\n    ForEach(@t: range(1, @T-k)) {\r\n        A: {\r\n            AVAILABLE_TOOLS\r\n            resp.tool_reasoning[@t]\r\n            sys.tool_used[@t]\r\n        }\r\n        U: sys.tool_used[@t].tool_response\r\n    }\r\n    S: INSTRUCTION // choose an action or declare done\r\n}",
-  "mintagent": "Original[@T]: {\r\n    U: {\r\n        TASK_DESCRIPTION(sys.max_total_steps)\r\n        env.tool_descriptions // description of each tool, how to use them, and when to use them\r\n        env.in_context_examples\r\n        env.task_prompt // the question you need to answer, or task you need to complete\r\n    }\r\n\r\n    ForEach(@t: range(1,@T-1)) {\r\n        ForEach(i: range(1,sys.substeps[@t])){\r\n            A: {\r\n                resp.tool_reasoning[@t.i]\r\n                sys.tool_used[@t.i]\r\n            }\r\n            U: sys.tool_used[@t.i].tool_response\r\n    \r\n        A: {\r\n            resp.solution_reasoning[@t]\r\n            resp.solution[@t]\r\n        }\r\n        U: env.feedback[@t.i] // response if the answer was right or wrong, remaining tries if failed\r\n        }\r\n    }\r\n\r\n    ForEach(k: range(1,sys.substeps[@T])){\r\n        A: {\r\n            resp.tool_reasoning[@T.k]\r\n            resp.tool_used[@T.k]\r\n        }\r\n        U: sys.tool_used[@T.k].tool_response\r\n    }\r\n\r\n}",
+  "mintagent": "MintOriginal[@T]: {\r\n    U: {\r\n        TASK_DESCRIPTION(sys.max_total_steps)\r\n        env.tool_descriptions // description of each tool, how to use them, and when to use them\r\n        env.in_context_examples\r\n        env.task_prompt // the question you need to answer, or task you need to complete\r\n    }\r\n\r\n    ForEach(@t: range(1,@T-1)) {\r\n        ForEach(i: range(1,sys.substeps[@t])){\r\n            A: {\r\n                resp.tool_reasoning[@t.i]\r\n                sys.tool_used[@t.i]\r\n            }\r\n            U: sys.tool_used[@t.i].tool_response\r\n    \r\n        A: {\r\n            resp.solution_reasoning[@t]\r\n            resp.solution[@t]\r\n        }\r\n        U: env.feedback[@t.i] // response if the answer was right or wrong, remaining tries if failed\r\n        }\r\n    }\r\n\r\n    ForEach(k: range(1,sys.substeps[@T])){\r\n        A: {\r\n            resp.tool_reasoning[@T.k]\r\n            resp.tool_used[@T.k]\r\n        }\r\n        U: sys.tool_used[@T.k].tool_response\r\n    }\r\n\r\n}",
   "chat1": "Chat1[@T]: {\r\n    S: INSTRUCTIONS \r\n    U: {\r\n        ForEach(t: range(1,T-1)) {\r\n            env.user_input[@t]\r\n            resp.llm_answer[@t]\r\n        }\r\n    }\r\n\r\n    U: env.user_input[@T]\r\n}",
-  "rag": "Prompt[@T]: {\r\n    S: ROLE_DESCRIPTION // you are an assistant who’s job is…\r\n    ForEach(@t: range(1,@T-1)) {\r\n\t    U: env.user_input[@t]\r\n        U: {\r\n            ForEach(k: range(1,sys.RAG_resp[@t].len)){\r\n                sys.RAG_resp[@t][k]\r\n            }\r\n        }\r\n        A: resp.LLM_text[@t]\r\n\t}\r\n    Switch env.user_input[@t] {\r\n\t    Case \"bad answer\" {\r\n            name improved_response := improve_RAG_response(env.user_input[@t], sys.RAG_resp[@t]) \r\n\t\t    U: {ForEach(i: range(1,improved_response.len)){\r\n                improved_response[i]}\r\n            }\r\n            S: {INSTRUCTIONS // not good enough, get better results}\r\n\t\t}\r\n\t    Default { \r\n            U: {ForEach(i: range(1,sys.RAG_resp.len)) { \r\n\t\t\t        sys.RAG_resp[@t][i]}\r\n            }\r\n        }\r\n    }\r\n}\r\n",
+  "rag": "Prompt[@T]: {\r\n    S: ROLE_DESCRIPTION // you are an assistant who’s job is…\r\n    ForEach(@t: range(1,@T-1)) {\r\n\t    U: env.user_input[@t]\r\n        U: {\r\n            ForEach(k: range(1,sys.RAG_resp[@t].len)){\r\n                sys.RAG_resp[@t][k]\r\n            }\r\n        }\r\n        A: resp.LLM_text[@t]\r\n\t}\r\n\r\n    Switch env.user_input[@T] {\r\n\t    Case \"bad answer\" {\r\n            name improved_response := improve_RAG_response(env.user_input[@T], sys.RAG_resp[@T]) \r\n\t\t    U: {ForEach(i: range(1,improved_response.len)){\r\n                improved_response[i]}\r\n            }\r\n            S: {INSTRUCTIONS // not good enough, get better results}\r\n\t\t}\r\n\t    Default { \r\n            U: {ForEach(i: range(1,sys.RAG_resp[@T].len)) { \r\n\t\t\t        sys.RAG_resp[@T][i]}\r\n            }\r\n        }\r\n    }\r\n}\r\n",
   "pokemon": "Pokemon[@T]: {\r\n    U: env.image.HUD // heads up display, a screenshot with things like HP, coordinates of the character on the map and ID codes for items printed on it\r\n    S: {\r\n        INTRO // you are playing pokemon blue\r\n        GOAL // beat the game\r\n        CONVENTIONS  // vision to text translation conventions, general gameplay tips\r\n    } \r\n\r\n    History {\r\n        A: {\r\n            If @T>1 {\r\n                ForEach(i: range(@T-(@T%100),@T-1)) {\r\n                    resp.action[@i]\r\n                }\r\n                \r\n                If @T%100==0 {\r\n                    summarize(range(@T-100, @T))\r\n                    If @T>999 and @T%1000==0 {\r\n                        name relevant_summaries := [sys.summary[@t] for t in range(@T, @T-900, 100)]\r\n                        compress_summaries($relevant_summaries)\r\n                    }  \r\n                }\r\n                If @T>99 {\r\n                    ForEach(i: max(100, @T-(@T%100)-800), @T-(@T%100), 100) {  \r\n                        sys.summary[@i]\r\n                    }\r\n                    \r\n                    If @T>999 and @T%1000!=0 {\r\n                        ForEach(i: range(max(1000, @T-@T%1000-900), @T-(@T%1000), 1000)) { \r\n                            sys.compressed_summary[@i]\r\n                        } \r\n                    }\r\n                }\r\n            }\r\n        }    \r\n    }\r\n\r\n    If @T%25==0 {\r\n        //response from critique agents tracking of subgoals (primary, secondary, tertiary, contingency plants, preparation, exploration, team composition)\r\n        A: critique_performance(prompt.History[@T]) // not sure what it gets, probably action history of some sort but they didnt say\r\n    }\r\n\r\n    U: env.xml_map[@T] // unseen coordinates are not viewable until explored\r\n    S: INSTRUCTION_TO_EXPLORE\r\n    S: CHOOSE_ACTION // instructions to choose next action and how\r\n}"
 };
   </script>
@@ -3572,6 +3806,17 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   renderBtn.addEventListener("click", doRender);
+
+  // Tab key handling for editor - insert spaces instead of moving focus
+  editor.addEventListener("keydown", (e) => {
+    if (e.key === "Tab") {
+      e.preventDefault();
+      const start = editor.selectionStart;
+      const end = editor.selectionEnd;
+      editor.value = editor.value.substring(0, start) + "  " + editor.value.substring(end);
+      editor.selectionStart = editor.selectionEnd = start + 2;
+    }
+  });
 
   // Resizer
   resizer.addEventListener("mousedown", (e) => {

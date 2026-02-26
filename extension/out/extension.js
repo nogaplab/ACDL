@@ -57,7 +57,8 @@ var CONTROL_KEYWORDS = /* @__PURE__ */ new Set([
   "continue",
   "name",
   "for",
-  "in"
+  "in",
+  "MARK"
 ]);
 var LOGIC_OP = /* @__PURE__ */ new Set([
   "=",
@@ -322,14 +323,14 @@ function prompt(params) {
 function promptTitle(params) {
   return { ...params, kind: "title" };
 }
-function index(kind, name) {
-  return { kind, name };
+function identifier(params) {
+  return { ...params, kind: "identifier" };
 }
-function timeIndex(params) {
-  return { ...params, kind: "time-index" };
+function timeIndex(value) {
+  return { kind: "time-index", value };
 }
-function otherIndex(params) {
-  return { ...params, kind: "other-index" };
+function otherIndex(value) {
+  return { kind: "other-index", value };
 }
 function chatPromptBody(params) {
   return { ...params, kind: "chat-prompt-body" };
@@ -396,6 +397,12 @@ function commentBlock(params) {
 }
 function labelBlock(params) {
   return { ...params, kind: "label-block" };
+}
+function markBlock(params) {
+  return { ...params, kind: "mark-block" };
+}
+function markBlockInsideRole(params) {
+  return { ...params, kind: "mark-block-inside-role" };
 }
 function arithmeticExpr(params) {
   return { ...params, kind: "arithmetic" };
@@ -576,6 +583,8 @@ var Parser = class {
           return this.parseSwitchOutside();
         case "name":
           return this.parseNameDef();
+        case "MARK":
+          return this.parseMarkBlock();
       }
     }
     if (tok.type === "COMMENT") {
@@ -607,6 +616,50 @@ var Parser = class {
     } while (this.peek().value !== "}");
     this.consume("SYMBOL", "}");
     return labelBlock({ label, body: blocks });
+  }
+  /**
+   * Parse a MarkBlock: MARK number { PromptBlock+ }
+   * Mark blocks are like label blocks but rendered with a bracket on the right.
+   */
+  parseMarkBlock() {
+    this.consume("KEYWORD", "MARK");
+    const numberTok = this.consume("NUMBER");
+    const markNumber = parseInt(numberTok.value, 10);
+    this.consume("SYMBOL", "{");
+    const blocks = [];
+    do {
+      if (this.peek().type === "COMMENT") {
+        const text = this.consume("COMMENT").value;
+        blocks.push(commentBlock({ text }));
+        continue;
+      }
+      const innerBlock = this.parseTopLevelBlock();
+      blocks.push(innerBlock);
+    } while (this.peek().value !== "}");
+    this.consume("SYMBOL", "}");
+    return markBlock({ markNumber, body: blocks });
+  }
+  /**
+   * Parse a MarkBlockInsideRole: MARK number { RoleBuildingBlock+ }
+   * Mark blocks inside roles contain role building blocks.
+   */
+  parseMarkBlockInside() {
+    this.consume("KEYWORD", "MARK");
+    const numberTok = this.consume("NUMBER");
+    const markNumber = parseInt(numberTok.value, 10);
+    this.consume("SYMBOL", "{");
+    const blocks = [];
+    do {
+      if (this.peek().type === "COMMENT") {
+        const text = this.consume("COMMENT").value;
+        blocks.push(commentBlock({ text }));
+        continue;
+      }
+      const innerBlock = this.parseRoleBuildingBlock();
+      blocks.push(innerBlock);
+    } while (this.peek().value !== "}");
+    this.consume("SYMBOL", "}");
+    return markBlockInsideRole({ markNumber, body: blocks });
   }
   /*
    * RoleMessage = ROLE_ID: { RoleBuildingBlock* } | ROLE_ID: RoleBuildingBlock
@@ -676,6 +729,8 @@ var Parser = class {
         return this.parseLoopInside();
       if (val === "Switch")
         return this.parseSwitchInside();
+      if (val === "MARK")
+        return this.parseMarkBlockInside();
       if (val === "name")
         return this.parseNameDef();
       if (val === "break" || val === "continue") {
@@ -710,7 +765,8 @@ var Parser = class {
     } else if (tok.type === "IDENT") {
       const parsed = this.parseTemplateOrFunc();
       if (parsed.kind !== "function") {
-        throw new Error(`[${tok.line}:${tok.col}] name definitions require a ContextVar, Func, or list comprehension, got template "${parsed.name}"`);
+        const parsedName = parsed.kind === "template" ? parsed.name : "identifier";
+        throw new Error(`[${tok.line}:${tok.col}] name definitions require a ContextVar, Func, or list comprehension, got ${parsed.kind} "${parsedName}"`);
       }
       value = parsed;
     } else {
@@ -731,7 +787,8 @@ var Parser = class {
     } else if (elemTok.type === "IDENT") {
       const parsed = this.parseTemplateOrFunc();
       if (parsed.kind !== "function") {
-        throw new Error(`[${elemTok.line}:${elemTok.col}] List comprehension element must be ContextVar or Func, got template "${parsed.name}"`);
+        const parsedName = parsed.kind === "template" ? parsed.name : "identifier";
+        throw new Error(`[${elemTok.line}:${elemTok.col}] List comprehension element must be ContextVar or Func, got ${parsed.kind} "${parsedName}"`);
       }
       element = parsed;
     } else {
@@ -793,19 +850,29 @@ var Parser = class {
   }
   parseTemplateOrFunc() {
     const name = this.consume("IDENT").value;
-    let args = [];
+    if (name === name.toUpperCase()) {
+      let args = [];
+      if (this.peek().value === "(") {
+        this.consume("SYMBOL", "(");
+        args = this.parseTextArgs();
+        this.consume("SYMBOL", ")");
+      }
+      const comment = this.peek().type === "COMMENT" ? this.consume("COMMENT").value : void 0;
+      return template({ name, arguments: args, comment });
+    }
     if (this.peek().value === "(") {
       this.consume("SYMBOL", "(");
-      args = this.parseTextArgs();
+      const args = this.parseTextArgs();
       this.consume("SYMBOL", ")");
+      const indices = this.parseOptionalIndices();
+      const comment = this.peek().type === "COMMENT" ? this.consume("COMMENT").value : void 0;
+      return func({ name, arguments: args, indices, comment });
     }
-    if (name === name.toUpperCase()) {
-      const comment2 = this.peek().type === "COMMENT" ? this.consume("COMMENT").value : void 0;
-      return template({ name, arguments: args, comment: comment2 });
+    let path2;
+    if (this.match("SYMBOL", ".")) {
+      path2 = this.parsePathDesc();
     }
-    const indices = this.parseOptionalIndices();
-    const comment = this.peek().type === "COMMENT" ? this.consume("COMMENT").value : void 0;
-    return func({ name, arguments: args, indices, comment });
+    return otherIndex(identifier({ name, path: path2 }));
   }
   parseTextArgs() {
     const args = [];
@@ -834,7 +901,7 @@ var Parser = class {
   parseAtom() {
     const tok = this.peek();
     if (this.match("SYMBOL", "@")) {
-      return timeIndex({ name: this.consume("IDENT").value });
+      return timeIndex(identifier({ name: this.consume("IDENT").value }));
     }
     if (tok.type === "SYMBOL" && tok.value === "$") {
       return this.parseNameRef();
@@ -843,13 +910,13 @@ var Parser = class {
       return this.parseContextVar();
     }
     if (tok.type === "NUMBER") {
-      return otherIndex({ name: this.consume("NUMBER").value });
+      return identifier({ name: this.consume("NUMBER").value });
     }
     if (tok.type === "IDENT") {
       if (this.peekNext().value === "(") {
         return this.parseTemplateOrFunc();
       }
-      return otherIndex({ name: this.consume("IDENT").value });
+      return identifier({ name: this.consume("IDENT").value });
     }
     throw new Error(`[${tok.line}:${tok.col}] Unexpected token in arguments: ${tok.type} (${tok.value})`);
   }
@@ -863,56 +930,76 @@ var Parser = class {
       while (this.match("SYMBOL", ",")) {
         indices.push(this.parseIndex());
       }
-      if (this.peek().value === "]") {
-        console.log(`parseOptionalIndices: consuming ]`);
-        this.consume("SYMBOL", "]");
-      }
+      console.log(`parseOptionalIndices: consuming ], peek=${this.peek().type}:${this.peek().value}`);
+      this.consume("SYMBOL", "]");
     }
     console.log(`parseOptionalIndices: returning ${indices.length} indices, peek=${this.peek().type}:${this.peek().value}`);
     return indices;
   }
   parseIndex() {
     console.log(`parseIndex: starting, peek=${this.peek().type}:${this.peek().value}`);
-    let time = this.match("SYMBOL", "@");
+    const time = this.match("SYMBOL", "@");
     console.log(`parseIndex: time=${time}, peek after @check=${this.peek().type}:${this.peek().value}`);
-    let idx = "";
-    while (true) {
-      const tok = this.peek();
-      const tokType = tok.type;
-      const tokValue = tok.value;
-      console.log(`parseIndex loop: tok=${tokType}:${tokValue}, idx so far="${idx}"`);
-      if (tokType === "IDENT" || tokType === "ARITH_OP" || tokType === "NUMBER") {
-        idx += this.consume().value;
-        continue;
-      }
-      if (tokType === "SYMBOL" && tokValue === ".") {
-        const next = this.peekNext();
-        console.log(`parseIndex: at dot, next=${next?.type}:${next?.value}`);
-        if (next && (next.type === "IDENT" || next.value === "@")) {
-          idx += this.consume().value;
-          continue;
-        }
-      }
-      if (tokType === "SYMBOL" && tokValue === "@") {
-        idx += this.consume().value;
-        continue;
-      }
-      console.log(`parseIndex: breaking, final idx="${idx}"`);
-      break;
-    }
-    console.log(`parseIndex: returning ${time ? "time" : "other"}-index with name="${idx}"`);
+    const value = this.parseIndexValue();
+    console.log(`parseIndex: returning ${time ? "time" : "other"}-index`);
     if (time) {
-      return index("time-index", idx);
+      return timeIndex(value);
     } else {
-      return index("other-index", idx);
+      return otherIndex(value);
     }
+  }
+  /**
+   * Parse the value inside an index bracket.
+   * Can be: ContextVar, Func, Identifier, ArithmeticExpr, NameRef
+   */
+  parseIndexValue() {
+    let left = this.parseIndexAtom();
+    if (this.peek().type === "ARITH_OP") {
+      const operators = [];
+      while (this.peek().type === "ARITH_OP") {
+        operators.push(this.consume("ARITH_OP").value);
+      }
+      const right = this.parseIndexValue();
+      return arithmeticExpr({ operator: operators, left, right });
+    }
+    return left;
+  }
+  /**
+   * Parse an atomic value inside an index (without arithmetic).
+   */
+  parseIndexAtom() {
+    const tok = this.peek();
+    if (tok.type === "SYMBOL" && tok.value === "$") {
+      return this.parseNameRef();
+    }
+    if (tok.type === "KEYWORD" && ["sys", "env", "resp", "prompt"].includes(tok.value)) {
+      return this.parseContextVar();
+    }
+    if (tok.type === "NUMBER") {
+      return identifier({ name: this.consume("NUMBER").value });
+    }
+    if (tok.type === "IDENT") {
+      const name = this.consume("IDENT").value;
+      if (this.peek().value === "(") {
+        this.consume("SYMBOL", "(");
+        const args = this.parseTextArgs();
+        this.consume("SYMBOL", ")");
+        const indices = this.parseOptionalIndices();
+        return func({ name, arguments: args, indices });
+      }
+      let path2;
+      if (this.match("SYMBOL", ".")) {
+        path2 = this.parsePathDesc();
+      }
+      return identifier({ name, path: path2 });
+    }
+    throw new Error(`[${tok.line}:${tok.col}] Unexpected token in index: ${tok.type} (${tok.value})`);
   }
   /* ───────────────── Control Flow ───────────────── */
   parseLoopOutside() {
     this.consume("KEYWORD", "ForEach");
     this.consume("SYMBOL", "(");
-    let idx = this.peek().value === "@" ? "@" : "";
-    const index2 = index("other-index", idx + this.parseIndex().name);
+    const index = this.parseIndex();
     this.consume("SYMBOL", ":");
     let iterable;
     if (this.peek().value === "range" && this.peekNext().value === "(") {
@@ -933,7 +1020,7 @@ var Parser = class {
       body.push(this.parseTopLevelBlock());
     }
     this.consume("SYMBOL", "}");
-    return loopBlockOutsideRole({ index: index2, iterable, body });
+    return loopBlockOutsideRole({ index, iterable, body });
   }
   parseRangeExpr() {
     this.consume("IDENT", "range");
@@ -1036,8 +1123,7 @@ var Parser = class {
   parseLoopInside() {
     this.consume("KEYWORD", "ForEach");
     this.consume("SYMBOL", "(");
-    let idx = this.peek().value === "@" ? "@" : "";
-    const index2 = index("other-index", idx + this.parseIndex().name);
+    const index = this.parseIndex();
     this.consume("SYMBOL", ":");
     let iterable;
     if (this.peek().value === "range" && this.peekNext().value === "(") {
@@ -1057,7 +1143,7 @@ var Parser = class {
     while (this.peek().value !== "}")
       body.push(this.parseRoleBuildingBlock());
     this.consume("SYMBOL", "}");
-    return loopBlockInsideRole({ index: index2, iterable, body });
+    return loopBlockInsideRole({ index, iterable, body });
   }
   parseConditionalInside() {
     this.consume("KEYWORD", "If");
@@ -1504,8 +1590,42 @@ function renderPromptTitle(title) {
   const indexSuffix = renderIndexList(title.indices);
   return `<div class="prompt-title"><h1>${escapeHtml(title.name)}${indexSuffix}</h1></div>`;
 }
-function renderIndexValue(index2) {
-  return index2.kind === "time-index" ? `<span class="time-index">@${escapeHtml(index2.name)}</span>` : `<span class="other-index">${escapeHtml(index2.name)}</span>`;
+function renderPathDesc(path2) {
+  const segments = [];
+  let current = path2;
+  while (current) {
+    const segIndexText = current.indices.length > 0 ? renderIndexList(current.indices) : "";
+    segments.push(`${escapeHtml(current.base)}${segIndexText}`);
+    current = current.next;
+  }
+  return segments.join(".");
+}
+function renderIndexContent(value) {
+  switch (value.kind) {
+    case "identifier":
+      let result = escapeHtml(value.name);
+      if (value.path) {
+        result += "." + renderPathDesc(value.path);
+      }
+      const isNumber = /^\d+$/.test(value.name);
+      const className = isNumber ? "index-number" : "index-identifier";
+      return `<span class="${className}">${result}</span>`;
+    case "context-var":
+      return renderContextVarBlock(value);
+    case "function":
+      return renderFuncBlock(value);
+    case "arithmetic":
+      const left = renderIndexContent(value.left);
+      const ops = value.operator.join("");
+      const right = renderIndexContent(value.right);
+      return `<span class="arithmetic-expr">${left}<span class="arith-op">${escapeHtml(ops)}</span>${right}</span>`;
+    case "name-ref":
+      return renderNameRef(value);
+  }
+}
+function renderIndexValue(index) {
+  const content = renderIndexContent(index.value);
+  return index.kind === "time-index" ? `<span class="time-index">@${content}</span>` : `<span class="other-index">${content}</span>`;
 }
 function renderIndexList(indices) {
   if (indices.length === 0)
@@ -1533,6 +1653,9 @@ function renderPromptBodyItem(item) {
   if (item.kind === "label-block") {
     return renderLabelBlock(item);
   }
+  if (item.kind === "mark-block") {
+    return renderMarkBlock(item);
+  }
   return renderTopLevelBlock(item);
 }
 function renderTopLevelBlock(block) {
@@ -1549,6 +1672,8 @@ function renderTopLevelBlock(block) {
       return renderCommentBlock(block);
     case "label-block":
       return renderLabelBlock(block);
+    case "mark-block":
+      return renderMarkBlock(block);
     case "name-def":
       return renderNameDef(block);
   }
@@ -1590,6 +1715,32 @@ function renderLabelBlock(block) {
   ${labelEnd}
 </div>`;
 }
+function renderMarkBlock(block) {
+  const bodyHtml = block.body.map((b) => renderTopLevelBlock(b)).join("\n");
+  return `
+<div class="mark-block">
+  <div class="mark-block-content">
+    ${bodyHtml}
+  </div>
+  <div class="mark-block-bracket">
+    <span class="mark-bracket-line"></span>
+    <span class="mark-bracket-number">${block.markNumber}</span>
+  </div>
+</div>`;
+}
+function renderMarkBlockInsideRole(block) {
+  const bodyHtml = block.body.map((b) => renderRoleBuildingBlock(b)).join("\n");
+  return `
+<div class="mark-block">
+  <div class="mark-block-content">
+    ${bodyHtml}
+  </div>
+  <div class="mark-block-bracket">
+    <span class="mark-bracket-line"></span>
+    <span class="mark-bracket-number">${block.markNumber}</span>
+  </div>
+</div>`;
+}
 function renderRoleMessage(msg) {
   const roleClass = escapeHtml(msg.role);
   const bodyHtml = msg.body.map((b) => {
@@ -1615,12 +1766,16 @@ function renderRoleBuildingBlock(block) {
       return renderLoopInsideRole(block);
     case "switch-block-inside-role":
       return renderSwitchInsideRole(block);
+    case "mark-block-inside-role":
+      return renderMarkBlockInsideRole(block);
     case "comment-block":
       return renderCommentBlock(block);
     case "name-def":
       return renderNameDef(block);
     case "name-ref":
       return renderNameRef(block);
+    case "other-index":
+      return renderIndexValue(block);
   }
 }
 function renderFuncBlock(block) {
@@ -1650,9 +1805,14 @@ function renderTextArgs(arg) {
     case "function":
       return renderFuncBlock(arg);
     case "time-index":
-      return `<span class="time-index">@${escapeHtml(arg.name)}</span>`;
     case "other-index":
-      return `<span class="other-index">${escapeHtml(arg.name)}</span>`;
+      return renderIndexValue(arg);
+    case "identifier":
+      let result = escapeHtml(arg.name);
+      if (arg.path) {
+        result += "." + renderPathDesc(arg.path);
+      }
+      return `<span class="identifier">${result}</span>`;
     case "arithmetic":
       const left = renderTextArgs(arg.left);
       const ops = arg.operator.join("");
@@ -1709,7 +1869,7 @@ function renderRangeExpr(range) {
   return `<span class="range-expr">${startHtml}<span class="range-dots">...</span>${endHtml}${stepHtml}</span>`;
 }
 function renderLoopOutsideRole(block) {
-  const indexHtml = `<span class="loop-var">${escapeHtml(block.index.name)}</span>`;
+  const indexHtml = `<span class="loop-var">${renderIndexContent(block.index.value)}</span>`;
   const iterableHtml = `<span class="loop-iterable">${renderIterable(block.iterable)}</span>`;
   const header = `<span class="keyword">ForEach</span> ${indexHtml}: ${iterableHtml}`;
   const bodyHtml = block.body.map(
@@ -1722,7 +1882,7 @@ function renderLoopOutsideRole(block) {
   );
 }
 function renderLoopInsideRole(block) {
-  const indexHtml = `<span class="loop-var">${escapeHtml(block.index.name)}</span>`;
+  const indexHtml = `<span class="loop-var">${renderIndexContent(block.index.value)}</span>`;
   const iterableHtml = `<span class="loop-iterable">${renderIterable(block.iterable)}</span>`;
   const header = `<span class="keyword">ForEach</span> ${indexHtml}: ${iterableHtml}`;
   const bodyHtml = block.body.map(

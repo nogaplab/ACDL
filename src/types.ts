@@ -17,12 +17,23 @@ export type Index = TimeIndex | OtherIndex;
 
 export type TimeIndex = {
   kind: "time-index";
-  name: string;
+  value: IndexValue;
 }
 
 export type OtherIndex = {
   kind: "other-index";
+  value: IndexValue;
+}
+
+// What can be inside an index - structured values that preserve their type for rendering
+export type IndexValue = Identifier | ContextVar | Func | ArithmeticExpr | NameRef;
+
+// Simple identifier for basic names like "t", "i", "T" or numbers like "123"
+// Can optionally have a path for dotted identifiers like "foo.bar.baz"
+export type Identifier = {
+  kind: "identifier";
   name: string;
+  path?: PathDesc;
 }
 
 // Template text and function types
@@ -82,7 +93,7 @@ export type NameRef = {
     name: string;           // referenced variable name (without $)
 }
 
-export type TextArgs = ContextVar | Index | Func | ArithmeticExpr | NameRef;
+export type TextArgs = ContextVar | Index | Func | ArithmeticExpr | NameRef | Identifier;
 
 export type Func = {
     kind: "function";
@@ -131,7 +142,13 @@ export type LabelBlock = {
   body: Array<PromptBlock>;
 }
 
-export type PromptBlock = RoleMessage|LabelBlock|ConditionalBlockOutsideRole|LoopBlockOutsideRole|SwitchBlockOutsideRole|CommentBlock|NameDef;
+export type MarkBlock = {
+  kind: "mark-block";
+  markNumber: number;
+  body: Array<PromptBlock>;
+}
+
+export type PromptBlock = RoleMessage|LabelBlock|MarkBlock|ConditionalBlockOutsideRole|LoopBlockOutsideRole|SwitchBlockOutsideRole|CommentBlock|NameDef;
 
 export type LoopBlockOutsideRole = {
   kind: "loop-block-outside-role";
@@ -176,7 +193,13 @@ export type DefaultCaseBlockOutsideRole = {
 
 // Inside Role Building Blocks
 
-export type RoleBuildingBlock = ConditionalBlockInsideRole|LoopBlockInsideRole|SwitchBlockInsideRole|Template|ContextVar|Func|CommentBlock|NameDef|NameRef;
+export type RoleBuildingBlock = ConditionalBlockInsideRole|LoopBlockInsideRole|SwitchBlockInsideRole|MarkBlockInsideRole|Template|ContextVar|Func|CommentBlock|NameDef|NameRef|OtherIndex;
+
+export type MarkBlockInsideRole = {
+  kind: "mark-block-inside-role";
+  markNumber: number;
+  body: Array<RoleBuildingBlock>;
+}
 
 export type LoopBlockInsideRole = {
   kind: "loop-block-inside-role";

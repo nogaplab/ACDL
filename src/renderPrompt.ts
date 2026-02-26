@@ -2,6 +2,8 @@ import {
   Prompt,
   PromptTitle,
   Index,
+  IndexValue,
+  Identifier,
   PromptBody,
   ChatPromptBody,
   CompletionPromptBody,
@@ -24,6 +26,8 @@ import {
   TextArgs,
   CommentBlock,
   LabelBlock,
+  MarkBlock,
+  MarkBlockInsideRole,
   ExpressionToken,
   Iterable,
   RangeExpr,
@@ -385,10 +389,47 @@ function renderPromptTitle(title: PromptTitle): string {
   return `<div class="prompt-title"><h1>${escapeHtml(title.name)}${indexSuffix}</h1></div>`;
 }
 
+function renderPathDesc(path: PathDesc): string {
+  const segments: string[] = [];
+  let current: PathDesc | undefined = path;
+  while (current) {
+    const segIndexText = current.indices.length > 0 ? renderIndexList(current.indices) : "";
+    segments.push(`${escapeHtml(current.base)}${segIndexText}`);
+    current = current.next;
+  }
+  return segments.join(".");
+}
+
+function renderIndexContent(value: IndexValue): string {
+  switch (value.kind) {
+    case "identifier":
+      let result = escapeHtml(value.name);
+      if (value.path) {
+        result += "." + renderPathDesc(value.path);
+      }
+      // Check if it's a number to apply appropriate styling
+      const isNumber = /^\d+$/.test(value.name);
+      const className = isNumber ? "index-number" : "index-identifier";
+      return `<span class="${className}">${result}</span>`;
+    case "context-var":
+      return renderContextVarBlock(value);
+    case "function":
+      return renderFuncBlock(value);
+    case "arithmetic":
+      const left = renderIndexContent(value.left as IndexValue);
+      const ops = value.operator.join("");
+      const right = renderIndexContent(value.right as IndexValue);
+      return `<span class="arithmetic-expr">${left}<span class="arith-op">${escapeHtml(ops)}</span>${right}</span>`;
+    case "name-ref":
+      return renderNameRef(value);
+  }
+}
+
 function renderIndexValue(index: Index): string {
+  const content = renderIndexContent(index.value);
   return index.kind === "time-index"
-    ? `<span class="time-index">@${escapeHtml(index.name)}</span>`
-    : `<span class="other-index">${escapeHtml(index.name)}</span>`;
+    ? `<span class="time-index">@${content}</span>`
+    : `<span class="other-index">${content}</span>`;
 }
 
 function renderIndexList(indices: Index[]): string {
@@ -434,6 +475,9 @@ function renderPromptBodyItem(item: PromptBlock): string {
   if (item.kind === "label-block") {
     return renderLabelBlock(item);
   }
+  if (item.kind === "mark-block") {
+    return renderMarkBlock(item);
+  }
   return renderTopLevelBlock(item);
 }
 
@@ -460,6 +504,9 @@ function renderTopLevelBlock(block: PromptBlock): string {
 
     case "label-block":
       return renderLabelBlock(block);
+
+    case "mark-block":
+      return renderMarkBlock(block);
 
     case "name-def":
       return renderNameDef(block);
@@ -533,6 +580,46 @@ function renderLabelBlock(block: LabelBlock): string {
 }
 
 /**
+ * Render a MarkBlock: a section with a right-side bracket and number.
+ * The bracket appears on the right edge of the block's content with the
+ * mark number displayed to the right of the bracket, vertically centered.
+ */
+function renderMarkBlock(block: MarkBlock): string {
+  // Render all blocks in the body array
+  const bodyHtml = block.body.map(b => renderTopLevelBlock(b)).join("\n");
+
+  return `
+<div class="mark-block">
+  <div class="mark-block-content">
+    ${bodyHtml}
+  </div>
+  <div class="mark-block-bracket">
+    <span class="mark-bracket-line"></span>
+    <span class="mark-bracket-number">${block.markNumber}</span>
+  </div>
+</div>`;
+}
+
+/**
+ * Render a MarkBlockInsideRole: same as MarkBlock but for inside role contexts.
+ */
+function renderMarkBlockInsideRole(block: MarkBlockInsideRole): string {
+  // Render all blocks in the body array
+  const bodyHtml = block.body.map(b => renderRoleBuildingBlock(b)).join("\n");
+
+  return `
+<div class="mark-block">
+  <div class="mark-block-content">
+    ${bodyHtml}
+  </div>
+  <div class="mark-block-bracket">
+    <span class="mark-bracket-line"></span>
+    <span class="mark-bracket-number">${block.markNumber}</span>
+  </div>
+</div>`;
+}
+
+/**
  * Render a role message like:
  *   [system]
  *   - TEMPLATE(...)
@@ -583,6 +670,9 @@ function renderRoleBuildingBlock(block: RoleBuildingBlock): string {
     case "switch-block-inside-role":
       return renderSwitchInsideRole(block);
 
+    case "mark-block-inside-role":
+      return renderMarkBlockInsideRole(block);
+
     case "comment-block":
       return renderCommentBlock(block);
 
@@ -591,6 +681,9 @@ function renderRoleBuildingBlock(block: RoleBuildingBlock): string {
 
     case "name-ref":
       return renderNameRef(block);
+
+    case "other-index":
+      return renderIndexValue(block);
   }
 }
 
@@ -657,12 +750,17 @@ function renderTextArgs(arg: TextArgs): string {
       return renderFuncBlock(arg);
 
     case "time-index":
-      // TimeIndex arguments are simple, just @name
-      return `<span class="time-index">@${escapeHtml(arg.name)}</span>`;
-
     case "other-index":
-      // OtherIndex arguments (plain numbers or identifiers)
-      return `<span class="other-index">${escapeHtml(arg.name)}</span>`;
+      // Index arguments - use the structured index renderer
+      return renderIndexValue(arg);
+
+    case "identifier":
+      // Simple identifier (name or number, optionally with path)
+      let result = escapeHtml(arg.name);
+      if (arg.path) {
+        result += "." + renderPathDesc(arg.path);
+      }
+      return `<span class="identifier">${result}</span>`;
 
     case "arithmetic":
       // Arithmetic expressions: left operator(s) right
@@ -839,7 +937,7 @@ function renderRangeExpr(range: RangeExpr): string {
 }
 
 function renderLoopOutsideRole(block: LoopBlockOutsideRole): string {
-  const indexHtml = `<span class="loop-var">${escapeHtml(block.index.name)}</span>`;
+  const indexHtml = `<span class="loop-var">${renderIndexContent(block.index.value)}</span>`;
   const iterableHtml = `<span class="loop-iterable">${renderIterable(block.iterable)}</span>`;
   const header = `<span class="keyword">ForEach</span> ${indexHtml}: ${iterableHtml}`;
 
@@ -880,7 +978,7 @@ function renderLoopOutsideRole(block: LoopBlockOutsideRole): string {
  *   - escapes all text for safety
  */
 function renderLoopInsideRole(block: LoopBlockInsideRole): string {
-  const indexHtml = `<span class="loop-var">${escapeHtml(block.index.name)}</span>`;
+  const indexHtml = `<span class="loop-var">${renderIndexContent(block.index.value)}</span>`;
   const iterableHtml = `<span class="loop-iterable">${renderIterable(block.iterable)}</span>`;
   const header = `<span class="keyword">ForEach</span> ${indexHtml}: ${iterableHtml}`;
   const bodyHtml = block.body

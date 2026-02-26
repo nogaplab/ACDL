@@ -18,7 +18,8 @@ export type ControlKeyword =
   | "continue"
   | "name"
   | "for"
-  | "in";
+  | "in"
+  | "MARK";
 
 export type Keyword = NamespaceKeyword | ControlKeyword;
 

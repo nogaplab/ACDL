@@ -23,7 +23,8 @@ const CONTROL_KEYWORDS = new Set<ControlKeyword>([
   "continue",
   "name",
   "for",
-  "in"
+  "in",
+  "MARK"
 ]);
 
 /* ───────────────── operators ───────────────── */

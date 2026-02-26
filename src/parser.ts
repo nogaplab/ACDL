@@ -210,6 +210,7 @@ export class Parser {
         case "ForEach": return this.parseLoopOutside();
         case "Switch": return this.parseSwitchOutside();
         case "name": return this.parseNameDef();
+        case "MARK": return this.parseMarkBlock();
       }
     }
 
@@ -254,6 +255,70 @@ export class Parser {
     this.consume("SYMBOL", "}");
 
     return Create.labelBlock({ label, body: blocks });
+  }
+
+  /**
+   * Parse a MarkBlock: MARK number { PromptBlock+ }
+   * Mark blocks are like label blocks but rendered with a bracket on the right.
+   */
+  private parseMarkBlock(): AST.MarkBlock {
+    this.consume("KEYWORD", "MARK");
+    const numberTok = this.consume("NUMBER");
+    const markNumber = parseInt(numberTok.value as string, 10);
+
+    this.consume("SYMBOL", "{");
+
+    // Parse blocks until we hit closing "}"
+    const blocks: Array<AST.PromptBlock> = [];
+
+    do {
+      // Check for standalone comments inside mark blocks
+      if (this.peek().type === "COMMENT") {
+        const text = this.consume("COMMENT").value as string;
+        blocks.push(Create.commentBlock({ text }));
+        continue;
+      }
+
+      // Parse a block (PromptBlock only)
+      const innerBlock = this.parseTopLevelBlock();
+      blocks.push(innerBlock);
+    } while (this.peek().value !== "}");
+
+    this.consume("SYMBOL", "}");
+
+    return Create.markBlock({ markNumber, body: blocks });
+  }
+
+  /**
+   * Parse a MarkBlockInsideRole: MARK number { RoleBuildingBlock+ }
+   * Mark blocks inside roles contain role building blocks.
+   */
+  private parseMarkBlockInside(): AST.MarkBlockInsideRole {
+    this.consume("KEYWORD", "MARK");
+    const numberTok = this.consume("NUMBER");
+    const markNumber = parseInt(numberTok.value as string, 10);
+
+    this.consume("SYMBOL", "{");
+
+    // Parse blocks until we hit closing "}"
+    const blocks: Array<AST.RoleBuildingBlock> = [];
+
+    do {
+      // Check for standalone comments inside mark blocks
+      if (this.peek().type === "COMMENT") {
+        const text = this.consume("COMMENT").value as string;
+        blocks.push(Create.commentBlock({ text }));
+        continue;
+      }
+
+      // Parse a role building block
+      const innerBlock = this.parseRoleBuildingBlock();
+      blocks.push(innerBlock);
+    } while (this.peek().value !== "}");
+
+    this.consume("SYMBOL", "}");
+
+    return Create.markBlockInsideRole({ markNumber, body: blocks });
   }
 
   /*
@@ -350,6 +415,7 @@ export class Parser {
       if (val === "If") return this.parseConditionalInside();
       if (val === "ForEach") return this.parseLoopInside();
       if (val === "Switch") return this.parseSwitchInside();
+      if (val === "MARK") return this.parseMarkBlockInside();
 
       // 2. Check for name definition
       if (val === "name") return this.parseNameDef();
@@ -397,7 +463,8 @@ export class Parser {
     } else if (tok.type === "IDENT") {
       const parsed = this.parseTemplateOrFunc();
       if (parsed.kind !== "function") {
-        throw new Error(`[${tok.line}:${tok.col}] name definitions require a ContextVar, Func, or list comprehension, got template "${parsed.name}"`);
+        const parsedName = parsed.kind === "template" ? parsed.name : "identifier";
+        throw new Error(`[${tok.line}:${tok.col}] name definitions require a ContextVar, Func, or list comprehension, got ${parsed.kind} "${parsedName}"`);
       }
       value = parsed;
     } else {
@@ -423,7 +490,8 @@ export class Parser {
     } else if (elemTok.type === "IDENT") {
       const parsed = this.parseTemplateOrFunc();
       if (parsed.kind !== "function") {
-        throw new Error(`[${elemTok.line}:${elemTok.col}] List comprehension element must be ContextVar or Func, got template "${parsed.name}"`);
+        const parsedName = parsed.kind === "template" ? parsed.name : "identifier";
+        throw new Error(`[${elemTok.line}:${elemTok.col}] List comprehension element must be ContextVar or Func, got ${parsed.kind} "${parsedName}"`);
       }
       element = parsed;
     } else {
@@ -491,7 +559,9 @@ export class Parser {
         throw new Error(`[${tok.line}:${tok.col}] Expected identifier in path, got ${tok.type}`);
     }
 
+    // Consume base identifier only (arithmetic is handled by parseIndexValue)
     const base = this.consume().value as string;
+
     console.log(`parsePathDesc: base=${base}, about to parse indices`);
     const indices = this.parseOptionalIndices();
     console.log(`parsePathDesc: after indices, peek=${this.peek().type}:${this.peek().value}`);
@@ -503,23 +573,37 @@ export class Parser {
     return Create.pathDesc({ base, indices, next });
   }
 
-  private parseTemplateOrFunc(): AST.Template | AST.Func {
+  private parseTemplateOrFunc(): AST.Template | AST.Func | AST.OtherIndex {
     const name = this.consume("IDENT").value as string;
-    let args: AST.TextArgs[] = [];
-    if (this.peek().value === "(") {
-      this.consume("SYMBOL", "(");
-      args = this.parseTextArgs();
-      this.consume("SYMBOL", ")");
-    }
 
-    // Template logic: All caps or specifically handled
+    // 1. If all uppercase, parse as template (with optional args)
     if (name === name.toUpperCase()) {
+      let args: AST.TextArgs[] = [];
+      if (this.peek().value === "(") {
+        this.consume("SYMBOL", "(");
+        args = this.parseTextArgs();
+        this.consume("SYMBOL", ")");
+      }
       const comment = this.peek().type === "COMMENT" ? (this.consume("COMMENT").value as string) : undefined;
       return Create.template({ name, arguments: args, comment });
     }
-    const indices = this.parseOptionalIndices() as AST.Index[];
-    const comment = this.peek().type === "COMMENT" ? (this.consume("COMMENT").value as string) : undefined;
-    return Create.func({ name, arguments: args, indices, comment });
+
+    // 2. If followed by "(", parse as function
+    if (this.peek().value === "(") {
+      this.consume("SYMBOL", "(");
+      const args = this.parseTextArgs();
+      this.consume("SYMBOL", ")");
+      const indices = this.parseOptionalIndices() as AST.Index[];
+      const comment = this.peek().type === "COMMENT" ? (this.consume("COMMENT").value as string) : undefined;
+      return Create.func({ name, arguments: args, indices, comment });
+    }
+
+    // 3. Otherwise, parse as identifier (with optional path)
+    let path: AST.PathDesc | undefined;
+    if (this.match("SYMBOL", ".")) {
+      path = this.parsePathDesc();
+    }
+    return Create.otherIndex(Create.identifier({ name, path }));
   }
 
   private parseTextArgs(): AST.TextArgs[] {
@@ -561,7 +645,7 @@ export class Parser {
 
     if (this.match("SYMBOL", "@")) {
       // Time index like @t
-      return Create.timeIndex({ name: this.consume("IDENT").value as string });
+      return Create.timeIndex(Create.identifier({ name: this.consume("IDENT").value as string }));
     }
 
     // Name reference: $varname
@@ -574,8 +658,8 @@ export class Parser {
     }
 
     if (tok.type === "NUMBER") {
-      // Plain number - treat as OtherIndex
-      return Create.otherIndex({ name: this.consume("NUMBER").value as string });
+      // Plain number - treat as Identifier
+      return Create.identifier({ name: this.consume("NUMBER").value as string });
     }
 
     if (tok.type === "IDENT") {
@@ -583,8 +667,8 @@ export class Parser {
       if (this.peekNext().value === "(") {
         return this.parseTemplateOrFunc() as AST.Func;
       }
-      // Plain identifier - treat as OtherIndex
-      return Create.otherIndex({ name: this.consume("IDENT").value as string });
+      // Plain identifier
+      return Create.identifier({ name: this.consume("IDENT").value as string });
     }
     throw new Error(`[${tok.line}:${tok.col}] Unexpected token in arguments: ${tok.type} (${tok.value})`);
   }
@@ -600,10 +684,9 @@ export class Parser {
       while (this.match("SYMBOL", ",")) {
         indices.push(this.parseIndex());
       }
-      if (this.peek().value === "]") {
-        console.log(`parseOptionalIndices: consuming ]`);
-        this.consume("SYMBOL", "]");
-      }
+      // Always consume ] after parsing index (we matched [ so there must be ])
+      console.log(`parseOptionalIndices: consuming ], peek=${this.peek().type}:${this.peek().value}`);
+      this.consume("SYMBOL", "]");
     }
     console.log(`parseOptionalIndices: returning ${indices.length} indices, peek=${this.peek().type}:${this.peek().value}`);
     return indices;
@@ -611,48 +694,84 @@ export class Parser {
 
   private parseIndex(): AST.Index {
     console.log(`parseIndex: starting, peek=${this.peek().type}:${this.peek().value}`);
-    let time: boolean = this.match("SYMBOL", "@");
+    const time: boolean = this.match("SYMBOL", "@");
     console.log(`parseIndex: time=${time}, peek after @check=${this.peek().type}:${this.peek().value}`);
-    let idx: string = ""
-    while (true) {
-      const tok = this.peek();
-      const tokType = tok.type;
-      const tokValue = tok.value;
-      console.log(`parseIndex loop: tok=${tokType}:${tokValue}, idx so far="${idx}"`);
 
-      // Simple token types
-      if (tokType === "IDENT" || tokType === "ARITH_OP" || tokType === "NUMBER") {
-        idx += this.consume().value as string;
-        continue;
-      }
+    // Parse the index value (ContextVar, Func, Identifier, ArithmeticExpr, NameRef)
+    const value = this.parseIndexValue();
 
-      // Check for dot followed by IDENT or @
-      if (tokType === "SYMBOL" && tokValue === ".") {
-        const next = this.peekNext();
-        console.log(`parseIndex: at dot, next=${next?.type}:${next?.value}`);
-        if (next && (next.type === "IDENT" || next.value === "@")) {
-          idx += this.consume().value as string;
-          continue;
-        }
-      }
-
-      // Check for @ (for compound time indices like @t.@i)
-      if (tokType === "SYMBOL" && tokValue === "@") {
-        idx += this.consume().value as string;
-        continue;
-      }
-
-      // No match, exit loop
-      console.log(`parseIndex: breaking, final idx="${idx}"`);
-      break;
-    }
-    // Return the correct AST node based on the 'time' flag
-    console.log(`parseIndex: returning ${time ? "time" : "other"}-index with name="${idx}"`);
+    console.log(`parseIndex: returning ${time ? "time" : "other"}-index`);
     if (time) {
-      return Create.index("time-index", idx);
+      return Create.timeIndex(value);
     } else {
-      return Create.index("other-index", idx);
+      return Create.otherIndex(value);
     }
+  }
+
+  /**
+   * Parse the value inside an index bracket.
+   * Can be: ContextVar, Func, Identifier, ArithmeticExpr, NameRef
+   */
+  private parseIndexValue(): AST.IndexValue {
+    let left = this.parseIndexAtom();
+
+    // Check for arithmetic operators
+    if (this.peek().type === "ARITH_OP") {
+      const operators: AST.ArithmeticOperator[] = [];
+      while (this.peek().type === "ARITH_OP") {
+        operators.push(this.consume("ARITH_OP").value as AST.ArithmeticOperator);
+      }
+      const right = this.parseIndexValue();
+      return Create.arithmeticExpr({ operator: operators, left, right });
+    }
+
+    return left;
+  }
+
+  /**
+   * Parse an atomic value inside an index (without arithmetic).
+   */
+  private parseIndexAtom(): AST.IndexValue {
+    const tok = this.peek();
+
+    // NameRef: $varname
+    if (tok.type === "SYMBOL" && tok.value === "$") {
+      return this.parseNameRef();
+    }
+
+    // ContextVar: sys.foo, env.bar, resp.x, prompt.y
+    if (tok.type === "KEYWORD" && ["sys", "env", "resp", "prompt"].includes(tok.value as string)) {
+      return this.parseContextVar();
+    }
+
+    // Number: just a numeric value
+    if (tok.type === "NUMBER") {
+      return Create.identifier({ name: this.consume("NUMBER").value as string });
+    }
+
+    // Identifier: could be simple name, function call, or path
+    if (tok.type === "IDENT") {
+      const name = this.consume("IDENT").value as string;
+
+      // Function call: name(...)
+      if (this.peek().value === "(") {
+        this.consume("SYMBOL", "(");
+        const args = this.parseTextArgs();
+        this.consume("SYMBOL", ")");
+        const indices = this.parseOptionalIndices() as AST.Index[];
+        return Create.func({ name, arguments: args, indices });
+      }
+
+      // Path: name.something (for compound indices like T.I)
+      let path: AST.PathDesc | undefined;
+      if (this.match("SYMBOL", ".")) {
+        path = this.parsePathDesc();
+      }
+
+      return Create.identifier({ name, path });
+    }
+
+    throw new Error(`[${tok.line}:${tok.col}] Unexpected token in index: ${tok.type} (${tok.value})`);
   }
 
 
@@ -661,8 +780,8 @@ export class Parser {
   private parseLoopOutside(): AST.LoopBlockOutsideRole {
     this.consume("KEYWORD", "ForEach");
     this.consume("SYMBOL", "(");
-    let idx: string = this.peek().value === "@" ? "@" : "";
-    const index = Create.index( "other-index", idx + this.parseIndex().name)
+    // Parse the loop variable (e.g., @t or i)
+    const index = this.parseIndex();
     this.consume("SYMBOL", ":");
 
     // Check if iterable is a range expression: range(start, end, optionalStep)
@@ -802,8 +921,8 @@ export class Parser {
   private parseLoopInside(): AST.LoopBlockInsideRole {
     this.consume("KEYWORD", "ForEach");
     this.consume("SYMBOL", "(");
-    let idx: string = this.peek().value === "@" ? "@" : "";
-    const index = Create.index( "other-index", idx + this.parseIndex().name)
+    // Parse the loop variable (e.g., @t or i)
+    const index = this.parseIndex() as AST.OtherIndex;
     this.consume("SYMBOL", ":");
 
     // Check if iterable is a range expression: range(start, end, optionalStep)

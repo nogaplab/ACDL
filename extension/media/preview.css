@@ -326,6 +326,19 @@ body {
   font-size: 12px;
 }
 
+/* Index content - numbers and identifiers inside indices */
+.index-number,
+.index-identifier {
+  color: var(--accent-variable);
+  font-weight: 700;
+}
+
+/* Arithmetic operators inside indices - black/neutral */
+.arith-op {
+  color: var(--text-primary);
+  font-weight: 400;
+}
+
 /* Control flow keywords - bold and prominent */
 .keyword {
   color: #000000;
@@ -628,6 +641,7 @@ body {
   align-items: center;
   gap: 6px;
   white-space: nowrap;
+  background: var(--control-header-bg);
 }
 
 .loop-block-outside-role-header::before,
@@ -650,6 +664,7 @@ body {
   align-items: center;
   gap: 6px;
   white-space: nowrap;
+  background: var(--control-header-bg);
 }
 
 .conditional-block-outside-role-header::before {
@@ -671,6 +686,7 @@ body {
   align-items: center;
   gap: 6px;
   white-space: nowrap;
+  background: var(--control-header-bg);
 }
 
 .conditional-section-header::before {
@@ -693,6 +709,7 @@ body {
   align-items: center;
   gap: 6px;
   white-space: nowrap;
+  background: var(--control-header-bg);
 }
 
 .switch-block-outside-role-header::before,
@@ -762,6 +779,46 @@ body {
   border-left: 2px solid var(--border-light);
   margin-left: 6px;
   padding-left: 12px;
+}
+
+/* ======================================================
+   MARK BLOCKS - Right-side bracket with number
+   ====================================================== */
+
+.mark-block {
+  display: flex;
+  align-items: stretch;
+  margin: 8px 0;
+  position: relative;
+}
+
+.mark-block-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.mark-block-bracket {
+  display: flex;
+  align-items: center;
+  margin-left: 8px;
+  position: relative;
+}
+
+.mark-bracket-line {
+  display: block;
+  width: 8px;
+  height: 100%;
+  border: 3px solid #000000;
+  border-left: none;
+  border-radius: 0 4px 4px 0;
+}
+
+.mark-bracket-number {
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-size: 12px;
+  font-weight: 700;
+  color: #000000;
+  margin-left: 4px;
 }
 
 /* ======================================================
@@ -1101,6 +1158,7 @@ body {
   border-radius: 0 2px 0 0;
   font-size: 7px;
   gap: 3px;
+  background: var(--control-header-bg);
 }
 
 .compact .loop-block-outside-role-header::before,
@@ -1134,6 +1192,7 @@ body {
   border-radius: 2px 2px 0 0;
   font-size: 7px;
   gap: 2px;
+  background: var(--control-header-bg);
 }
 
 .compact .conditional-section-header::before {
@@ -1185,6 +1244,22 @@ body {
   margin-left: 3px;
   padding-left: 6px;
   border-left-width: 1px;
+}
+
+/* Compact mark blocks */
+.compact .mark-block {
+  margin: 4px 0;
+}
+
+.compact .mark-bracket-line {
+  width: 5px;
+  border-width: 2px;
+  border-radius: 0 2px 2px 0;
+}
+
+.compact .mark-bracket-number {
+  font-size: 9px;
+  margin-left: 2px;
 }
 
 /* Compact line height */

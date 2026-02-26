@@ -8,7 +8,6 @@ import { Parser } from './parser';
 import { renderPrompt } from './renderPrompt';
 
 const OVERLEAF_DIR = path.join(process.cwd(), 'overleaf');
-const OVERLEAF_FIGURES_DIR = path.join(OVERLEAF_DIR, 'figures');
 
 async function renderToPdf(htmlContent: string, outputPath: string): Promise<void> {
     const browser = await puppeteer.launch({ headless: true });
@@ -65,32 +64,28 @@ async function renderToPdf(htmlContent: string, outputPath: string): Promise<voi
         return Math.ceil(width);
     });
 
-    // Step 2: Set the container width to force comments to wrap
+    // Minimum width of 6cm (≈227px at 96 DPI)
+    const minWidthPx = 227;
+    const finalWidth = Math.max(contentWidth, minWidthPx);
+
+    // Step 2: Set the output width to force comments to wrap, let prompt-container size naturally
     await page.evaluate((width) => {
         const output = document.querySelector('#output') as HTMLElement;
         if (output) {
             output.style.width = width + 'px';
-            output.style.maxWidth = width + 'px';
         }
-    }, contentWidth);
+    }, finalWidth);
 
     // Get final dimensions after comments have wrapped
     const contentBox = await page.evaluate(() => {
         const container = document.querySelector('.prompt-container');
-        const footer = document.querySelector('.source-link-footer');
         if (!container) return { width: 400, height: 200 };
 
         const containerRect = container.getBoundingClientRect();
-        const footerRect = footer?.getBoundingClientRect();
-
-        // Include footer height in total height
-        const totalHeight = footerRect
-            ? footerRect.bottom
-            : containerRect.bottom;
 
         return {
             width: Math.ceil(containerRect.width) + 2,
-            height: Math.ceil(totalHeight) + 2
+            height: Math.ceil(containerRect.bottom) + 2
         };
     });
 
@@ -132,10 +127,6 @@ function generateHtml(acdlContent: string, fileName: string): string {
     const cssContent = fs.existsSync('./styles.css')
         ? fs.readFileSync('./styles.css', 'utf-8')
         : '';
-
-    // Create a data URL for downloading the original ACDL source
-    const base64Source = Buffer.from(acdlContent, 'utf-8').toString('base64');
-    const downloadUrl = `data:text/plain;base64,${base64Source}`;
 
     // Apply the same structure as the web version's PNG export
     return `
@@ -226,24 +217,9 @@ function generateHtml(acdlContent: string, fileName: string): string {
             align-items: flex-start;
         }
 
-        /* Source link footer */
-        .source-link-footer {
-            margin-top: 8px;
-            padding-top: 6px;
-            border-top: 1px solid #e0e0e0;
-            font-family: 'Inter', sans-serif;
-            font-size: 9px;
-        }
-        .source-link-footer a {
-            color: #666;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-        }
-        .source-link-footer a:hover {
-            color: #333;
-            text-decoration: underline;
+        /* PDF minimum width override */
+        .compact .prompt-container {
+            min-width: 227px !important;
         }
     </style>
 </head>
@@ -251,14 +227,11 @@ function generateHtml(acdlContent: string, fileName: string): string {
     <div id="output" class="compact">
         ${renderedPrompt}
     </div>
-    <div class="source-link-footer">
-        📎 <strong>${fileName}.acdl</strong> attached
-    </div>
 </body>
 </html>`;
 }
 
-async function processFolder(folderPath: string, outputDir: string, syncToOverleaf: boolean): Promise<string[]> {
+async function processFolder(folderPath: string, outputDir: string): Promise<string[]> {
     const absoluteFolder = path.isAbsolute(folderPath)
         ? folderPath
         : path.join(process.cwd(), folderPath);
@@ -309,28 +282,30 @@ async function processFolder(folderPath: string, outputDir: string, syncToOverle
     return generatedPdfs;
 }
 
-async function syncToOverleaf(pdfFiles: string[]): Promise<void> {
+async function syncToOverleafFolder(pdfFiles: string[], syncFolder: string): Promise<void> {
     if (!fs.existsSync(OVERLEAF_DIR)) {
         console.error('Overleaf directory not found. Clone it first with:');
         console.error('  git clone https://git.overleaf.com/<project-id> overleaf');
         return;
     }
 
-    // Create figures directory if it doesn't exist
-    if (!fs.existsSync(OVERLEAF_FIGURES_DIR)) {
-        fs.mkdirSync(OVERLEAF_FIGURES_DIR, { recursive: true });
+    const overleafTargetDir = path.join(OVERLEAF_DIR, syncFolder);
+
+    // Create target directory if it doesn't exist
+    if (!fs.existsSync(overleafTargetDir)) {
+        fs.mkdirSync(overleafTargetDir, { recursive: true });
     }
 
-    console.log('\nCopying PDFs to Overleaf...');
+    console.log(`\nCopying PDFs to Overleaf/${syncFolder}...`);
 
     for (const pdfPath of pdfFiles) {
         const fileName = path.basename(pdfPath);
-        const destPath = path.join(OVERLEAF_FIGURES_DIR, fileName);
+        const destPath = path.join(overleafTargetDir, fileName);
         fs.copyFileSync(pdfPath, destPath);
         console.log(`  ✓ Copied: ${fileName}`);
     }
 
-    // Git operations - ONLY touch figures/ folder
+    // Git operations - ONLY touch the specified folder
     const { execSync } = await import('child_process');
     const originalCwd = process.cwd();
 
@@ -342,9 +317,9 @@ async function syncToOverleaf(pdfFiles: string[]): Promise<void> {
         execSync('git fetch origin', { stdio: 'pipe' });
         execSync('git reset --hard origin/master', { stdio: 'pipe' });
 
-        // Ensure figures directory exists after reset
-        if (!fs.existsSync(OVERLEAF_FIGURES_DIR)) {
-            fs.mkdirSync(OVERLEAF_FIGURES_DIR, { recursive: true });
+        // Ensure target directory exists after reset
+        if (!fs.existsSync(overleafTargetDir)) {
+            fs.mkdirSync(overleafTargetDir, { recursive: true });
         }
 
         // Copy PDFs again after reset (they were overwritten)
@@ -352,24 +327,26 @@ async function syncToOverleaf(pdfFiles: string[]): Promise<void> {
         for (const pdfPath of pdfFiles) {
             const absolutePdfPath = path.isAbsolute(pdfPath) ? pdfPath : path.join(originalCwd, pdfPath);
             const fileName = path.basename(pdfPath);
-            const destPath = path.join(OVERLEAF_FIGURES_DIR, fileName);
+            const destPath = path.join(overleafTargetDir, fileName);
             fs.copyFileSync(absolutePdfPath, destPath);
         }
 
-        // Check if there are changes in figures/ only
-        const status = execSync('git status --porcelain figures/', { encoding: 'utf-8' });
+        // Check if there are changes in the target folder only
+        const status = execSync(`git status --porcelain "${syncFolder}/"`, { encoding: 'utf-8' });
         if (!status.trim()) {
             console.log('No changes to commit.');
             return;
         }
 
         console.log('Committing and pushing to Overleaf...');
-        execSync('git add figures/', { stdio: 'inherit' });
-        execSync(`git commit -m "Update ACDL prompt visualizations"`, { stdio: 'inherit' });
+        execSync(`git add "${syncFolder}/"`, { stdio: 'inherit' });
+        execSync(`git commit -m "Update ACDL prompt visualizations in ${syncFolder}"`, { stdio: 'inherit' });
         execSync('git push', { stdio: 'inherit' });
         console.log('✓ Pushed to Overleaf successfully!');
     } catch (err: any) {
         console.error('Git operation failed:', err.message);
+    } finally {
+        process.chdir(originalCwd);
     }
 }
 
@@ -381,17 +358,19 @@ async function main() {
 Usage: bun run render-pdf <folder> [options]
 
 Arguments:
-  <folder>      Folder containing .acdl files (e.g., "Prompts/Papers")
+  <folder>      Folder containing .acdl files (e.g., "Prompts/Paper")
 
 Options:
-  --output, -o  Output directory for PDFs (default: ./output)
-  --sync        Copy PDFs to Overleaf and push
-  --help, -h    Show this help
+  --output, -o       Output directory for PDFs (default: ./output)
+  --sync             Copy PDFs to Overleaf and push
+  --sync-folder, -s  Overleaf subfolder to sync to (default: figures)
+  --help, -h         Show this help
 
 Examples:
-  bun run render-pdf Prompts/Papers
-  bun run render-pdf Prompts/Papers --sync
-  bun run render-pdf Prompts/Papers -o ./pdfs --sync
+  bun run render-pdf Prompts/Paper
+  bun run render-pdf Prompts/Paper --sync
+  bun run render-pdf Prompts/Paper -o ./pdfs --sync
+  bun run render-pdf Prompts/RunningExample --sync --sync-folder RunningExampleVis
 `);
         process.exit(0);
     }
@@ -399,24 +378,27 @@ Examples:
     const folderPath = args[0];
     let outputDir = './output';
     let shouldSync = false;
+    let syncFolder = 'figures';
 
     for (let i = 1; i < args.length; i++) {
         if (args[i] === '--output' || args[i] === '-o') {
             outputDir = args[++i];
         } else if (args[i] === '--sync') {
             shouldSync = true;
+        } else if (args[i] === '--sync-folder' || args[i] === '-s') {
+            syncFolder = args[++i];
         }
     }
 
     console.log(`\n📄 ACDL to PDF Batch Renderer\n`);
     console.log(`Input folder: ${folderPath}`);
     console.log(`Output directory: ${outputDir}`);
-    console.log(`Sync to Overleaf: ${shouldSync ? 'Yes' : 'No'}\n`);
+    console.log(`Sync to Overleaf: ${shouldSync ? `Yes (${syncFolder}/)` : 'No'}\n`);
 
-    const pdfFiles = await processFolder(folderPath, outputDir, shouldSync);
+    const pdfFiles = await processFolder(folderPath, outputDir);
 
     if (pdfFiles.length > 0 && shouldSync) {
-        await syncToOverleaf(pdfFiles);
+        await syncToOverleafFolder(pdfFiles, syncFolder);
     }
 
     console.log(`\n✨ Done! Generated ${pdfFiles.length} PDF(s).`);

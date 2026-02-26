@@ -4,6 +4,8 @@ import {
   Index,
   TimeIndex,
   OtherIndex,
+  Identifier,
+  IndexValue,
   ChatPromptBody,
   CompletionPromptBody,
   NoneMessage,
@@ -24,6 +26,8 @@ import {
   DefaultCaseBlockInsideRole,
   CommentBlock,
   LabelBlock,
+  MarkBlock,
+  MarkBlockInsideRole,
   ArithmeticExpr,
   RangeExpr,
   ExpressionToken,
@@ -48,19 +52,16 @@ export function promptTitle(params: Omit<PromptTitle, "kind">): PromptTitle {
   return { ...params, kind: "title" };
 }
 
-export function index(kind: "time-index", name: string): TimeIndex;
-export function index(kind: "other-index", name: string): OtherIndex;
-
-export function index(kind: any, name: string): Index {
-  return { kind, name };
+export function identifier(params: Omit<Identifier, "kind">): Identifier {
+  return { ...params, kind: "identifier" };
 }
 
-export function timeIndex(params: Omit<TimeIndex, "kind">): TimeIndex {
-  return { ...params, kind: "time-index" };
+export function timeIndex(value: IndexValue): TimeIndex {
+  return { kind: "time-index", value };
 }
 
-export function otherIndex(params: Omit<OtherIndex, "kind">): OtherIndex {
-  return { ...params, kind: "other-index" };
+export function otherIndex(value: IndexValue): OtherIndex {
+  return { kind: "other-index", value };
 }
 
 export function chatPromptBody(params: Omit<ChatPromptBody, "kind">): ChatPromptBody {
@@ -149,6 +150,14 @@ export function commentBlock(params: Omit<CommentBlock, "kind">): CommentBlock {
 
 export function labelBlock(params: Omit<LabelBlock, "kind">): LabelBlock {
   return { ...params, kind: "label-block" };
+}
+
+export function markBlock(params: Omit<MarkBlock, "kind">): MarkBlock {
+  return { ...params, kind: "mark-block" };
+}
+
+export function markBlockInsideRole(params: Omit<MarkBlockInsideRole, "kind">): MarkBlockInsideRole {
+  return { ...params, kind: "mark-block-inside-role" };
 }
 
 export function arithmeticExpr(params: Omit<ArithmeticExpr, "kind">): ArithmeticExpr {
