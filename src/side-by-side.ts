@@ -34,7 +34,6 @@ async function renderSideBySide(
 
     const panelsHtml = panels.map(panel => `
         <div class="panel compact">
-            <div class="panel-label">${panel.name}</div>
             ${panel.rendered}
         </div>
     `).join('\n');
@@ -65,18 +64,6 @@ async function renderSideBySide(
 
         .panel {
             display: inline-block;
-        }
-
-        .panel-label {
-            font-family: 'Inter', sans-serif;
-            font-size: 14px;
-            font-weight: 600;
-            color: #374151;
-            margin-bottom: 12px;
-            text-align: center;
-            padding: 6px 12px;
-            background: #f3f4f6;
-            border-radius: 6px;
         }
 
         /* Override prompt container to shrink to content */
