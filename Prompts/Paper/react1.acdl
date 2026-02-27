@@ -1,0 +1,14 @@
+React1[@T]: {
+    S: {
+        TASK_DESC
+        AVAILABLE_TOOLS
+    }
+    U: env.user_input[@1]
+    ForEach(t: range(2,@T)) {
+      A: {
+        resp.tool_reasoning[@t]
+        sys.tool_call[@t].tool_called
+      }
+      U: sys.tool_call[@t].tool_response
+    }
+}
