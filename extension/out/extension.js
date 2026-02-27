@@ -59,7 +59,7 @@ var CONTROL_KEYWORDS = /* @__PURE__ */ new Set([
   "for",
   "in",
   "MARK",
-  "END"
+  "when"
 ]);
 var LOGIC_OP = /* @__PURE__ */ new Set([
   "=",
@@ -100,22 +100,24 @@ var Scanner = class {
   line = 1;
   col = 1;
   input;
+  hadWhitespace = false;
+  // tracks if whitespace was skipped before current token
   constructor(input) {
     this.input = input;
   }
   nextToken() {
-    this.skipWhitespace();
+    const spaceBefore = this.skipWhitespace();
     if (this.isEOF()) {
-      return { type: "EOF", value: null, line: this.line, col: this.col };
+      return { type: "EOF", value: null, line: this.line, col: this.col, spaceBefore };
     }
     const ch = this.peek();
     if (ch === "/" && this.peekNext() === "/") {
-      return this.readComment();
+      return this.readComment(spaceBefore);
     }
     if (ch === "\u2026") {
       const col = this.col;
       this.advance();
-      return { type: "RANGE", value: "\u2026", line: this.line, col };
+      return { type: "RANGE", value: "\u2026", line: this.line, col, spaceBefore };
     }
     if (ch === ".") {
       if (this.peekNext() === "." && this.input[this.pos + 2] === ".") {
@@ -123,7 +125,7 @@ var Scanner = class {
         this.advance();
         this.advance();
         this.advance();
-        return { type: "RANGE", value: "...", line: this.line, col };
+        return { type: "RANGE", value: "...", line: this.line, col, spaceBefore };
       }
     }
     if (LOGIC_OP.has(ch)) {
@@ -133,7 +135,8 @@ var Scanner = class {
         type: "LOGIC_OP",
         value,
         line: this.line,
-        col
+        col,
+        spaceBefore
       };
     }
     if (ARITH_OP.has(ch)) {
@@ -143,25 +146,26 @@ var Scanner = class {
         type: "ARITH_OP",
         value,
         line: this.line,
-        col
+        col,
+        spaceBefore
       };
     }
     if (ch === '"') {
-      return this.readString();
+      return this.readString(spaceBefore);
     }
     if (SYMBOLS.has(ch)) {
-      return this.readSymbol();
+      return this.readSymbol(spaceBefore);
     }
     if (this.isDigit(ch)) {
-      return this.readNumber();
+      return this.readNumber(spaceBefore);
     }
     if (this.isIdentStart(ch)) {
-      return this.readIdentifier();
+      return this.readIdentifier(spaceBefore);
     }
     throw this.error(`Unexpected character '${ch}'`);
   }
   /* ───────────── token readers ───────────── */
-  readComment() {
+  readComment(spaceBefore) {
     const startCol = this.col;
     this.advance();
     this.advance();
@@ -173,7 +177,8 @@ var Scanner = class {
       type: "COMMENT",
       value: value.trim(),
       line: this.line,
-      col: startCol
+      col: startCol,
+      spaceBefore
     };
   }
   readString() {
@@ -275,14 +280,17 @@ var Scanner = class {
     };
   }
   skipWhitespace() {
+    let skipped = false;
     while (!this.isEOF()) {
       const ch = this.peek();
       if (ch === " " || ch === "	" || ch === "\n" || ch === "\r") {
         this.advance();
+        skipped = true;
       } else {
         break;
       }
     }
+    return skipped;
   }
   advance() {
     const ch = this.input[this.pos++];
@@ -605,9 +613,10 @@ var Parser = class {
           return this.parseNameDef();
         case "MARK":
           return this.parseMarkBlock();
-        case "END":
-          return this.parseEndBlock();
       }
+    }
+    if (tok.type === "IDENT" && val === "PromptEndsHere") {
+      return this.parseEndBlock();
     }
     if (tok.type === "COMMENT") {
       const text = this.consume("COMMENT").value;
@@ -753,8 +762,6 @@ var Parser = class {
         return this.parseSwitchInside();
       if (val === "MARK")
         return this.parseMarkBlockInside();
-      if (val === "END")
-        return this.parseEndBlock();
       if (val === "name")
         return this.parseNameDef();
       if (val === "break" || val === "continue") {
@@ -765,6 +772,9 @@ var Parser = class {
       if (namespaces.includes(val)) {
         return this.parseContextVar();
       }
+    }
+    if (tok.type === "IDENT" && val === "PromptEndsHere") {
+      return this.parseEndBlock();
     }
     if (tok.type === "IDENT")
       return this.parseTemplateOrFunc();
@@ -837,12 +847,17 @@ var Parser = class {
     return listComprehension({ element, variable, iterable });
   }
   /**
-   * Parse a name reference: $varname
+   * Parse a name reference: $varname with optional indices and path: $docs[i].content
    */
   parseNameRef() {
     this.consume("SYMBOL", "$");
     const varName = this.consume("IDENT").value;
-    return nameRef({ name: varName });
+    const indices = this.parseOptionalIndices();
+    let path2;
+    if (this.match("SYMBOL", ".")) {
+      path2 = this.parsePathDesc();
+    }
+    return nameRef({ name: varName, indices, path: path2 });
   }
   /* ───────────────── Expressions & Shared Rules ───────────────── */
   parseContextVar() {
@@ -1027,19 +1042,19 @@ var Parser = class {
   }
   /* ───────────────── Control Flow ───────────────── */
   /**
-   * Parse an END block: END If (condition)
+   * Parse an END block: PromptEndsHere when (condition)
    * Conditional early termination that can appear anywhere.
    * Condition is delimited by parentheses, same style as conditionals.
    */
   parseEndBlock() {
-    this.consume("KEYWORD", "END");
-    this.consume("KEYWORD", "If");
+    this.consume("IDENT", "PromptEndsHere");
+    this.consume("KEYWORD", "when");
     this.consume("SYMBOL", "(");
     const conditionTokens = [];
     let depth = 1;
     while (depth > 0) {
       if (this.isEOF())
-        throw new Error("Unterminated END If condition");
+        throw new Error("Unterminated PromptEndsHere when condition");
       const tok = this.consume();
       if (tok.value === "(")
         depth++;
@@ -1361,7 +1376,7 @@ function registerDiagnostics(context) {
       return;
     const diagnostics = [];
     try {
-      new Parser(document.getText()).parsePrompt();
+      new Parser(document.getText()).parseFile();
     } catch (err) {
       console.log("ACDL Parse Error:", err.message);
       const match = err.message.match(/\[(\d+):(\d+)\]\s*(.*)/s);
@@ -1431,20 +1446,9 @@ function escapeHtml(text) {
 function renderExpressionTokens(tokens) {
   const result = [];
   let i = 0;
-  const noSpaceBefore = /* @__PURE__ */ new Set([")", "]", ",", "."]);
-  const noSpaceAfter = /* @__PURE__ */ new Set(["(", "[", "."]);
-  let lastTokenValue = null;
-  const addWithSpacing = (html, tokenValue) => {
-    if (lastTokenValue !== null && !noSpaceAfter.has(lastTokenValue) && !noSpaceBefore.has(tokenValue)) {
-      result.push(" ");
-    }
-    result.push(html);
-    lastTokenValue = tokenValue;
-  };
   const hasLogicalOps = tokens.some((t) => t.type === "IDENT" && (t.value === "and" || t.value === "or"));
   if (hasLogicalOps) {
     result.push("(");
-    lastTokenValue = "(";
   }
   while (i < tokens.length) {
     const tok = tokens[i];
@@ -1502,7 +1506,7 @@ function renderExpressionTokens(tokens) {
         }
         break;
       }
-      addWithSpacing(`<span class="expr-context-var">${contextVarTokens.join("")}</span>`, "ident");
+      result.push(`<span class="expr-context-var">${contextVarTokens.join("")}</span>`);
       continue;
     }
     if (tok.type === "IDENT" && tok.value === "range" && i + 1 < tokens.length && tokens[i + 1].value === "(") {
@@ -1550,7 +1554,7 @@ function renderExpressionTokens(tokens) {
       const startHtml = renderExpressionTokens(startTokens);
       const endHtml = renderExpressionTokens(endTokens);
       const stepHtml = stepTokens ? ` <span class="range-keyword">every</span> ${renderExpressionTokens(stepTokens)}` : "";
-      addWithSpacing(`<span class="range-expr">${startHtml}<span class="range-dots">...</span>${endHtml}${stepHtml}</span>`, "range");
+      result.push(`<span class="range-expr">${startHtml}<span class="range-dots">...</span>${endHtml}${stepHtml}</span>`);
       continue;
     }
     if (tok.type === "IDENT" && i + 1 < tokens.length && tokens[i + 1].value === "(") {
@@ -1573,9 +1577,9 @@ function renderExpressionTokens(tokens) {
       const argsHtml = renderExpressionTokens(argTokens);
       const isBuiltinMath = tok.value === "min" || tok.value === "max";
       if (isBuiltinMath) {
-        addWithSpacing(`<span class="builtin-func">${funcName}(${argsHtml})</span>`, ")");
+        result.push(`<span class="builtin-func">${funcName}(${argsHtml})</span>`);
       } else {
-        addWithSpacing(`<span class="func-block"><span class="func-name">${funcName}</span><span class="func-parens">(</span>${argsHtml}<span class="func-parens">)</span></span>`, ")");
+        result.push(`<span class="func-block"><span class="func-name">${funcName}</span><span class="func-parens">(</span>${argsHtml}<span class="func-parens">)</span></span>`);
       }
       continue;
     }
@@ -1586,7 +1590,7 @@ function renderExpressionTokens(tokens) {
         combined += tokens[i].value;
         i++;
       }
-      addWithSpacing(`<span class="expr-logic-op">${escapeHtml(combined)}</span>`, combined);
+      result.push(`<span class="expr-logic-op">${escapeHtml(combined)}</span>`);
       continue;
     }
     if (tok.type === "SYMBOL" && tok.value === "@" && i + 1 < tokens.length) {
@@ -1606,51 +1610,83 @@ function renderExpressionTokens(tokens) {
             i++;
           }
         }
-        addWithSpacing(`<span class="time-index">@${timeIndexName}</span>`, "ident");
+        result.push(`<span class="time-index">@${timeIndexName}</span>`);
         continue;
       }
     }
     const escaped = escapeHtml(tok.value);
     switch (tok.type) {
       case "KEYWORD":
-        addWithSpacing(`<span class="keyword">${escaped}</span>`, tok.value);
+        result.push(`<span class="keyword">${escaped}</span>`);
         break;
       case "IDENT":
         if (tok.value === "and" || tok.value === "or") {
           result.push(`) <span class="expr-keyword">${escaped}</span> (`);
-          lastTokenValue = "(";
         } else {
-          addWithSpacing(`<span class="expr-ident">${escaped}</span>`, tok.value);
+          result.push(`<span class="expr-ident">${escaped}</span>`);
         }
         break;
       case "NUMBER":
-        addWithSpacing(`<span class="expr-number">${escaped}</span>`, tok.value);
+        result.push(`<span class="expr-number">${escaped}</span>`);
         break;
       case "SYMBOL":
         if (tok.value === "@") {
-          addWithSpacing(`<span class="expr-at">@</span>`, "@");
+          result.push(`<span class="expr-at">@</span>`);
         } else {
-          addWithSpacing(`<span class="expr-symbol">${escaped}</span>`, tok.value);
+          result.push(`<span class="expr-symbol">${escaped}</span>`);
         }
         break;
       case "ARITH_OP":
-        addWithSpacing(`<span class="expr-arith-op">${escaped}</span>`, tok.value);
+        result.push(`<span class="expr-arith-op">${escaped}</span>`);
         break;
       case "RANGE":
-        addWithSpacing(`<span class="expr-range">${escaped}</span>`, tok.value);
+        result.push(`<span class="expr-range">${escaped}</span>`);
         break;
       case "STRING":
-        addWithSpacing(`<span class="expr-string">"${escaped}"</span>`, tok.value);
+        result.push(`<span class="expr-string">"${escaped}"</span>`);
         break;
       default:
-        addWithSpacing(escaped, tok.value);
+        result.push(escaped);
     }
     i++;
   }
   if (hasLogicalOps) {
     result.push(")");
   }
-  return result.join("");
+  let output = "";
+  for (let j = 0; j < result.length; j++) {
+    const part = result[j];
+    const prevPart = j > 0 ? result[j - 1] : "";
+    const endsWithChar = (s, chars) => {
+      for (const c of chars) {
+        if (s.endsWith(c))
+          return true;
+        if (s.endsWith(`${c}</span>`))
+          return true;
+        if (s.endsWith(`">${c}`))
+          return true;
+      }
+      return false;
+    };
+    const startsWithChar = (s, chars) => {
+      for (const c of chars) {
+        if (s.startsWith(c))
+          return true;
+        if (s.startsWith(`<span`) && s.includes(`">${c}</span>`))
+          return true;
+      }
+      return false;
+    };
+    const needsSpace = j > 0 && // Don't add space after opening brackets/parens or dots or @
+    !endsWithChar(prevPart, ["(", "[", ".", "@"]) && // Don't add space before closing brackets/parens, dots, or commas
+    !startsWithChar(part, [")", "]", ".", ","]) && // Don't add space within compound operators (!=, <=, >=, ==, etc.)
+    !(endsWithChar(prevPart, ["!", "<", ">", "="]) && startsWithChar(part, ["="]));
+    if (needsSpace) {
+      output += " ";
+    }
+    output += part;
+  }
+  return output;
 }
 function renderPromptTitle(title) {
   const indices = title.indices;
@@ -1745,6 +1781,8 @@ function renderTopLevelBlock(block) {
       return renderNameDef(block);
     case "end-block":
       return renderEndBlock(block);
+    default:
+      return "";
   }
 }
 function renderCommentBlock(block) {
@@ -1768,7 +1806,23 @@ function renderListComprehension(block) {
   return `<span class="list-comp-wrapper"><span class="list-comprehension">[</span> ${elementHtml} <span class="list-comp-separator">|</span> <span class="list-comp-var">${escapeHtml(block.variable)}</span> <span class="list-comp-in">\u2208</span> ${iterableHtml} <span class="list-comprehension">]</span></span>`;
 }
 function renderNameRef(block) {
-  return `<span class="name-ref"><span class="segment">${escapeHtml(block.name)}</span></span>`;
+  const segments = [];
+  const rootIndices = block.indices;
+  const rootIndexText = rootIndices.length > 0 ? renderIndexList(block.indices) : "";
+  segments.push(
+    `<span class="segment">${escapeHtml(block.name)}${rootIndexText}</span>`
+  );
+  let current = block.path;
+  while (current) {
+    const segIndices = current.indices;
+    const segIndexText = segIndices.length > 0 ? renderIndexList(current.indices) : "";
+    segments.push(
+      `<span class="segment">${escapeHtml(current.base)}${segIndexText}</span>`
+    );
+    current = current.next;
+  }
+  const joined = segments.join(".");
+  return `<span class="name-ref">${joined}</span>`;
 }
 function renderLabelBlock(block) {
   const labelName = escapeHtml(block.label);
@@ -1786,6 +1840,7 @@ function renderLabelBlock(block) {
 }
 function renderMarkBlock(block) {
   const bodyHtml = block.body.map((b) => renderTopLevelBlock(b)).join("\n");
+  const markNum = block.markNumber !== void 0 && !isNaN(block.markNumber) ? block.markNumber : 0;
   return `
 <div class="mark-block">
   <div class="mark-block-content">
@@ -1793,12 +1848,13 @@ function renderMarkBlock(block) {
   </div>
   <div class="mark-block-bracket">
     <span class="mark-bracket-line"></span>
-    <span class="mark-bracket-number">${block.markNumber}</span>
+    <span class="mark-bracket-number">${markNum}</span>
   </div>
 </div>`;
 }
 function renderMarkBlockInsideRole(block) {
   const bodyHtml = block.body.map((b) => renderRoleBuildingBlock(b)).join("\n");
+  const markNum = block.markNumber !== void 0 && !isNaN(block.markNumber) ? block.markNumber : 0;
   return `
 <div class="mark-block">
   <div class="mark-block-content">
@@ -1806,9 +1862,13 @@ function renderMarkBlockInsideRole(block) {
   </div>
   <div class="mark-block-bracket">
     <span class="mark-bracket-line"></span>
-    <span class="mark-bracket-number">${block.markNumber}</span>
+    <span class="mark-bracket-number">${markNum}</span>
   </div>
 </div>`;
+}
+function renderEndBlock(block) {
+  const conditionHtml = renderExpressionTokens(block.condition);
+  return `<div class="end-block"><span class="end-dashed-line"></span><span class="end-text"><span class="end-keyword">PromptEndsHere</span> <span class="keyword">when</span> (<span class="condition-expr">${conditionHtml}</span>)</span></div>`;
 }
 function renderRoleMessage(msg) {
   const roleClass = escapeHtml(msg.role);
@@ -1847,6 +1907,8 @@ function renderRoleBuildingBlock(block) {
       return renderIndexValue(block);
     case "end-block":
       return renderEndBlock(block);
+    default:
+      return "";
   }
 }
 function renderFuncBlock(block) {
@@ -1863,7 +1925,7 @@ function renderFuncBlock(block) {
   const argsText = block.arguments.map(renderTextArgs).join(", ");
   const resultIndices = block.indices && block.indices.length > 0 ? renderIndexList(block.indices) : "";
   const isBuiltinMath = block.name === "min" || block.name === "max";
-  const funcCore = isBuiltinMath ? `<span class="builtin-func">${escapeHtml(block.name)}(${argsText})${resultIndices}</span>` : `<span class="func-block"><span class="func-name">${escapeHtml(block.name)}</span><span class="func-parens">(</span>${argsText}<span class="func-parens">)</span>${resultIndices}</span>`;
+  const funcCore = isBuiltinMath ? `<span class="builtin-func">${escapeHtml(block.name)}(${argsText})${resultIndices}</span>` : `<span class="func-block"><span class="func-name">${escapeHtml(block.name)}</span><span class="func-args-wrapper">(${argsText})${resultIndices}</span></span>`;
   if (block.comment) {
     return `<span class="block-with-comment">${funcCore}<span class="inline-comment"> // ${escapeHtml(block.comment)}</span></span>`;
   }
@@ -1895,9 +1957,9 @@ function renderTextArgs(arg) {
 }
 function renderTemplateBlock(block) {
   const argsText = block.arguments.length > 0 ? `(${block.arguments.map(renderTextArgs).join(", ")})` : "";
-  const core = `<span class="template-block">${escapeHtml(
+  const core = `<span class="template-block"><span class="template-name-and-args">${escapeHtml(
     block.name
-  )}${argsText}</span>`;
+  )}${argsText}</span></span>`;
   if (block.comment) {
     return `<span class="block-with-comment">${core}<span class="comment"> // ${escapeHtml(block.comment)}</span></span>`;
   }
@@ -2070,10 +2132,6 @@ function renderConditionalOutsideRole(block) {
   }
   return result;
 }
-function renderEndBlock(block) {
-  const conditionHtml = renderExpressionTokens(block.condition);
-  return `<div class="end-block"><span class="end-block-line"></span><span class="end-block-content"><span class="end-keyword">END</span> <span class="keyword">If</span> (<span class="condition-expr">${conditionHtml}</span>)</span></div>`;
-}
 
 // src/preview.ts
 function registerPreviewCommand(context) {
@@ -2118,8 +2176,12 @@ function updatePreview(panel, doc, context) {
   const text = doc.getText();
   let bodyHtml;
   try {
-    const ast = new Parser(text).parsePrompt();
-    bodyHtml = renderPrompt(ast);
+    const blocks = new Parser(text).parseFile();
+    const prompt2 = blocks.find((block) => block.kind === "prompt");
+    if (!prompt2 || prompt2.kind !== "prompt") {
+      throw new Error("No prompt found in file");
+    }
+    bodyHtml = renderPrompt(prompt2);
   } catch (err) {
     bodyHtml = `<div style="color: #cf222e; padding: 20px; font-family: monospace; white-space: pre-wrap;">${escapeHtml2(err.message)}</div>`;
   }

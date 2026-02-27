@@ -262,7 +262,7 @@ body {
 
 .template-block {
   display: inline-flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 4px;
   background: var(--accent-template-bg);
   border: 1px solid var(--accent-template);
@@ -272,19 +272,27 @@ body {
   font-family: 'JetBrains Mono', 'SF Mono', monospace;
   font-size: 12px;
   font-weight: 500;
-  line-height: 1;
+  line-height: 1.3;
+  max-width: 100%;
 }
 
 .template-block::before {
   content: '◆';
   font-size: 10px;
   opacity: 0.7;
-  line-height: 1;
+  line-height: 1.3;
+  flex-shrink: 0;
+}
+
+.template-name-and-args {
+  display: inline;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .func-block {
   display: inline-flex;
-  align-items: center;
+  align-items: flex-start;
   background: var(--accent-function-bg);
   border: 1px solid var(--accent-function);
   color: var(--accent-function);
@@ -293,10 +301,19 @@ body {
   font-family: 'JetBrains Mono', 'SF Mono', monospace;
   font-size: 12px;
   font-weight: 500;
+  line-height: 1.3;
+  max-width: 100%;
 }
 
 .func-name {
   font-weight: 600;
+  flex-shrink: 0;
+}
+
+.func-args-wrapper {
+  display: inline;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .func-parens {
@@ -544,17 +561,27 @@ body {
   font-size: 11px;
   margin-left: 8px;
   white-space: normal;
-  flex: 0 1 auto;
+  flex: 1 1 auto;
   min-width: 0;
-  max-width: 350px;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 /* Wrapper for blocks with comments - keeps them together when wrapping */
 .block-with-comment {
   display: inline-flex;
-  align-items: center;
+  align-items: flex-start;
   vertical-align: top;
   max-width: 100%;
+  gap: 4px;
+}
+
+/* Prioritize main content (templates/functions) over comments */
+.block-with-comment > .template-block,
+.block-with-comment > .func-block,
+.block-with-comment > .context-var,
+.block-with-comment > .range-expr {
+  flex-shrink: 0;
 }
 
 .comment-block {
@@ -641,13 +668,38 @@ body {
    ====================================================== */
 
 .end-block {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
+  gap: 12px;
+  padding: 4px 0;
+  padding-right: 10px;
   margin: 4px 0;
+  margin-left: -24px;
   font-family: 'JetBrains Mono', 'SF Mono', monospace;
   font-size: 12px;
+  width: calc(100% + 24px);
+}
+
+.end-dashed-line {
+  flex-grow: 1;
+  height: 2px;
+  background: repeating-linear-gradient(
+    to right,
+    #6e7781 0,
+    #6e7781 8px,
+    transparent 8px,
+    transparent 16px
+  );
+  min-width: 20px;
+  margin-left: 24px;
+}
+
+.end-text {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .end-keyword {
@@ -867,22 +919,23 @@ body {
    ====================================================== */
 
 .mark-block {
-  display: flex;
-  align-items: stretch;
-  margin: 8px 0;
   position: relative;
+  margin: 8px 0;
+  padding-right: 40px; /* Reserve space for brackets on the right */
+  overflow: visible; /* Allow bracket to overflow for nested marks */
 }
 
 .mark-block-content {
-  flex: 1;
   min-width: 0;
 }
 
 .mark-block-bracket {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
   display: flex;
   align-items: center;
-  margin-left: 8px;
-  position: relative;
 }
 
 .mark-bracket-line {
@@ -892,6 +945,7 @@ body {
   border: 3px solid #000000;
   border-left: none;
   border-radius: 0 4px 4px 0;
+  flex-shrink: 0;
 }
 
 .mark-bracket-number {
@@ -900,6 +954,25 @@ body {
   font-weight: 700;
   color: #000000;
   margin-left: 4px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* Nested mark blocks - all brackets stay at right edge, no negative positioning */
+.mark-block .mark-block {
+  padding-right: 40px; /* Same as parent - all nested blocks get same padding */
+}
+
+.mark-block .mark-block .mark-block-bracket {
+  right: 0; /* Keep bracket at right edge of its container, no overflow needed */
+}
+
+.mark-block .mark-block .mark-block .mark-block-bracket {
+  right: 0;
+}
+
+.mark-block .mark-block .mark-block .mark-block .mark-block-bracket {
+  right: 0;
 }
 
 /* ======================================================
@@ -1135,14 +1208,17 @@ body {
   border-radius: 3px;
   font-size: 9px;
   gap: 2px;
+  line-height: 1.2;
 }
 
 .compact .template-block::before {
   font-size: 7px;
+  line-height: 1.2;
 }
 
 .compact .func-block {
   font-size: 9px;
+  line-height: 1.2;
 }
 
 .compact .context-var,
@@ -1343,17 +1419,33 @@ body {
 /* Compact mark blocks */
 .compact .mark-block {
   margin: 4px 0;
+  padding-right: 25px;
+}
+
+.compact .mark-block .mark-block {
+  padding-right: 25px; /* Same as parent - all nested blocks get same padding */
+}
+
+.compact .mark-block .mark-block .mark-block-bracket {
+  right: 0; /* Keep bracket at right edge of its container, no overflow needed */
+}
+
+.compact .mark-block .mark-block .mark-block .mark-block-bracket {
+  right: 0;
 }
 
 .compact .mark-bracket-line {
   width: 5px;
   border-width: 2px;
   border-radius: 0 2px 2px 0;
+  flex-shrink: 0;
 }
 
 .compact .mark-bracket-number {
   font-size: 9px;
   margin-left: 2px;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 /* Compact line height */
@@ -1381,11 +1473,32 @@ body {
 /* Compact nested spacing */
 /* Compact END block */
 .compact .end-block {
-  padding: 2px 6px;
+  padding: 2px 0;
+  padding-right: 6px;
   margin: 2px 0;
+  margin-left: -10px;
   border-radius: 2px;
   font-size: 9px;
+  gap: 6px;
+  width: calc(100% + 10px);
+}
+
+.compact .end-dashed-line {
+  height: 1px;
+  background: repeating-linear-gradient(
+    to right,
+    #6e7781 0,
+    #6e7781 4px,
+    transparent 4px,
+    transparent 8px
+  );
+  min-width: 10px;
+  margin-left: 10px;
+}
+
+.compact .end-text {
   gap: 3px;
+  font-size: 9px;
 }
 
 .compact .end-keyword {
@@ -1928,7 +2041,7 @@ var ACDL = (() => {
     "for",
     "in",
     "MARK",
-    "END"
+    "when"
   ]);
   var LOGIC_OP = /* @__PURE__ */ new Set([
     "=",
@@ -1965,26 +2078,28 @@ var ACDL = (() => {
     "_"
   ]);
   var Scanner = class {
+    // tracks if whitespace was skipped before current token
     constructor(input) {
       __publicField(this, "pos", 0);
       __publicField(this, "line", 1);
       __publicField(this, "col", 1);
       __publicField(this, "input");
+      __publicField(this, "hadWhitespace", false);
       this.input = input;
     }
     nextToken() {
-      this.skipWhitespace();
+      const spaceBefore = this.skipWhitespace();
       if (this.isEOF()) {
-        return { type: "EOF", value: null, line: this.line, col: this.col };
+        return { type: "EOF", value: null, line: this.line, col: this.col, spaceBefore };
       }
       const ch = this.peek();
       if (ch === "/" && this.peekNext() === "/") {
-        return this.readComment();
+        return this.readComment(spaceBefore);
       }
       if (ch === "\u2026") {
         const col = this.col;
         this.advance();
-        return { type: "RANGE", value: "\u2026", line: this.line, col };
+        return { type: "RANGE", value: "\u2026", line: this.line, col, spaceBefore };
       }
       if (ch === ".") {
         if (this.peekNext() === "." && this.input[this.pos + 2] === ".") {
@@ -1992,7 +2107,7 @@ var ACDL = (() => {
           this.advance();
           this.advance();
           this.advance();
-          return { type: "RANGE", value: "...", line: this.line, col };
+          return { type: "RANGE", value: "...", line: this.line, col, spaceBefore };
         }
       }
       if (LOGIC_OP.has(ch)) {
@@ -2002,7 +2117,8 @@ var ACDL = (() => {
           type: "LOGIC_OP",
           value,
           line: this.line,
-          col
+          col,
+          spaceBefore
         };
       }
       if (ARITH_OP.has(ch)) {
@@ -2012,25 +2128,26 @@ var ACDL = (() => {
           type: "ARITH_OP",
           value,
           line: this.line,
-          col
+          col,
+          spaceBefore
         };
       }
       if (ch === '"') {
-        return this.readString();
+        return this.readString(spaceBefore);
       }
       if (SYMBOLS.has(ch)) {
-        return this.readSymbol();
+        return this.readSymbol(spaceBefore);
       }
       if (this.isDigit(ch)) {
-        return this.readNumber();
+        return this.readNumber(spaceBefore);
       }
       if (this.isIdentStart(ch)) {
-        return this.readIdentifier();
+        return this.readIdentifier(spaceBefore);
       }
       throw this.error(`Unexpected character '${ch}'`);
     }
     /* ───────────── token readers ───────────── */
-    readComment() {
+    readComment(spaceBefore) {
       const startCol = this.col;
       this.advance();
       this.advance();
@@ -2042,7 +2159,8 @@ var ACDL = (() => {
         type: "COMMENT",
         value: value.trim(),
         line: this.line,
-        col: startCol
+        col: startCol,
+        spaceBefore
       };
     }
     readString() {
@@ -2144,14 +2262,17 @@ var ACDL = (() => {
       };
     }
     skipWhitespace() {
+      let skipped = false;
       while (!this.isEOF()) {
         const ch = this.peek();
         if (ch === " " || ch === "	" || ch === "\n" || ch === "\r") {
           this.advance();
+          skipped = true;
         } else {
           break;
         }
       }
+      return skipped;
     }
     advance() {
       const ch = this.input[this.pos++];
@@ -2474,9 +2595,10 @@ var ACDL = (() => {
             return this.parseNameDef();
           case "MARK":
             return this.parseMarkBlock();
-          case "END":
-            return this.parseEndBlock();
         }
+      }
+      if (tok.type === "IDENT" && val === "PromptEndsHere") {
+        return this.parseEndBlock();
       }
       if (tok.type === "COMMENT") {
         const text = this.consume("COMMENT").value;
@@ -2617,7 +2739,6 @@ var ACDL = (() => {
         if (val === "ForEach") return this.parseLoopInside();
         if (val === "Switch") return this.parseSwitchInside();
         if (val === "MARK") return this.parseMarkBlockInside();
-        if (val === "END") return this.parseEndBlock();
         if (val === "name") return this.parseNameDef();
         if (val === "break" || val === "continue") {
           const name = this.consume("KEYWORD").value;
@@ -2627,6 +2748,9 @@ var ACDL = (() => {
         if (namespaces.includes(val)) {
           return this.parseContextVar();
         }
+      }
+      if (tok.type === "IDENT" && val === "PromptEndsHere") {
+        return this.parseEndBlock();
       }
       if (tok.type === "IDENT") return this.parseTemplateOrFunc();
       throw new Error(`[${tok.line}:${tok.col}] Unexpected ${tok.type} (${val}) inside role.`);
@@ -2697,12 +2821,17 @@ var ACDL = (() => {
       return listComprehension({ element, variable, iterable });
     }
     /**
-     * Parse a name reference: $varname
+     * Parse a name reference: $varname with optional indices and path: $docs[i].content
      */
     parseNameRef() {
       this.consume("SYMBOL", "$");
       const varName = this.consume("IDENT").value;
-      return nameRef({ name: varName });
+      const indices = this.parseOptionalIndices();
+      let path;
+      if (this.match("SYMBOL", ".")) {
+        path = this.parsePathDesc();
+      }
+      return nameRef({ name: varName, indices, path });
     }
     /* ───────────────── Expressions & Shared Rules ───────────────── */
     parseContextVar() {
@@ -2886,18 +3015,18 @@ var ACDL = (() => {
     }
     /* ───────────────── Control Flow ───────────────── */
     /**
-     * Parse an END block: END If (condition)
+     * Parse an END block: PromptEndsHere when (condition)
      * Conditional early termination that can appear anywhere.
      * Condition is delimited by parentheses, same style as conditionals.
      */
     parseEndBlock() {
-      this.consume("KEYWORD", "END");
-      this.consume("KEYWORD", "If");
+      this.consume("IDENT", "PromptEndsHere");
+      this.consume("KEYWORD", "when");
       this.consume("SYMBOL", "(");
       const conditionTokens = [];
       let depth = 1;
       while (depth > 0) {
-        if (this.isEOF()) throw new Error("Unterminated END If condition");
+        if (this.isEOF()) throw new Error("Unterminated PromptEndsHere when condition");
         const tok = this.consume();
         if (tok.value === "(") depth++;
         if (tok.value === ")") depth--;
@@ -3405,7 +3534,35 @@ var ACDL = (() => {
     if (hasLogicalOps) {
       result.push(")");
     }
-    return result.join("");
+    let output = "";
+    for (let j = 0; j < result.length; j++) {
+      const part = result[j];
+      const prevPart = j > 0 ? result[j - 1] : "";
+      const endsWithChar = (s, chars) => {
+        for (const c of chars) {
+          if (s.endsWith(c)) return true;
+          if (s.endsWith(`${c}</span>`)) return true;
+          if (s.endsWith(`">${c}`)) return true;
+        }
+        return false;
+      };
+      const startsWithChar = (s, chars) => {
+        for (const c of chars) {
+          if (s.startsWith(c)) return true;
+          if (s.startsWith(`<span`) && s.includes(`">${c}</span>`)) return true;
+        }
+        return false;
+      };
+      const needsSpace = j > 0 && // Don't add space after opening brackets/parens or dots or @
+      !endsWithChar(prevPart, ["(", "[", ".", "@"]) && // Don't add space before closing brackets/parens, dots, or commas
+      !startsWithChar(part, [")", "]", ".", ","]) && // Don't add space within compound operators (!=, <=, >=, ==, etc.)
+      !(endsWithChar(prevPart, ["!", "<", ">", "="]) && startsWithChar(part, ["="]));
+      if (needsSpace) {
+        output += " ";
+      }
+      output += part;
+    }
+    return output;
   }
   function renderPromptTitle(title) {
     const indices = title.indices;
@@ -3499,6 +3656,8 @@ var ACDL = (() => {
         return renderNameDef(block);
       case "end-block":
         return renderEndBlock(block);
+      default:
+        return "";
     }
   }
   function renderCommentBlock(block) {
@@ -3522,7 +3681,23 @@ var ACDL = (() => {
     return `<span class="list-comp-wrapper"><span class="list-comprehension">[</span> ${elementHtml} <span class="list-comp-separator">|</span> <span class="list-comp-var">${escapeHtml(block.variable)}</span> <span class="list-comp-in">\u2208</span> ${iterableHtml} <span class="list-comprehension">]</span></span>`;
   }
   function renderNameRef(block) {
-    return `<span class="name-ref"><span class="segment">${escapeHtml(block.name)}</span></span>`;
+    const segments = [];
+    const rootIndices = block.indices;
+    const rootIndexText = rootIndices.length > 0 ? renderIndexList(block.indices) : "";
+    segments.push(
+      `<span class="segment">${escapeHtml(block.name)}${rootIndexText}</span>`
+    );
+    let current = block.path;
+    while (current) {
+      const segIndices = current.indices;
+      const segIndexText = segIndices.length > 0 ? renderIndexList(current.indices) : "";
+      segments.push(
+        `<span class="segment">${escapeHtml(current.base)}${segIndexText}</span>`
+      );
+      current = current.next;
+    }
+    const joined = segments.join(".");
+    return `<span class="name-ref">${joined}</span>`;
   }
   function renderLabelBlock(block) {
     const labelName = escapeHtml(block.label);
@@ -3540,6 +3715,7 @@ var ACDL = (() => {
   }
   function renderMarkBlock(block) {
     const bodyHtml = block.body.map((b) => renderTopLevelBlock(b)).join("\n");
+    const markNum = block.markNumber !== void 0 && !isNaN(block.markNumber) ? block.markNumber : 0;
     return `
 <div class="mark-block">
   <div class="mark-block-content">
@@ -3547,12 +3723,13 @@ var ACDL = (() => {
   </div>
   <div class="mark-block-bracket">
     <span class="mark-bracket-line"></span>
-    <span class="mark-bracket-number">${block.markNumber}</span>
+    <span class="mark-bracket-number">${markNum}</span>
   </div>
 </div>`;
   }
   function renderMarkBlockInsideRole(block) {
     const bodyHtml = block.body.map((b) => renderRoleBuildingBlock(b)).join("\n");
+    const markNum = block.markNumber !== void 0 && !isNaN(block.markNumber) ? block.markNumber : 0;
     return `
 <div class="mark-block">
   <div class="mark-block-content">
@@ -3560,9 +3737,13 @@ var ACDL = (() => {
   </div>
   <div class="mark-block-bracket">
     <span class="mark-bracket-line"></span>
-    <span class="mark-bracket-number">${block.markNumber}</span>
+    <span class="mark-bracket-number">${markNum}</span>
   </div>
 </div>`;
+  }
+  function renderEndBlock(block) {
+    const conditionHtml = renderExpressionTokens(block.condition);
+    return `<div class="end-block"><span class="end-dashed-line"></span><span class="end-text"><span class="end-keyword">PromptEndsHere</span> <span class="keyword">when</span> (<span class="condition-expr">${conditionHtml}</span>)</span></div>`;
   }
   function renderRoleMessage(msg) {
     const roleClass = escapeHtml(msg.role);
@@ -3601,6 +3782,8 @@ var ACDL = (() => {
         return renderIndexValue(block);
       case "end-block":
         return renderEndBlock(block);
+      default:
+        return "";
     }
   }
   function renderFuncBlock(block) {
@@ -3617,7 +3800,7 @@ var ACDL = (() => {
     const argsText = block.arguments.map(renderTextArgs).join(", ");
     const resultIndices = block.indices && block.indices.length > 0 ? renderIndexList(block.indices) : "";
     const isBuiltinMath = block.name === "min" || block.name === "max";
-    const funcCore = isBuiltinMath ? `<span class="builtin-func">${escapeHtml(block.name)}(${argsText})${resultIndices}</span>` : `<span class="func-block"><span class="func-name">${escapeHtml(block.name)}</span><span class="func-parens">(</span>${argsText}<span class="func-parens">)</span>${resultIndices}</span>`;
+    const funcCore = isBuiltinMath ? `<span class="builtin-func">${escapeHtml(block.name)}(${argsText})${resultIndices}</span>` : `<span class="func-block"><span class="func-name">${escapeHtml(block.name)}</span><span class="func-args-wrapper">(${argsText})${resultIndices}</span></span>`;
     if (block.comment) {
       return `<span class="block-with-comment">${funcCore}<span class="inline-comment"> // ${escapeHtml(block.comment)}</span></span>`;
     }
@@ -3649,9 +3832,9 @@ var ACDL = (() => {
   }
   function renderTemplateBlock(block) {
     const argsText = block.arguments.length > 0 ? `(${block.arguments.map(renderTextArgs).join(", ")})` : "";
-    const core = `<span class="template-block">${escapeHtml(
+    const core = `<span class="template-block"><span class="template-name-and-args">${escapeHtml(
       block.name
-    )}${argsText}</span>`;
+    )}${argsText}</span></span>`;
     if (block.comment) {
       return `<span class="block-with-comment">${core}<span class="comment"> // ${escapeHtml(block.comment)}</span></span>`;
     }
@@ -3823,10 +4006,6 @@ var ACDL = (() => {
       result += wrapBlock("conditional-block-outside-role", elseHeader, renderBody(block.elseBody));
     }
     return result;
-  }
-  function renderEndBlock(block) {
-    const conditionHtml = renderExpressionTokens(block.condition);
-    return `<div class="end-block"><span class="end-keyword">END</span> <span class="keyword">If</span> (<span class="condition-expr">${conditionHtml}</span>)</div>`;
   }
   return __toCommonJS(standalone_entry_exports);
 })();

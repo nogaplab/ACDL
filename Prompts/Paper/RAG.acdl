@@ -1,4 +1,4 @@
-BasicRAG[@T]: {
+RAG[@T]: {
     MARK 1{
         S: INSTRUCTIONS
     }

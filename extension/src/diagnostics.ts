@@ -11,7 +11,7 @@ export function registerDiagnostics(context: vscode.ExtensionContext) {
     const diagnostics: vscode.Diagnostic[] = [];
 
     try {
-      new Parser(document.getText()).parsePrompt();
+      new Parser(document.getText()).parseFile();
     } catch (err: any) {
       console.log("ACDL Parse Error:", err.message);  // Debug output
       const match = err.message.match(/\[(\d+):(\d+)\]\s*(.*)/s);

@@ -1,6 +1,5 @@
-MultiAgent[@T, agent]: {
-// XXX The comment below should be above definition
 // agent is self, agent2 is who we converse with
+MultiAgent[@T, agent]: {
   S: {
     INSTRUCTIONS
   }
@@ -13,11 +12,10 @@ MultiAgent[@T, agent]: {
     }
     // what I have
     sys[agent].inventory[@T]
-    // who I see and what I know about them
+    // whom I see in the environment and what I know about them
     ForEach(a: env.seen_actors[@T]) {
       a.name
       a.description
-      // XXX a_name should be a.name
       retrieve(sys[agent].memory[@T], a.name)
     }
     If sys[agent].in_conversation[@T] {

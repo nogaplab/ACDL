@@ -906,6 +906,7 @@ body {
   position: relative;
   margin: 8px 0;
   padding-right: 40px; /* Reserve space for brackets on the right */
+  overflow: visible; /* Allow bracket to overflow for nested marks */
 }
 
 .mark-block-content {
@@ -928,6 +929,7 @@ body {
   border: 3px solid #000000;
   border-left: none;
   border-radius: 0 4px 4px 0;
+  flex-shrink: 0;
 }
 
 .mark-bracket-number {
@@ -936,23 +938,25 @@ body {
   font-weight: 700;
   color: #000000;
   margin-left: 4px;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
-/* Nested mark blocks - offset brackets to show nesting */
+/* Nested mark blocks - all brackets stay at right edge, no negative positioning */
 .mark-block .mark-block {
-  padding-right: 12px;
+  padding-right: 40px; /* Same as parent - all nested blocks get same padding */
 }
 
 .mark-block .mark-block .mark-block-bracket {
-  right: -12px;
+  right: 0; /* Keep bracket at right edge of its container, no overflow needed */
 }
 
 .mark-block .mark-block .mark-block .mark-block-bracket {
-  right: -24px;
+  right: 0;
 }
 
 .mark-block .mark-block .mark-block .mark-block .mark-block-bracket {
-  right: -36px;
+  right: 0;
 }
 
 /* ======================================================
@@ -1403,26 +1407,29 @@ body {
 }
 
 .compact .mark-block .mark-block {
-  padding-right: 12px;
+  padding-right: 25px; /* Same as parent - all nested blocks get same padding */
 }
 
 .compact .mark-block .mark-block .mark-block-bracket {
-  right: -12px;
+  right: 0; /* Keep bracket at right edge of its container, no overflow needed */
 }
 
 .compact .mark-block .mark-block .mark-block .mark-block-bracket {
-  right: -24px;
+  right: 0;
 }
 
 .compact .mark-bracket-line {
   width: 5px;
   border-width: 2px;
   border-radius: 0 2px 2px 0;
+  flex-shrink: 0;
 }
 
 .compact .mark-bracket-number {
   font-size: 9px;
   margin-left: 2px;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 /* Compact line height */
@@ -1451,17 +1458,13 @@ body {
 /* Compact END block */
 .compact .end-block {
   padding: 2px 0;
+  padding-right: 6px;
   margin: 2px 0;
+  margin-left: -10px;
+  border-radius: 2px;
   font-size: 9px;
-  gap: 4px;
-}
-
-.compact .end-keyword {
-  font-size: 9px;
-}
-
-.compact .end-block .keyword {
-  font-size: 9px;
+  gap: 6px;
+  width: calc(100% + 10px);
 }
 
 .compact .end-dashed-line {
@@ -1475,6 +1478,19 @@ body {
   );
   min-width: 10px;
   margin-left: 10px;
+}
+
+.compact .end-text {
+  gap: 3px;
+  font-size: 9px;
+}
+
+.compact .end-keyword {
+  font-size: 9px;
+}
+
+.compact .end-block .keyword {
+  font-size: 9px;
 }
 
 .compact .loop-block-outside-role .role-message,

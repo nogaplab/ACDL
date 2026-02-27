@@ -56,8 +56,13 @@ function updatePreview(
   let bodyHtml: string;
 
   try {
-    const ast = new Parser(text).parsePrompt();
-    bodyHtml = renderPrompt(ast);
+    const blocks = new Parser(text).parseFile();
+    // Find the first prompt in the blocks (skip comments)
+    const prompt = blocks.find(block => block.kind === 'prompt');
+    if (!prompt || prompt.kind !== 'prompt') {
+      throw new Error('No prompt found in file');
+    }
+    bodyHtml = renderPrompt(prompt);
   } catch (err: any) {
     bodyHtml = `<div style="color: #cf222e; padding: 20px; font-family: monospace; white-space: pre-wrap;">${escapeHtml(err.message)}</div>`;
   }

@@ -1,0 +1,46 @@
+OpenCodeMain[@T.I]: {
+  // NOTE: tools, skills and subagents are all provided in tools and tool descriptions in the `tools` parameter
+  S: { 
+    SYSTEM_PROMPT
+    x() // XXX overflow bug ENV_INFO(env.working_directory[0], env.is_dir_a_repo[0], env.platform[0], env.date[0])   
+    ENV_INFO(env.working_directory[0], env.is_dir_a_repo[0], env.platform[0], env.date[0])   
+  }
+  name C := sys.last_compaction_time[@T] 
+  If @C > 1 {
+    U: WHERE_DID_WE_LEFT
+    A: sys.prompt_summary[@C]
+  }
+  ForEach(@t: range(@C, @T)) {
+    U: {
+      env.user_input[@t]
+      MARK 1 {
+      If @T == @t {
+        If sys.is_plan_mode[@t] {
+          PLAN_MODE_REMINDER
+        }
+        If sys.is_build_mode[@t] and sys.is_plan_mode[@t-1] {
+          LEAVE_PLAN_MODE_REMINDER
+        }     
+      }
+      }
+    }
+    // (@T == @t and substeps(@t) == 0)
+    PromptEndsHere when (@T == @t and @T.0)
+    ForEach(@i: sys.substeps(@t)) {
+      A: {
+        ForEach(tool: sys.tool_requests[@t.i]) {
+          tool.id_name_and_args 
+        }
+      }
+      // Loop of tool responses, each in own tool msg
+      ForEach(tool: tool_requests[@t.i]) {
+        T: { 
+          tool.id_and_response 
+        }
+      }
+      // (@T == @t and substeps(@t) > 0)
+      PromptEndsHere when (@T == @t and @T.I)
+    }
+    A: sys.response[@t]
+  }
+}
