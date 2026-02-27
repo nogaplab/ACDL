@@ -3,6 +3,7 @@
 ## File Modification Rules
 1. **Do not update extension files or standalone version** unless explicitly instructed to do so
 2. **Never use `rm` to delete files** - always send files to the recycle bin instead
+3. **When asked to edit css components, only edit styles.css, and never preview.css** - preview.css will be updated from styles.css separately
 
 ## Context
 This is a PDDL parser project with both extension and standalone components.
