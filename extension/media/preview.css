@@ -90,11 +90,28 @@ body {
 
 .prompt-container {
   display: inline-block;
-  max-width: 900px;
+  max-width: 600px;
   margin: 0 auto;
   position: relative;
   padding-left: 24px;
   border-left: 2px solid var(--border-medium);
+}
+
+/* Divider between multiple prompts in the same file */
+.prompt-divider {
+  height: 24px;
+  margin: 16px 0;
+  border-bottom: 1px dashed var(--border-medium);
+}
+
+/* File-level comments (between prompts) */
+.file-comment {
+  color: var(--text-muted);
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-size: 13px;
+  font-style: italic;
+  margin: 12px 0;
+  padding-left: 24px;
 }
 
 /* ======================================================
@@ -219,8 +236,8 @@ body {
 
 .role-body-block {
   padding: 2px 12px;
-  overflow-x: auto;
-  white-space: nowrap;
+  white-space: normal;
+  word-wrap: break-word;
 }
 
 /* ======================================================
@@ -234,17 +251,19 @@ body {
   background: var(--accent-template-bg);
   border: 1px solid var(--accent-template);
   color: var(--accent-template);
-  padding: 2px 8px;
+  padding: 3px 8px;
   border-radius: 4px;
   font-family: 'JetBrains Mono', 'SF Mono', monospace;
   font-size: 12px;
   font-weight: 500;
+  line-height: 1;
 }
 
 .template-block::before {
   content: '◆';
-  font-size: 6px;
+  font-size: 10px;
   opacity: 0.7;
+  line-height: 1;
 }
 
 .func-block {
@@ -276,15 +295,19 @@ body {
   background: var(--accent-context-bg);
   border: 1px solid var(--accent-context);
   color: var(--accent-context);
-  padding: 2px 8px;
+  padding: 3px 8px;
   border-radius: 4px;
   font-family: 'JetBrains Mono', 'SF Mono', monospace;
   font-size: 12px;
   font-weight: 500;
+  line-height: 1;
 }
 
 .context-var .segment {
+  display: inline-flex;
+  align-items: center;
   color: var(--accent-context);
+  line-height: 1;
 }
 
 .context-var .segment.base {
@@ -304,10 +327,13 @@ body {
 
 /* Indices - All variables use light blue, no background */
 .time-index {
+  display: inline-flex;
+  align-items: center;
   color: var(--accent-variable);
   font-weight: 700;
   font-family: 'JetBrains Mono', 'SF Mono', monospace;
   font-size: 12px;
+  line-height: 1;
 }
 
 /* Ensure time-index is styled correctly even when nested inside context-var */
@@ -320,10 +346,13 @@ body {
 }
 
 .other-index {
+  display: inline-flex;
+  align-items: center;
   color: var(--accent-variable);
   font-weight: 700;
   font-family: 'JetBrains Mono', 'SF Mono', monospace;
   font-size: 12px;
+  line-height: 1;
 }
 
 /* Index content - numbers and identifiers inside indices */
@@ -331,6 +360,7 @@ body {
 .index-identifier {
   color: var(--accent-variable);
   font-weight: 700;
+  line-height: 1;
 }
 
 /* Arithmetic operators inside indices - black/neutral */
@@ -358,11 +388,12 @@ body {
   background: var(--accent-context-bg);
   border: 1px solid var(--accent-context);
   color: var(--accent-context);
-  padding: 2px 8px;
+  padding: 3px 8px;
   border-radius: 4px;
   font-family: 'JetBrains Mono', 'SF Mono', monospace;
   font-size: 12px;
   font-weight: 500;
+  line-height: 1;
 }
 
 /* Namespace keywords (env, sys, resp, prompt) - green like context vars */
@@ -590,6 +621,35 @@ body {
 }
 
 /* ======================================================
+   END BLOCK - Conditional early termination
+   ====================================================== */
+
+.end-block {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  margin: 4px 0;
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-size: 12px;
+}
+
+.end-keyword {
+  color: #000000;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+}
+
+.end-block .keyword {
+  color: #000000;
+  font-weight: 800;
+}
+
+.end-block .condition-expr {
+  font-weight: 600;
+}
+
+/* ======================================================
    CONTROL FLOW BLOCKS
    ====================================================== */
 
@@ -724,17 +784,22 @@ body {
   margin: 3px 0;
   padding: 4px 10px;
   overflow: hidden;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
 }
 
 .switch-case-header,
 .switch-default-header {
   padding: 2px 8px;
   margin: -4px -10px 3px -10px;
+  border-radius: 4px 4px 0 0;
   font-family: 'JetBrains Mono', 'SF Mono', monospace;
   font-size: 10px;
   font-weight: 600;
   color: var(--control-text);
   white-space: nowrap;
+  background: var(--control-header-bg);
 }
 
 
@@ -991,9 +1056,20 @@ body {
 
 .compact .prompt-container {
   display: inline-block;
-  max-width: 600px;
+  max-width: 400px;
   padding-left: 10px;
   border-left-width: 1px;
+}
+
+.compact .prompt-divider {
+  height: 12px;
+  margin: 8px 0;
+}
+
+.compact .file-comment {
+  font-size: 9px;
+  margin: 6px 0;
+  padding-left: 10px;
 }
 
 .compact .prompt-title {
@@ -1039,14 +1115,14 @@ body {
 
 /* Compact inline elements */
 .compact .template-block {
-  padding: 1px 5px;
+  padding: 2px 5px;
   border-radius: 3px;
   font-size: 9px;
   gap: 2px;
 }
 
 .compact .template-block::before {
-  font-size: 5px;
+  font-size: 7px;
 }
 
 .compact .func-block {
@@ -1055,7 +1131,7 @@ body {
 
 .compact .context-var,
 .compact .expr-context-var {
-  padding: 1px 5px;
+  padding: 2px 5px;
   border-radius: 3px;
   font-size: 9px;
   gap: 1px;
@@ -1203,6 +1279,7 @@ body {
 .compact .switch-default {
   margin: 1px 0;
   padding: 2px 5px;
+  border-radius: 2px;
 }
 
 .compact .switch-case-header,
@@ -1211,6 +1288,7 @@ body {
   margin: -2px -5px 2px -5px;
   border-radius: 2px 2px 0 0;
   font-size: 7px;
+  background: var(--control-header-bg);
 }
 
 /* Compact block children */
@@ -1285,6 +1363,23 @@ body {
 }
 
 /* Compact nested spacing */
+/* Compact END block */
+.compact .end-block {
+  padding: 2px 6px;
+  margin: 2px 0;
+  border-radius: 2px;
+  font-size: 9px;
+  gap: 3px;
+}
+
+.compact .end-keyword {
+  font-size: 9px;
+}
+
+.compact .end-block .keyword {
+  font-size: 9px;
+}
+
 .compact .loop-block-outside-role .role-message,
 .compact .loop-block-inside-role .role-message,
 .compact .conditional-block-outside-role .role-message,

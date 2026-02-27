@@ -106,11 +106,28 @@ body {
 
 .prompt-container {
   display: inline-block;
-  max-width: 900px;
+  max-width: 600px;
   margin: 0 auto;
   position: relative;
   padding-left: 24px;
   border-left: 2px solid var(--border-medium);
+}
+
+/* Divider between multiple prompts in the same file */
+.prompt-divider {
+  height: 24px;
+  margin: 16px 0;
+  border-bottom: 1px dashed var(--border-medium);
+}
+
+/* File-level comments (between prompts) */
+.file-comment {
+  color: var(--text-muted);
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-size: 13px;
+  font-style: italic;
+  margin: 12px 0;
+  padding-left: 24px;
 }
 
 /* ======================================================
@@ -235,8 +252,8 @@ body {
 
 .role-body-block {
   padding: 2px 12px;
-  overflow-x: auto;
-  white-space: nowrap;
+  white-space: normal;
+  word-wrap: break-word;
 }
 
 /* ======================================================
@@ -250,17 +267,19 @@ body {
   background: var(--accent-template-bg);
   border: 1px solid var(--accent-template);
   color: var(--accent-template);
-  padding: 2px 8px;
+  padding: 3px 8px;
   border-radius: 4px;
   font-family: 'JetBrains Mono', 'SF Mono', monospace;
   font-size: 12px;
   font-weight: 500;
+  line-height: 1;
 }
 
 .template-block::before {
   content: '◆';
-  font-size: 6px;
+  font-size: 10px;
   opacity: 0.7;
+  line-height: 1;
 }
 
 .func-block {
@@ -292,15 +311,19 @@ body {
   background: var(--accent-context-bg);
   border: 1px solid var(--accent-context);
   color: var(--accent-context);
-  padding: 2px 8px;
+  padding: 3px 8px;
   border-radius: 4px;
   font-family: 'JetBrains Mono', 'SF Mono', monospace;
   font-size: 12px;
   font-weight: 500;
+  line-height: 1;
 }
 
 .context-var .segment {
+  display: inline-flex;
+  align-items: center;
   color: var(--accent-context);
+  line-height: 1;
 }
 
 .context-var .segment.base {
@@ -320,10 +343,13 @@ body {
 
 /* Indices - All variables use light blue, no background */
 .time-index {
+  display: inline-flex;
+  align-items: center;
   color: var(--accent-variable);
   font-weight: 700;
   font-family: 'JetBrains Mono', 'SF Mono', monospace;
   font-size: 12px;
+  line-height: 1;
 }
 
 /* Ensure time-index is styled correctly even when nested inside context-var */
@@ -336,10 +362,13 @@ body {
 }
 
 .other-index {
+  display: inline-flex;
+  align-items: center;
   color: var(--accent-variable);
   font-weight: 700;
   font-family: 'JetBrains Mono', 'SF Mono', monospace;
   font-size: 12px;
+  line-height: 1;
 }
 
 /* Index content - numbers and identifiers inside indices */
@@ -347,6 +376,7 @@ body {
 .index-identifier {
   color: var(--accent-variable);
   font-weight: 700;
+  line-height: 1;
 }
 
 /* Arithmetic operators inside indices - black/neutral */
@@ -374,11 +404,12 @@ body {
   background: var(--accent-context-bg);
   border: 1px solid var(--accent-context);
   color: var(--accent-context);
-  padding: 2px 8px;
+  padding: 3px 8px;
   border-radius: 4px;
   font-family: 'JetBrains Mono', 'SF Mono', monospace;
   font-size: 12px;
   font-weight: 500;
+  line-height: 1;
 }
 
 /* Namespace keywords (env, sys, resp, prompt) - green like context vars */
@@ -606,6 +637,35 @@ body {
 }
 
 /* ======================================================
+   END BLOCK - Conditional early termination
+   ====================================================== */
+
+.end-block {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  margin: 4px 0;
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-size: 12px;
+}
+
+.end-keyword {
+  color: #000000;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+}
+
+.end-block .keyword {
+  color: #000000;
+  font-weight: 800;
+}
+
+.end-block .condition-expr {
+  font-weight: 600;
+}
+
+/* ======================================================
    CONTROL FLOW BLOCKS
    ====================================================== */
 
@@ -740,17 +800,22 @@ body {
   margin: 3px 0;
   padding: 4px 10px;
   overflow: hidden;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
 }
 
 .switch-case-header,
 .switch-default-header {
   padding: 2px 8px;
   margin: -4px -10px 3px -10px;
+  border-radius: 4px 4px 0 0;
   font-family: 'JetBrains Mono', 'SF Mono', monospace;
   font-size: 10px;
   font-weight: 600;
   color: var(--control-text);
   white-space: nowrap;
+  background: var(--control-header-bg);
 }
 
 
@@ -1007,9 +1072,20 @@ body {
 
 .compact .prompt-container {
   display: inline-block;
-  max-width: 600px;
+  max-width: 400px;
   padding-left: 10px;
   border-left-width: 1px;
+}
+
+.compact .prompt-divider {
+  height: 12px;
+  margin: 8px 0;
+}
+
+.compact .file-comment {
+  font-size: 9px;
+  margin: 6px 0;
+  padding-left: 10px;
 }
 
 .compact .prompt-title {
@@ -1055,14 +1131,14 @@ body {
 
 /* Compact inline elements */
 .compact .template-block {
-  padding: 1px 5px;
+  padding: 2px 5px;
   border-radius: 3px;
   font-size: 9px;
   gap: 2px;
 }
 
 .compact .template-block::before {
-  font-size: 5px;
+  font-size: 7px;
 }
 
 .compact .func-block {
@@ -1071,7 +1147,7 @@ body {
 
 .compact .context-var,
 .compact .expr-context-var {
-  padding: 1px 5px;
+  padding: 2px 5px;
   border-radius: 3px;
   font-size: 9px;
   gap: 1px;
@@ -1219,6 +1295,7 @@ body {
 .compact .switch-default {
   margin: 1px 0;
   padding: 2px 5px;
+  border-radius: 2px;
 }
 
 .compact .switch-case-header,
@@ -1227,6 +1304,7 @@ body {
   margin: -2px -5px 2px -5px;
   border-radius: 2px 2px 0 0;
   font-size: 7px;
+  background: var(--control-header-bg);
 }
 
 /* Compact block children */
@@ -1301,6 +1379,23 @@ body {
 }
 
 /* Compact nested spacing */
+/* Compact END block */
+.compact .end-block {
+  padding: 2px 6px;
+  margin: 2px 0;
+  border-radius: 2px;
+  font-size: 9px;
+  gap: 3px;
+}
+
+.compact .end-keyword {
+  font-size: 9px;
+}
+
+.compact .end-block .keyword {
+  font-size: 9px;
+}
+
 .compact .loop-block-outside-role .role-message,
 .compact .loop-block-inside-role .role-message,
 .compact .conditional-block-outside-role .role-message,
@@ -1832,7 +1927,8 @@ var ACDL = (() => {
     "name",
     "for",
     "in",
-    "MARK"
+    "MARK",
+    "END"
   ]);
   var LOGIC_OP = /* @__PURE__ */ new Set([
     "=",
@@ -2190,6 +2286,9 @@ var ACDL = (() => {
   function listComprehension(params) {
     return { ...params, kind: "list-comprehension" };
   }
+  function endBlock(params) {
+    return { ...params, kind: "end-block" };
+  }
 
   // src/parser.ts
   function toExprToken(tok) {
@@ -2251,6 +2350,22 @@ var ACDL = (() => {
       this.consume("SYMBOL", "}");
       console.log("parsed prompt");
       return prompt({ title, body });
+    }
+    /**
+     * Parse a file containing one or more prompts and comments.
+     * Returns an array of Prompt and CommentBlock objects.
+     */
+    parseFile() {
+      const blocks = [];
+      while (!this.isEOF()) {
+        if (this.peek().type === "COMMENT") {
+          const text = this.consume("COMMENT").value;
+          blocks.push(commentBlock({ text }));
+        } else {
+          blocks.push(this.parsePrompt());
+        }
+      }
+      return blocks;
     }
     parseTitle() {
       const name = this.consume("IDENT").value;
@@ -2359,6 +2474,8 @@ var ACDL = (() => {
             return this.parseNameDef();
           case "MARK":
             return this.parseMarkBlock();
+          case "END":
+            return this.parseEndBlock();
         }
       }
       if (tok.type === "COMMENT") {
@@ -2500,6 +2617,7 @@ var ACDL = (() => {
         if (val === "ForEach") return this.parseLoopInside();
         if (val === "Switch") return this.parseSwitchInside();
         if (val === "MARK") return this.parseMarkBlockInside();
+        if (val === "END") return this.parseEndBlock();
         if (val === "name") return this.parseNameDef();
         if (val === "break" || val === "continue") {
           const name = this.consume("KEYWORD").value;
@@ -2592,8 +2710,9 @@ var ACDL = (() => {
       const base = baseTok.value;
       const indices = this.parseOptionalIndices();
       let path;
-      this.consume("SYMBOL", ".");
-      path = this.parsePathDesc();
+      if (this.match("SYMBOL", ".")) {
+        path = this.parsePathDesc();
+      }
       const comment = this.peek().type === "COMMENT" ? this.consume("COMMENT").value : void 0;
       return contextVar({ base, indices, path, comment });
     }
@@ -2681,7 +2800,12 @@ var ACDL = (() => {
         if (this.peekNext().value === "(") {
           return this.parseTemplateOrFunc();
         }
-        return identifier({ name: this.consume("IDENT").value });
+        const name = this.consume("IDENT").value;
+        let path;
+        if (this.match("SYMBOL", ".")) {
+          path = this.parsePathDesc();
+        }
+        return otherIndex(identifier({ name, path }));
       }
       throw new Error(`[${tok.line}:${tok.col}] Unexpected token in arguments: ${tok.type} (${tok.value})`);
     }
@@ -2761,6 +2885,28 @@ var ACDL = (() => {
       throw new Error(`[${tok.line}:${tok.col}] Unexpected token in index: ${tok.type} (${tok.value})`);
     }
     /* ───────────────── Control Flow ───────────────── */
+    /**
+     * Parse an END block: END If (condition)
+     * Conditional early termination that can appear anywhere.
+     * Condition is delimited by parentheses, same style as conditionals.
+     */
+    parseEndBlock() {
+      this.consume("KEYWORD", "END");
+      this.consume("KEYWORD", "If");
+      this.consume("SYMBOL", "(");
+      const conditionTokens = [];
+      let depth = 1;
+      while (depth > 0) {
+        if (this.isEOF()) throw new Error("Unterminated END If condition");
+        const tok = this.consume();
+        if (tok.value === "(") depth++;
+        if (tok.value === ")") depth--;
+        if (depth > 0) {
+          conditionTokens.push(toExprToken(tok));
+        }
+      }
+      return endBlock({ condition: conditionTokens });
+    }
     parseLoopOutside() {
       this.consume("KEYWORD", "ForEach");
       this.consume("SYMBOL", "(");
@@ -3107,7 +3253,7 @@ var ACDL = (() => {
             i++;
             continue;
           }
-          if (t.value === "." || t.type === "IDENT" || t.value === "(" || t.value === ")" || t.value === "[" || t.value === "]" || t.value === "@" || t.type === "NUMBER") {
+          if (t.value === "." || t.type === "IDENT" || t.type === "KEYWORD" || t.value === "(" || t.value === ")" || t.value === "[" || t.value === "]" || t.value === "@" || t.type === "NUMBER") {
             contextVarTokens.push(escapeHtml(t.value));
             i++;
             if ((t.value === ")" || t.value === "]") && parenDepth === 0 && bracketDepth === 0) {
@@ -3351,6 +3497,8 @@ var ACDL = (() => {
         return renderMarkBlock(block);
       case "name-def":
         return renderNameDef(block);
+      case "end-block":
+        return renderEndBlock(block);
     }
   }
   function renderCommentBlock(block) {
@@ -3451,6 +3599,8 @@ var ACDL = (() => {
         return renderNameRef(block);
       case "other-index":
         return renderIndexValue(block);
+      case "end-block":
+        return renderEndBlock(block);
     }
   }
   function renderFuncBlock(block) {
@@ -3674,6 +3824,10 @@ var ACDL = (() => {
     }
     return result;
   }
+  function renderEndBlock(block) {
+    const conditionHtml = renderExpressionTokens(block.condition);
+    return `<div class="end-block"><span class="end-keyword">END</span> <span class="keyword">If</span> (<span class="condition-expr">${conditionHtml}</span>)</div>`;
+  }
   return __toCommonJS(standalone_entry_exports);
 })();
 
@@ -3682,14 +3836,12 @@ var ACDL = (() => {
   <!-- Embedded Prompts -->
   <script>
 const PROMPTS = {
-  "genagents": "GenerativeAgents[@T, agent_name]: {\r\n\tN: {\r\n\t\tsys.agent_desc[agent_name] // a description of the agent's personality, goals, and background\r\n\t\tenv.datetime[@T]  // the current date and time in the Sims like environment\r\n\t\tsys.status[@T] // what the agent is currently doing\r\n\t\tenv.current_observation[@T] // what the agent is currently observing in the environment\r\n\t\t// retrieve the agent's relevant memories based on the conversation topic\r\n\t    get_context_summary(@T, sys.agent_names[agent_name], sys.topic) \r\n\t\tForEach(other_agent_name: sys.agent_names){\r\n\t\t\tIf env.in_dialog(Other_agent_name) {\r\n\t\t\t\tget_dialog_history(sys.agent_names[other_agent_name]) // the recent dialog history with the other agent\r\n\t\t\t}\r\n\t\t}\r\n\t\tQUESTION // e.g., \"How would Eddy respond to John?\"\r\n\t}\r\n}\r\n",
   "rlm": "RLM[@T]: {\r\n    // self.messages\r\n    S: {\r\n        AVAILABLE_TOOLS // context variable, llm query(subquery), python execution via REPL blocks\r\n        INTERACTION_RULES   // inspect context, iterate, dont answer early, how to return final answer\r\n    }\r\n     \r\n    ForEach(@t: range(1,@T)) {\r\n        // if used tools, adds a list of tool responses to history\r\n        If sys.code_blocks[@t] {\r\n            ForEach(i: range(1,sys.code_block[@t].len)){\r\n                U: {\r\n                    sys.code_block[@t.i] \r\n                    sys.code_block[@t.i].response\r\n                }\r\n            }\r\n        }\r\n        \r\n        Else {\r\n            // if didnt use tools, adds the llm response to the history\r\n            A: LLM_RESP\r\n        }\r\n    }\r\n\r\n    // next action prompt\r\n    If sys.final_answer[@T] {\r\n        U: PROVIDE_FINAL_ANSWER\r\n    }\r\n    ElseIf @T == 1 {\r\n        U: {\r\n            USE_REPL        // this is your first interaction, there is no action history yet so use the repl env to view your context\r\n            REPL_INSTRUCTIONS(sys.query)    // use the repl instructions to find the answer to the query. look for context var, or query sublm\r\n        }\r\n    }\r\n    Else {\r\n        U: {\r\n            HIST_EXPLANATION    // the history before is your previous interactions with the REPL env\r\n            REPL(sys.query)     // use the REPL to answer the query\r\n        }\r\n    }\r\n\r\n}\r\n\r\nSubPrompt[@t]: {\r\n    // gets a prompt written by the rootlm in the repl env\r\n}",
-  "basic_react": "ReactBase[@T]: {\r\n    S: TASK_DESC  // you are an assistant who's job is...\r\n    S: AVAILABLE_TOOLS\r\n    U: {env.user_question}\r\n    ForEach(@t: range(1,@T-1)) {\r\n        A: {\r\n            resp.tool_reasoning[@t]\r\n            sys.tool_used[@t]\r\n        }\r\n        T: sys.tool_used[@t].tool_response\r\n    }\r\n    S: INSTRUCTION   // choose an action, use ReACT\r\n}",
+  "basic_react": "ReactBase[@T]: {\r\n    S: {\r\n        TASK_DESC  // you are an assistant who's job is...\r\n        AVAILABLE_TOOLS\r\n    }\r\n    U: {env.user_question}\r\n    ForEach(@t: range(1,@T-1)) {\r\n        A: {\r\n            resp.tool_reasoning[@t]\r\n            sys.tool_used[@t]\r\n        }\r\n        T: sys.tool_used[@t].tool_response\r\n    }\r\n    S: INSTRUCTION   // choose an action, use ReACT\r\n}",
   "react_summ": "Prompt[@T, k]: {\r\n    U: {env.user_question}\r\n    S: {\r\n        SUMMARY_INTRO // here is a summary of the history\r\n        summarize_hist(@T-k)\r\n    }\r\n    ForEach(@t: range(1, @T-k)) {\r\n        A: {\r\n            AVAILABLE_TOOLS\r\n            resp.tool_reasoning[@t]\r\n            sys.tool_used[@t]\r\n        }\r\n        U: sys.tool_used[@t].tool_response\r\n    }\r\n    S: INSTRUCTION // choose an action or declare done\r\n}",
   "mintagent": "MintOriginal[@T]: {\r\n    U: {\r\n        TASK_DESCRIPTION(sys.max_total_steps)\r\n        env.tool_descriptions // description of each tool, how to use them, and when to use them\r\n        env.in_context_examples\r\n        env.task_prompt // the question you need to answer, or task you need to complete\r\n    }\r\n\r\n    ForEach(@t: range(1,@T-1)) {\r\n        ForEach(i: range(1,sys.substeps[@t])){\r\n            A: {\r\n                resp.tool_reasoning[@t.i]\r\n                sys.tool_used[@t.i]\r\n            }\r\n            U: sys.tool_used[@t.i].tool_response\r\n    \r\n        A: {\r\n            resp.solution_reasoning[@t]\r\n            resp.solution[@t]\r\n        }\r\n        U: env.feedback[@t.i] // response if the answer was right or wrong, remaining tries if failed\r\n        }\r\n    }\r\n\r\n    ForEach(k: range(1,sys.substeps[@T])){\r\n        A: {\r\n            resp.tool_reasoning[@T.k]\r\n            resp.tool_used[@T.k]\r\n        }\r\n        U: sys.tool_used[@T.k].tool_response\r\n    }\r\n\r\n}",
   "chat1": "Chat1[@T]: {\r\n    S: INSTRUCTIONS \r\n    U: {\r\n        ForEach(t: range(1,T-1)) {\r\n            env.user_input[@t]\r\n            resp.llm_answer[@t]\r\n        }\r\n    }\r\n\r\n    U: env.user_input[@T]\r\n}",
-  "rag": "Prompt[@T]: {\r\n    S: ROLE_DESCRIPTION // you are an assistant who’s job is…\r\n    ForEach(@t: range(1,@T-1)) {\r\n\t    U: env.user_input[@t]\r\n        U: {\r\n            ForEach(k: range(1,sys.RAG_resp[@t].len)){\r\n                sys.RAG_resp[@t][k]\r\n            }\r\n        }\r\n        A: resp.LLM_text[@t]\r\n\t}\r\n\r\n    Switch env.user_input[@T] {\r\n\t    Case \"bad answer\" {\r\n            name improved_response := improve_RAG_response(env.user_input[@T], sys.RAG_resp[@T]) \r\n\t\t    U: {ForEach(i: range(1,improved_response.len)){\r\n                improved_response[i]}\r\n            }\r\n            S: {INSTRUCTIONS // not good enough, get better results}\r\n\t\t}\r\n\t    Default { \r\n            U: {ForEach(i: range(1,sys.RAG_resp[@T].len)) { \r\n\t\t\t        sys.RAG_resp[@T][i]}\r\n            }\r\n        }\r\n    }\r\n}\r\n",
-  "pokemon": "Pokemon[@T]: {\r\n    U: env.image.HUD // heads up display, a screenshot with things like HP, coordinates of the character on the map and ID codes for items printed on it\r\n    S: {\r\n        INTRO // you are playing pokemon blue\r\n        GOAL // beat the game\r\n        CONVENTIONS  // vision to text translation conventions, general gameplay tips\r\n    } \r\n\r\n    History {\r\n        A: {\r\n            If @T>1 {\r\n                ForEach(i: range(@T-(@T%100),@T-1)) {\r\n                    resp.action[@i]\r\n                }\r\n                \r\n                If @T%100==0 {\r\n                    summarize(range(@T-100, @T))\r\n                    If @T>999 and @T%1000==0 {\r\n                        name relevant_summaries := [sys.summary[@t] for t in range(@T, @T-900, 100)]\r\n                        compress_summaries($relevant_summaries)\r\n                    }  \r\n                }\r\n                If @T>99 {\r\n                    ForEach(i: max(100, @T-(@T%100)-800), @T-(@T%100), 100) {  \r\n                        sys.summary[@i]\r\n                    }\r\n                    \r\n                    If @T>999 and @T%1000!=0 {\r\n                        ForEach(i: range(max(1000, @T-@T%1000-900), @T-(@T%1000), 1000)) { \r\n                            sys.compressed_summary[@i]\r\n                        } \r\n                    }\r\n                }\r\n            }\r\n        }    \r\n    }\r\n\r\n    If @T%25==0 {\r\n        //response from critique agents tracking of subgoals (primary, secondary, tertiary, contingency plants, preparation, exploration, team composition)\r\n        A: critique_performance(prompt.History[@T]) // not sure what it gets, probably action history of some sort but they didnt say\r\n    }\r\n\r\n    U: env.xml_map[@T] // unseen coordinates are not viewable until explored\r\n    S: INSTRUCTION_TO_EXPLORE\r\n    S: CHOOSE_ACTION // instructions to choose next action and how\r\n}"
+  "rag": "BasicRAG[@T]: {\r\n    MARK 1{\r\n        S: INSTRUCTIONS\r\n    }\r\n    U: {\r\n        env.user_input\r\n        MARK 2 {\r\n            If sys.use_rag {\r\n                MARK 3 {\r\n                    ForEach(i: range(1,retrieve(env.user_input).len)) {\r\n                        retrieve(env.user_input)[i]\r\n                    }\r\n                }\r\n                ANSWER_QUESTION_BASED_ON_DOCS\r\n            }\r\n            Else {\r\n                ANSWER_QUESTION\r\n            }\r\n        }\r\n    }\r\n}"
 };
   </script>
 
