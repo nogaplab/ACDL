@@ -1,0 +1,8 @@
+# Project Instructions
+
+## File Modification Rules
+1. **Do not update extension files or standalone version** unless explicitly instructed to do so
+2. **Never use `rm` to delete files** - always send files to the recycle bin instead
+
+## Context
+This is a PDDL parser project with both extension and standalone components.

@@ -88,10 +88,12 @@ export type NameDef = {
     value: ContextVar | Func | ListComprehension;  // the assigned expression
 }
 
-// Named variable reference: $x
+// Named variable reference: $x with optional indices and path: $docs[i].content
 export type NameRef = {
     kind: "name-ref";
     name: string;           // referenced variable name (without $)
+    indices: Array<Index>;  // optional indices like [i] or [@t]
+    path?: PathDesc;        // optional path like .content.field
 }
 
 export type TextArgs = ContextVar | Index | Func | ArithmeticExpr | NameRef | Identifier;

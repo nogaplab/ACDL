@@ -627,30 +627,30 @@ body {
 .end-block {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
   padding: 4px 0;
+  padding-right: 10px;
   margin: 4px 0;
+  margin-left: -24px;
   font-family: 'JetBrains Mono', 'SF Mono', monospace;
-  font-size: 20px;
+  font-size: 12px;
+  width: calc(100% + 24px);
 }
 
-.end-block-line {
-  flex: 1 1 auto;
-  min-width: 75%;
-  height: 3px;
-  background: repeating-linear-gradient(
-    to right,
-    var(--text-primary) 0,
-    var(--text-primary) 12px,
-    transparent 12px,
-    transparent 20px
-  );
+.end-dashed-line {
+  flex-grow: 1;
+  height: 0;
+  border: none;
+  border-bottom: 2px dashed #6e7781;
+  min-width: 20px;
+  margin-left: 24px;
 }
 
-.end-block-content {
-  display: inline-flex;
+.end-text {
+  display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
+  flex-shrink: 0;
   white-space: nowrap;
 }
 
@@ -1442,6 +1442,12 @@ body {
 
 .compact .end-block .keyword {
   font-size: 9px;
+}
+
+.compact .end-dashed-line {
+  border-bottom-width: 1px;
+  margin: 0 6px;
+  min-width: 10px;
 }
 
 .compact .loop-block-outside-role .role-message,

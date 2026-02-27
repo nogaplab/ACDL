@@ -633,7 +633,36 @@ function renderListComprehension(block: ListComprehension): string {
  * Render a NameRef: renders the variable name in a pink box (no $ prefix)
  */
 function renderNameRef(block: NameRef): string {
-  return `<span class="name-ref"><span class="segment">${escapeHtml(block.name)}</span></span>`;
+  const segments: Array<string> = [];
+
+  // 1. Render the name with any indices
+  const rootIndices = block.indices;
+  const rootIndexText = rootIndices.length > 0
+    ? renderIndexList(block.indices) : "";
+
+  segments.push(
+    `<span class="segment">${escapeHtml(block.name)}${rootIndexText}</span>`
+  );
+
+  // 2. Render every segment in the PathDesc chain if it exists
+  let current: PathDesc | undefined = block.path;
+  while (current) {
+    const segIndices = current.indices;
+    const segIndexText =
+      segIndices.length > 0
+        ? renderIndexList(current.indices) : "";
+
+    segments.push(
+      `<span class="segment">${escapeHtml(current.base)}${segIndexText}</span>`
+    );
+
+    current = current.next;
+  }
+
+  // 3. Join segments with dots
+  const joined = segments.join(".");
+
+  return `<span class="name-ref">${joined}</span>`;
 }
 
 /**
@@ -1338,12 +1367,11 @@ function renderConditionalOutsideRole(block: ConditionalBlockOutsideRole): strin
 }
 
 /**
- * Render an EndBlock: END If (condition)
+ * Render an EndBlock: PromptEndsHere when (condition)
  * Conditional early termination that can appear anywhere.
- * Rendered as a dashed line spanning 2/3 width followed by the condition.
  */
 function renderEndBlock(block: EndBlock): string {
   const conditionHtml = renderExpressionTokens(block.condition);
-  return `<div class="end-block"><span class="end-block-line"></span><span class="end-block-content"><span class="end-keyword">END</span> <span class="keyword">If</span> (<span class="condition-expr">${conditionHtml}</span>)</span></div>`;
+  return `<div class="end-block"><span class="end-dashed-line"></span><span class="end-text"><span class="end-keyword">PromptEndsHere</span> <span class="keyword">when</span> (<span class="condition-expr">${conditionHtml}</span>)</span></div>`;
 }
 

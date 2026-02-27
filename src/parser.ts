@@ -230,8 +230,12 @@ export class Parser {
         case "Switch": return this.parseSwitchOutside();
         case "name": return this.parseNameDef();
         case "MARK": return this.parseMarkBlock();
-        case "END": return this.parseEndBlock();
       }
+    }
+
+    // Check for PromptEndsHere (now an IDENT)
+    if (tok.type === "IDENT" && val === "PromptEndsHere") {
+      return this.parseEndBlock();
     }
 
     if (tok.type === "COMMENT") {
@@ -436,7 +440,6 @@ export class Parser {
       if (val === "ForEach") return this.parseLoopInside();
       if (val === "Switch") return this.parseSwitchInside();
       if (val === "MARK") return this.parseMarkBlockInside();
-      if (val === "END") return this.parseEndBlock();
 
       // 2. Check for name definition
       if (val === "name") return this.parseNameDef();
@@ -452,6 +455,11 @@ export class Parser {
       if (namespaces.includes(val as string)) {
         return this.parseContextVar();
       }
+    }
+
+    // Check for PromptEndsHere (IDENT)
+    if (tok.type === "IDENT" && val === "PromptEndsHere") {
+      return this.parseEndBlock();
     }
 
     // 5. Handle Templates/Functions (IDENT)
@@ -548,12 +556,17 @@ export class Parser {
   }
 
   /**
-   * Parse a name reference: $varname
+   * Parse a name reference: $varname with optional indices and path: $docs[i].content
    */
   private parseNameRef(): AST.NameRef {
     this.consume("SYMBOL", "$");
     const varName = this.consume("IDENT").value as string;
-    return Create.nameRef({ name: varName });
+    const indices = this.parseOptionalIndices();
+    let path: AST.PathDesc | undefined;
+    if (this.match("SYMBOL", ".")) {
+      path = this.parsePathDesc();
+    }
+    return Create.nameRef({ name: varName, indices, path });
   }
 
   /* ───────────────── Expressions & Shared Rules ───────────────── */
@@ -805,13 +818,13 @@ export class Parser {
   /* ───────────────── Control Flow ───────────────── */
 
   /**
-   * Parse an END block: END If (condition)
+   * Parse an END block: PromptEndsHere when (condition)
    * Conditional early termination that can appear anywhere.
    * Condition is delimited by parentheses, same style as conditionals.
    */
   private parseEndBlock(): AST.EndBlock {
-    this.consume("KEYWORD", "END");
-    this.consume("KEYWORD", "If");
+    this.consume("IDENT", "PromptEndsHere");
+    this.consume("KEYWORD", "when");
 
     // Condition must be wrapped in parentheses
     this.consume("SYMBOL", "(");
@@ -821,7 +834,7 @@ export class Parser {
     let depth = 1;
 
     while (depth > 0) {
-      if (this.isEOF()) throw new Error("Unterminated END If condition");
+      if (this.isEOF()) throw new Error("Unterminated PromptEndsHere when condition");
       const tok = this.consume();
       if (tok.value === "(") depth++;
       if (tok.value === ")") depth--;
