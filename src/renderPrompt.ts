@@ -588,6 +588,9 @@ function renderTopLevelBlock(block: PromptBlock): string {
 
     case "end-block":
       return renderEndBlock(block);
+
+    default:
+      return "";
   }
 }
 
@@ -695,6 +698,9 @@ function renderMarkBlock(block: MarkBlock): string {
   // Render all blocks in the body array
   const bodyHtml = block.body.map(b => renderTopLevelBlock(b)).join("\n");
 
+  // Ensure markNumber is always a valid number, default to 0 if undefined
+  const markNum = block.markNumber !== undefined && !isNaN(block.markNumber) ? block.markNumber : 0;
+
   return `
 <div class="mark-block">
   <div class="mark-block-content">
@@ -702,7 +708,7 @@ function renderMarkBlock(block: MarkBlock): string {
   </div>
   <div class="mark-block-bracket">
     <span class="mark-bracket-line"></span>
-    <span class="mark-bracket-number">${block.markNumber}</span>
+    <span class="mark-bracket-number">${markNum}</span>
   </div>
 </div>`;
 }
@@ -714,6 +720,9 @@ function renderMarkBlockInsideRole(block: MarkBlockInsideRole): string {
   // Render all blocks in the body array
   const bodyHtml = block.body.map(b => renderRoleBuildingBlock(b)).join("\n");
 
+  // Ensure markNumber is always a valid number, default to 0 if undefined
+  const markNum = block.markNumber !== undefined && !isNaN(block.markNumber) ? block.markNumber : 0;
+
   return `
 <div class="mark-block">
   <div class="mark-block-content">
@@ -721,9 +730,18 @@ function renderMarkBlockInsideRole(block: MarkBlockInsideRole): string {
   </div>
   <div class="mark-block-bracket">
     <span class="mark-bracket-line"></span>
-    <span class="mark-bracket-number">${block.markNumber}</span>
+    <span class="mark-bracket-number">${markNum}</span>
   </div>
 </div>`;
+}
+
+/**
+ * Render an EndBlock: PromptEndsHere when (condition)
+ * Conditional early termination that can appear anywhere.
+ */
+function renderEndBlock(block: EndBlock): string {
+  const conditionHtml = renderExpressionTokens(block.condition);
+  return `<div class="end-block"><span class="end-dashed-line"></span><span class="end-text"><span class="end-keyword">PromptEndsHere</span> <span class="keyword">when</span> (<span class="condition-expr">${conditionHtml}</span>)</span></div>`;
 }
 
 /**
@@ -794,6 +812,9 @@ function renderRoleBuildingBlock(block: RoleBuildingBlock): string {
 
     case "end-block":
       return renderEndBlock(block);
+
+    default:
+      return "";
   }
 }
 
@@ -839,7 +860,7 @@ function renderFuncBlock(block: Func): string {
   const isBuiltinMath = block.name === "min" || block.name === "max";
   const funcCore = isBuiltinMath
     ? `<span class="builtin-func">${escapeHtml(block.name)}(${argsText})${resultIndices}</span>`
-    : `<span class="func-block"><span class="func-name">${escapeHtml(block.name)}</span><span class="func-parens">(</span>${argsText}<span class="func-parens">)</span>${resultIndices}</span>`;
+    : `<span class="func-block"><span class="func-name">${escapeHtml(block.name)}</span><span class="func-args-wrapper">(${argsText})${resultIndices}</span></span>`;
 
   if (block.comment) {
     return `<span class="block-with-comment">${funcCore}<span class="inline-comment"> // ${escapeHtml(block.comment)}</span></span>`;
@@ -912,9 +933,9 @@ function renderTemplateBlock(block: Template): string {
       ? `(${block.arguments.map(renderTextArgs).join(", ")})`
       : "";
 
-  const core = `<span class="template-block">${escapeHtml(
+  const core = `<span class="template-block"><span class="template-name-and-args">${escapeHtml(
     block.name
-  )}${argsText}</span>`;
+  )}${argsText}</span></span>`;
 
   if (block.comment) {
     return `<span class="block-with-comment">${core}<span class="comment"> // ${escapeHtml(block.comment)}</span></span>`;
@@ -1364,14 +1385,5 @@ function renderConditionalOutsideRole(block: ConditionalBlockOutsideRole): strin
   }
 
   return result;
-}
-
-/**
- * Render an EndBlock: PromptEndsHere when (condition)
- * Conditional early termination that can appear anywhere.
- */
-function renderEndBlock(block: EndBlock): string {
-  const conditionHtml = renderExpressionTokens(block.condition);
-  return `<div class="end-block"><span class="end-dashed-line"></span><span class="end-text"><span class="end-keyword">PromptEndsHere</span> <span class="keyword">when</span> (<span class="condition-expr">${conditionHtml}</span>)</span></div>`;
 }
 
