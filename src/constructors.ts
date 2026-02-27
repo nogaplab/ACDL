@@ -33,7 +33,8 @@ import {
   ExpressionToken,
   NameDef,
   NameRef,
-  ListComprehension
+  ListComprehension,
+  EndBlock
 } from "./types";
 
 
@@ -174,4 +175,8 @@ export function nameRef(params: Omit<NameRef, "kind">): NameRef {
 
 export function listComprehension(params: Omit<ListComprehension, "kind">): ListComprehension {
   return { ...params, kind: "list-comprehension" };
+}
+
+export function endBlock(params: Omit<EndBlock, "kind">): EndBlock {
+  return { ...params, kind: "end-block" };
 }

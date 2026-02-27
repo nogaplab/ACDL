@@ -1,63 +1,72 @@
 <?xml version="1.0"?>
-<svg width="500" height="250" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg">
+<svg width="520" height="280" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg">
  <defs>
   <marker id="arrowhead" markerHeight="6" markerWidth="8" orient="auto" refX="7" refY="3">
    <polygon fill="#37474F" id="svg_1" points="0 0, 8 3, 0 6"/>
   </marker>
-  <marker id="arrowhead-indigo" markerHeight="6" markerWidth="8" orient="auto" refX="7" refY="3">
-   <polygon fill="#E67E22" id="svg_2" points="0 0, 8 3, 0 6"/>
+  <marker id="arrowhead-orange" markerHeight="6" markerWidth="8" orient="auto" refX="7" refY="3">
+   <polygon fill="#ff5656" id="svg_2" points="0 0, 8 3, 0 6"/>
   </marker>
  </defs>
- <!-- CIRCLES -->
- <!-- ARROWS -->
+ <!-- Background -->
+ <!-- Environment (top-left) -->
+ <!-- Agent Loop (top-center) -->
+ <!-- Memory (top-right) -->
+ <!-- LLM (bottom-center) -->
+ <!-- Arrow: observations (Environment -> Agent Loop) -->
+ <!-- Arrow: actions (Agent Loop -> Environment) -->
+ <!-- Arrow: retrieve (Memory -> Agent Loop) -->
+ <!-- Arrow: store (Agent Loop -> Memory) -->
+ <!-- Arrow: query (Agent Loop -> LLM) -->
+ <!-- Arrow: response (LLM -> Agent Loop) -->
+ <!-- ACDL highlight around query -->
  <g class="layer">
   <title>Layer 1</title>
-  <rect fill="white" height="250" id="svg_3" width="500"/>
+  <rect fill="white" height="280" id="svg_3" width="520"/>
   <g id="environment">
-   <ellipse cx="70" cy="70" fill="#D6EAF8" id="env-circle" rx="55" ry="35" stroke="#5DADE2" stroke-width="2"/>
-   <text fill="#5DADE2" font-family="Arial" font-size="13" font-weight="600" id="env-label" text-anchor="middle" x="70" y="75">Environment</text>
+   <ellipse cx="80" cy="80" fill="#CEEEFF" id="svg_4" rx="60" ry="38" stroke="#3DB8E8" stroke-width="2"/>
+   <text fill="#1A9ED4" font-family="Arial" font-size="14" font-weight="500" id="svg_5" text-anchor="middle" x="80" y="85">Environment</text>
   </g>
-  <g id="memory" transform="matrix(1 0 0 1 -3 -12)">
-   <ellipse cx="70" cy="175" fill="#E8EAF6" id="mem-circle" rx="55" ry="35" stroke="#3F51B5" stroke-width="2"/>
-   <text fill="#3F51B5" font-family="Arial" font-size="13" font-weight="600" id="mem-label" text-anchor="middle" x="70" y="180">Memory</text>
+  <g id="agent-loop">
+   <ellipse cx="260" cy="80" fill="#efe0ff" id="svg_6" rx="60" ry="38" stroke="#8256b3" stroke-width="2"/>
+   <text fill="#8256b3" font-family="Arial" font-size="14" font-weight="500" id="svg_7" text-anchor="middle" x="260" y="85">Agentic Loop</text>
   </g>
-  <g id="system">
-   <ellipse cx="250" cy="120" fill="#E8EAF6" id="sys-circle" rx="55" ry="40" stroke="#3F51B5" stroke-width="2"/>
-   <text fill="#3F51B5" font-family="Arial" font-size="13" font-weight="600" id="sys-label1" text-anchor="middle" x="250" y="115">System/</text>
-   <text fill="#3F51B5" font-family="Arial" font-size="13" font-weight="600" id="sys-label2" text-anchor="middle" x="250" y="132">Agent</text>
+  <g id="memory">
+   <ellipse cx="440" cy="80" fill="#efe0ff" id="svg_8" rx="55" ry="35" stroke="#8256b3" stroke-width="2"/>
+   <text fill="#8256b3" font-family="Arial" font-size="14" font-weight="500" id="svg_9" text-anchor="middle" x="440" y="85">Memory</text>
   </g>
   <g id="llm">
-   <ellipse cx="430" cy="120" fill="#E0F2F1" id="llm-circle" rx="55" ry="35" stroke="#26A69A" stroke-width="2"/>
-   <text fill="#26A69A" font-family="Arial" font-size="13" font-weight="600" id="llm-label" text-anchor="middle" x="430" y="125">LLM</text>
+   <ellipse cx="260" cy="210" fill="#C5EAE5" id="svg_10" rx="55" ry="35" stroke="#3BB5A5" stroke-width="2"/>
+   <text fill="#1F9A8A" font-family="Arial" font-size="14" font-weight="500" id="svg_11" text-anchor="middle" x="260" y="215">LLM</text>
   </g>
-  <g id="arrow-observations" transform="matrix(1.06494 0 0 1.05841 -6.05195 0.976744)">
-   <path d="m125,55c30,-5 55,10 75,30" fill="none" id="obs-path" marker-end="url(#arrowhead)" stroke="#37474F" stroke-width="1.5"/>
-   <text fill="#37474F" font-family="Arial" font-size="9" id="obs-label" text-anchor="middle" transform="matrix(0.955083 0.296339 -0.296339 0.955083 26.6155 -43.01)" x="162.89" y="50.87">observations</text>
+  <g id="arrow-observations">
+   <text fill="#37474F" font-family="Arial" font-size="10" font-style="italic" id="svg_13" text-anchor="middle" x="170" y="38">observations</text>
   </g>
-  <g id="arrow-actions" transform="translate(0 -1) translate(0 -1) translate(0 -1) matrix(0.972399 0.143619 -0.138127 0.916961 13.3283 -23.6896)">
-   <text fill="#37474F" font-family="Arial" font-size="9" id="act-label" text-anchor="middle" transform="matrix(0.998589 0.0530956 -0.0530956 0.998589 5.69904 -10.4398)" x="162.05" y="126">actions</text>
+  <g id="arrow-actions">
+   <text fill="#37474F" font-family="Arial" font-size="10" font-style="italic" id="svg_15" text-anchor="middle" x="170" y="128">actions</text>
   </g>
-  <g id="arrow-query">
-   <path d="m305,100c25,-18 55,-18 73,0" fill="none" id="query-path" marker-end="url(#arrowhead)" stroke="#37474F" stroke-width="1.5"/>
-   <text fill="#37474F" font-family="Arial" font-size="9" id="query-label" text-anchor="middle" transform="matrix(1 0 0 1 2 4)" x="340" y="78">query</text>
+  <g id="arrow-retrieve" transform="matrix(1 0 0 1 88 125)">
+   <text fill="#37474F" font-family="Arial" font-size="10" font-style="italic" id="svg_17" text-anchor="middle" transform="matrix(1 0 0 1 -85 -43)" x="352" y="42">retrieve</text>
   </g>
-  <g id="acdl-highlight" transform="translate(0 0) matrix(1 0 0 1 0 0) matrix(1 0 0 1 8 5)">
-   <ellipse cx="342" cy="90" fill="none" id="acdl-ellipse" rx="50" ry="18" stroke="#E67E22" stroke-dasharray="4,2" stroke-width="2" transform="matrix(0.903846 0 0 1.22449 24.8846 -24.2041)"/>
-   <text fill="#E67E22" font-family="Arial" font-size="12" font-weight="600" id="acdl-label" text-anchor="middle" transform="matrix(1 0 0 1 -18 -9)" x="415" y="55">ACDL</text>
-   <path d="m400,58l-18,16" fill="none" id="acdl-pointer" marker-end="url(#arrowhead-indigo)" stroke="#E67E22" stroke-width="1.5" transform="matrix(1 0 0 1 -9 -7)"/>
+  <g id="arrow-store">
+   <text fill="#37474F" font-family="Arial" font-size="10" font-style="italic" id="svg_19" text-anchor="middle" transform="matrix(1 0 0 1 0 -86)" x="352" y="128">store</text>
   </g>
-  <g id="arrow-response" transform="translate(-1 0) translate(-1 0) translate(0 -1) translate(0 -1) translate(0 -1) translate(0 -1) translate(0 -1) translate(0 -1)">
-   <path d="m378,140c-18,18 -48,18 -73,0" fill="none" id="resp-path" marker-end="url(#arrowhead)" stroke="#37474F" stroke-width="1.5"/>
-   <text fill="#37474F" font-family="Arial" font-size="9" id="resp-label" text-anchor="middle" x="342" y="164">response</text>
+  <g id="arrow-query" transform="translate(0 1) translate(1 0) translate(1 0) translate(1 0) translate(1 0) translate(1 0) translate(1 0) translate(1 0) translate(1 0) translate(1 0) translate(1 0) translate(1 0) matrix(1 0 0 1 0 0) matrix(1 0 0 1 0 0) matrix(1 0 0 1 0 0)">
+   <text fill="#37474F" font-family="Arial" font-size="10" font-style="italic" id="svg_21" text-anchor="middle" x="297" y="150">query</text>
   </g>
-  <g id="arrow-store" transform="matrix(0.987744 0 0 1 2.50524 5)">
-   <path d="m206.31,149.59c-28.47,18.53 -56.4,26.88 -79.39,15.85" fill="none" id="store-path" marker-end="url(#arrowhead)" stroke="#37474F" stroke-width="1.5" transform="matrix(0.999408 -0.0343997 0.0343997 0.999408 -8.40491 -1.17369)"/>
-   <text fill="#37474F" font-family="Arial" font-size="9" id="store-label" text-anchor="middle" transform="matrix(0.943847 -0.330382 0.330382 0.943847 -52.9216 44.349)" x="172.06" y="192.47">store</text>
-   <path d="m196.28,103.21c-29.21,3.9 -54.08,-1.08 -67.64,-21.19" fill="none" id="svg_4" marker-end="url(#arrowhead)" stroke="#37474F" stroke-width="1.5" transform="matrix(1 0 0 1 -5 -7)"/>
+  <g id="arrow-response" transform="translate(0 1) translate(0 1) translate(-1 0) translate(-1 0) translate(-1 0) translate(-1 0) translate(-1 0) translate(-1 0) translate(-1 0) translate(-1 0) translate(-1 0) translate(-1 0) translate(-1 0) translate(-1 0) translate(-1 0) translate(-1 0) translate(-1 0) translate(-1 0) translate(-1 0) translate(-1 0) translate(0 -1) translate(0 -1) translate(0 -1) translate(0 -1) translate(0 -1) translate(0 -1)">
+   <text fill="#37474F" font-family="Arial" font-size="10" font-style="italic" id="svg_23" text-anchor="middle" transform="matrix(1 0 0 1 11 5)" x="210" y="150">response</text>
   </g>
-  <g id="arrow-retrieve" transform="matrix(0.997411 -0.0719169 0.0719169 0.997411 -13.549 7.04546)">
-   <path d="m125,152c25,-17 53,-20 75,-10" fill="none" id="retrieve-path" marker-end="url(#arrowhead)" stroke="#37474F" stroke-width="1.5"/>
-   <text fill="#37474F" font-family="Arial" font-size="9" id="retrieve-label" text-anchor="middle" transform="rotate(2.16958 156.164 130) matrix(0.979961 -0.199192 0.199192 0.979961 -25.0918 42.3481)" x="160" y="125">retrieve</text>
+  <g id="acdl-highlight" transform="matrix(1 0 0 1 -90 74)">
+   <ellipse cx="222.1" cy="145.94" fill="none" id="svg_24" rx="45" ry="32" stroke="#ff5656" stroke-dasharray="4,2" stroke-width="2" transform="matrix(0.00256313 -0.693526 0.956031 0.00185935 244.445 225.547)"/>
+   <text fill="#ff5656" font-family="Arial" font-size="12" font-weight="600" id="svg_25" text-anchor="middle" transform="matrix(1.15061 0 0 1.20689 -111.418 34.0659)" x="502" y="68.83">ACDL</text>
+   <path d="m369.08,336.45l17,10" fill="none" id="svg_26" marker-end="url(#arrowhead-orange)" stroke="#ff5656" stroke-width="1.5" transform="matrix(-1.38335 -0.0479017 0.0464762 -1.42578 937.45 603.35)"/>
   </g>
+  <path d="m312.04,251.42c22,-14 52,-14 73,0" fill="none" id="svg_27" marker-end="url(#arrowhead)" stroke="#37474F" stroke-width="1.5" transform="matrix(0.886456 -0.000001539 0.00000136426 1 -138.464 -193)"/>
+  <path d="m413.01,338.41c22,-14 52,-14 73,0" fill="none" id="svg_28" marker-end="url(#arrowhead)" stroke="#37474F" stroke-width="1.5" transform="matrix(0.886456 -0.000001539 0.00000136426 1 -45.464 -279)"/>
+  <path d="m410.75,338.38c22,-14 52,-14 73,0" fill="none" id="svg_30" marker-end="url(#arrowhead)" stroke="#37474F" stroke-width="1.5" transform="matrix(-0.886358 0.0132098 -0.0149015 -0.999889 754.391 432.352)"/>
+  <path d="m413.01,338.41c22,-14 52,-14 73,0" fill="none" id="svg_31" marker-end="url(#arrowhead)" stroke="#37474F" stroke-width="1.5" transform="matrix(-0.886321 -0.015486 0.0174699 -0.999847 562.589 447.237)"/>
+  <path d="m252.82,108.44c15.19,18.59 16.85,45.13 4.04,64.58" fill="none" id="svg_32" marker-end="url(#arrowhead)" stroke="#37474F" stroke-width="1.5" transform="matrix(1 0 0 0.73678 27 43.5436)"/>
+  <path d="m516.15,304.53c22,-14 52,-14 73,0" fill="none" id="svg_33" marker-end="url(#arrowhead)" stroke="#37474F" stroke-width="1.5" transform="matrix(-0.0271531 -0.654058 0.984896 -0.022947 -45.1725 514.74)"/>
  </g>
 </svg>

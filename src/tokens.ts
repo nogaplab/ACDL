@@ -19,7 +19,8 @@ export type ControlKeyword =
   | "name"
   | "for"
   | "in"
-  | "MARK";
+  | "MARK"
+  | "END";
 
 export type Keyword = NamespaceKeyword | ControlKeyword;
 

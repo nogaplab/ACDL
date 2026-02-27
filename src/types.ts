@@ -44,7 +44,7 @@ export type ContextBase = "sys" | "resp" | "env" | "prompt";
 export type ContextVar = {
     kind: "context-var";
     base: ContextBase
-    path: PathDesc;
+    path?: PathDesc;
     indices: Array<Index>;
     comment?: string;
 }
@@ -148,7 +148,7 @@ export type MarkBlock = {
   body: Array<PromptBlock>;
 }
 
-export type PromptBlock = RoleMessage|LabelBlock|MarkBlock|ConditionalBlockOutsideRole|LoopBlockOutsideRole|SwitchBlockOutsideRole|CommentBlock|NameDef;
+export type PromptBlock = RoleMessage|LabelBlock|MarkBlock|ConditionalBlockOutsideRole|LoopBlockOutsideRole|SwitchBlockOutsideRole|CommentBlock|NameDef|EndBlock;
 
 export type LoopBlockOutsideRole = {
   kind: "loop-block-outside-role";
@@ -193,7 +193,7 @@ export type DefaultCaseBlockOutsideRole = {
 
 // Inside Role Building Blocks
 
-export type RoleBuildingBlock = ConditionalBlockInsideRole|LoopBlockInsideRole|SwitchBlockInsideRole|MarkBlockInsideRole|Template|ContextVar|Func|CommentBlock|NameDef|NameRef|OtherIndex;
+export type RoleBuildingBlock = ConditionalBlockInsideRole|LoopBlockInsideRole|SwitchBlockInsideRole|MarkBlockInsideRole|Template|ContextVar|Func|CommentBlock|NameDef|NameRef|OtherIndex|EndBlock;
 
 export type MarkBlockInsideRole = {
   kind: "mark-block-inside-role";
@@ -245,4 +245,10 @@ export type CaseBlockInsideRole = {
 export type DefaultCaseBlockInsideRole = {
   kind: "default-case-block-inside-role";
   body: Array<RoleBuildingBlock>;
+};
+
+// END if block - conditional early termination (can appear anywhere)
+export type EndBlock = {
+  kind: "end-block";
+  condition: ExpressionToken[];
 };

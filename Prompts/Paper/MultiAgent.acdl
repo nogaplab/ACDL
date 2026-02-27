@@ -1,0 +1,37 @@
+MultiAgent[@T, agent]: {
+// XXX The comment below should be above definition
+// agent is self, agent2 is who we converse with
+  S: {
+    INSTRUCTIONS
+  }
+  U: {
+    // history
+    // NOTE: history does not show substeps
+    ForEach(@t: range(@T-50, @T-1)) {
+      sys[agent].performed_action[@t]
+      sys[agent].performed_action[@t].result
+    }
+    // what I have
+    sys[agent].inventory[@T]
+    // who I see and what I know about them
+    ForEach(a: env.seen_actors[@T]) {
+      a.name
+      a.description
+      // XXX a_name should be a.name
+      retrieve(sys[agent].memory[@T], a.name)
+    }
+    If sys[agent].in_conversation[@T] {
+     ForEach (convTurn: sys[agent].conversation[@T]) {
+       convTurn.speaker
+       convTurn.content
+     }
+    }
+  }
+  S: {
+    sys[agent].available_actions
+    If sys[agent].in_conversation[@T] {
+      // You can do things, but you are in a conversation
+      CONTINUE_THE_CONVERSATION
+    }
+  }
+}

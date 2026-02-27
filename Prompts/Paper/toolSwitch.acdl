@@ -1,0 +1,27 @@
+Prompt[@T]: {
+    S: INSTRUCTIONS
+    U: env.user_input
+    
+    ForEach(t: range(1,@T-1)) {
+        A: {
+            Switch sys.tool_call[@T].name {
+                Case showInFull{
+                    sys.tool_call[@T].tool_and_args
+                    sys.tool_call[@T].response
+                }
+                Case showSummary {
+                    sys.tool_call[@T].tool_and_args
+                    sys.tool_call[@T].response_summary
+                }
+                Case dontShow {
+                    //pass
+                }
+            }
+        }
+    }
+
+    A: {
+        sys.tool_call[@T].tool_and_args
+        sys.tool_call[@T].response
+    }
+}

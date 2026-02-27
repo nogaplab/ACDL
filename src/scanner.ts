@@ -24,7 +24,8 @@ const CONTROL_KEYWORDS = new Set<ControlKeyword>([
   "name",
   "for",
   "in",
-  "MARK"
+  "MARK",
+  "END"
 ]);
 
 /* ───────────────── operators ───────────────── */

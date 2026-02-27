@@ -80,6 +80,25 @@ export class Parser {
     return Create.prompt({ title, body });
   }
 
+  /**
+   * Parse a file containing one or more prompts and comments.
+   * Returns an array of Prompt and CommentBlock objects.
+   */
+  public parseFile(): (AST.Prompt | AST.CommentBlock)[] {
+    const blocks: (AST.Prompt | AST.CommentBlock)[] = [];
+
+    while (!this.isEOF()) {
+      if (this.peek().type === "COMMENT") {
+        const text = this.consume("COMMENT").value as string;
+        blocks.push(Create.commentBlock({ text }));
+      } else {
+        blocks.push(this.parsePrompt());
+      }
+    }
+
+    return blocks;
+  }
+
   private parseTitle(): AST.PromptTitle {
     const name = this.consume("IDENT").value as string; // Assert string for constructor
     const indices = this.parseOptionalIndices();
@@ -211,6 +230,7 @@ export class Parser {
         case "Switch": return this.parseSwitchOutside();
         case "name": return this.parseNameDef();
         case "MARK": return this.parseMarkBlock();
+        case "END": return this.parseEndBlock();
       }
     }
 
@@ -416,6 +436,7 @@ export class Parser {
       if (val === "ForEach") return this.parseLoopInside();
       if (val === "Switch") return this.parseSwitchInside();
       if (val === "MARK") return this.parseMarkBlockInside();
+      if (val === "END") return this.parseEndBlock();
 
       // 2. Check for name definition
       if (val === "name") return this.parseNameDef();
@@ -543,9 +564,10 @@ export class Parser {
 
     const indices = this.parseOptionalIndices();
 
-    let path: AST.PathDesc;
-    this.consume("SYMBOL", ".")
-    path = this.parsePathDesc();
+    let path: AST.PathDesc | undefined;
+    if (this.match("SYMBOL", ".")) {
+      path = this.parsePathDesc();
+    }
 
     const comment = this.peek().type === "COMMENT" ? (this.consume("COMMENT").value as string) : undefined;
     return Create.contextVar({ base, indices, path, comment });
@@ -667,8 +689,13 @@ export class Parser {
       if (this.peekNext().value === "(") {
         return this.parseTemplateOrFunc() as AST.Func;
       }
-      // Plain identifier
-      return Create.identifier({ name: this.consume("IDENT").value as string });
+      // Plain identifier with optional member access (e.g., a.name)
+      const name = this.consume("IDENT").value as string;
+      let path: AST.PathDesc | undefined;
+      if (this.match("SYMBOL", ".")) {
+        path = this.parsePathDesc();
+      }
+      return Create.otherIndex(Create.identifier({ name, path }));
     }
     throw new Error(`[${tok.line}:${tok.col}] Unexpected token in arguments: ${tok.type} (${tok.value})`);
   }
@@ -776,6 +803,35 @@ export class Parser {
 
 
   /* ───────────────── Control Flow ───────────────── */
+
+  /**
+   * Parse an END block: END If (condition)
+   * Conditional early termination that can appear anywhere.
+   * Condition is delimited by parentheses, same style as conditionals.
+   */
+  private parseEndBlock(): AST.EndBlock {
+    this.consume("KEYWORD", "END");
+    this.consume("KEYWORD", "If");
+
+    // Condition must be wrapped in parentheses
+    this.consume("SYMBOL", "(");
+
+    // Capture condition tokens until closing paren (handling nested parens)
+    const conditionTokens: AST.ExpressionToken[] = [];
+    let depth = 1;
+
+    while (depth > 0) {
+      if (this.isEOF()) throw new Error("Unterminated END If condition");
+      const tok = this.consume();
+      if (tok.value === "(") depth++;
+      if (tok.value === ")") depth--;
+      if (depth > 0) {
+        conditionTokens.push(toExprToken(tok));
+      }
+    }
+
+    return Create.endBlock({ condition: conditionTokens });
+  }
 
   private parseLoopOutside(): AST.LoopBlockOutsideRole {
     this.consume("KEYWORD", "ForEach");

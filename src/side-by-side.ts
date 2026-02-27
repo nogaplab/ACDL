@@ -3,8 +3,9 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import puppeteer from 'puppeteer';
+import { PDFDocument } from 'pdf-lib';
 import { Parser } from './parser';
-import { renderPrompt } from './renderPrompt';
+import { renderPrompts } from './renderPrompt';
 
 interface PanelData {
     name: string;
@@ -20,8 +21,8 @@ async function renderSideBySide(
     const panels: PanelData[] = filePaths.map((filePath, index) => {
         const content = fs.readFileSync(filePath, 'utf-8');
         const parser = new Parser(content);
-        const ast = parser.parsePrompt();
-        const rendered = renderPrompt(ast, 'default');
+        const prompts = parser.parseFile();
+        const rendered = renderPrompts(prompts, 'default');
         const name = labels?.[index] || path.basename(filePath, '.acdl');
         return { name, rendered };
     });
@@ -33,7 +34,7 @@ async function renderSideBySide(
         : '';
 
     const panelsHtml = panels.map(panel => `
-        <div class="panel compact">
+        <div class="compact">
             ${panel.rendered}
         </div>
     `).join('\n');
@@ -62,62 +63,6 @@ async function renderSideBySide(
             align-items: flex-start;
         }
 
-        .panel {
-            display: inline-block;
-        }
-
-        /* Override prompt container to shrink to content */
-        .panel .prompt-container {
-            max-width: none;
-            display: inline-block;
-        }
-
-        /* Hide CSS pseudo-elements - we inject them as real text for PDF */
-        .loop-block-outside-role-header::before,
-        .loop-block-inside-role-header::before,
-        .conditional-section-header::before,
-        .conditional-block-outside-role-header::before,
-        .switch-block-outside-role-header::before,
-        .switch-block-inside-role-header::before,
-        .template-block::before {
-            content: none !important;
-        }
-
-        /* Style the injected PDF symbols to match original pseudo-elements */
-        .pdf-symbol {
-            margin-right: 4px;
-            color: var(--control-border, #6e7781);
-        }
-        .template-block .pdf-symbol {
-            font-size: 6px;
-            opacity: 0.7;
-            color: inherit;
-        }
-        .compact .template-block .pdf-symbol {
-            font-size: 5px;
-        }
-        .loop-block-outside-role-header .pdf-symbol,
-        .loop-block-inside-role-header .pdf-symbol {
-            font-size: 12px;
-        }
-        .conditional-section-header .pdf-symbol,
-        .conditional-block-outside-role-header .pdf-symbol {
-            font-size: 10px;
-        }
-        .switch-block-outside-role-header .pdf-symbol,
-        .switch-block-inside-role-header .pdf-symbol {
-            font-size: 12px;
-        }
-        .compact .loop-block-outside-role-header .pdf-symbol,
-        .compact .loop-block-inside-role-header .pdf-symbol,
-        .compact .switch-block-outside-role-header .pdf-symbol,
-        .compact .switch-block-inside-role-header .pdf-symbol,
-        .compact .conditional-block-outside-role-header .pdf-symbol {
-            font-size: 8px;
-        }
-        .compact .conditional-section-header .pdf-symbol {
-            font-size: 7px;
-        }
     </style>
 </head>
 <body>
@@ -140,31 +85,6 @@ async function renderSideBySide(
     await page.setContent(html, { waitUntil: 'networkidle0' });
     await page.evaluateHandle('document.fonts.ready');
 
-    // Convert CSS ::before pseudo-elements to real text
-    await page.evaluate(() => {
-        const symbolMap: Record<string, string> = {
-            '.loop-block-outside-role-header': '↻',
-            '.loop-block-inside-role-header': '↻',
-            '.conditional-section-header': '◇',
-            '.conditional-block-outside-role-header': '◇',
-            '.switch-block-outside-role-header': '⎇',
-            '.switch-block-inside-role-header': '⎇',
-            '.template-block': '◆'
-        };
-
-        Object.entries(symbolMap).forEach(([selector, symbol]) => {
-            document.querySelectorAll(selector).forEach(el => {
-                if (!el.getAttribute('data-symbol-added')) {
-                    const span = document.createElement('span');
-                    span.textContent = symbol;
-                    span.className = 'pdf-symbol';
-                    el.insertBefore(span, el.firstChild);
-                    el.setAttribute('data-symbol-added', 'true');
-                }
-            });
-        });
-    });
-
     // Get dimensions
     const contentBox = await page.evaluate(() => {
         const container = document.querySelector('.comparison-container');
@@ -176,13 +96,41 @@ async function renderSideBySide(
         };
     });
 
-    await page.pdf({
-        path: outputPath,
-        width: `${contentBox.width}px`,
-        height: `${contentBox.height}px`,
-        printBackground: true,
-        margin: { top: '0', right: '0', bottom: '0', left: '0' }
+    // Use screenshot-based PDF generation for exact visual match with web version
+    await page.setViewport({
+        width: contentBox.width,
+        height: contentBox.height,
+        deviceScaleFactor: 2  // High resolution
     });
+
+    const screenshot = await page.screenshot({
+        type: 'png',
+        clip: {
+            x: 0,
+            y: 0,
+            width: contentBox.width,
+            height: contentBox.height
+        }
+    });
+
+    // Create PDF from screenshot
+    const pdfDoc = await PDFDocument.create();
+    const pngImage = await pdfDoc.embedPng(screenshot);
+
+    // Convert pixels to points (72 points per inch, assume 96 DPI screen)
+    const pdfWidth = contentBox.width * 0.75;
+    const pdfHeight = contentBox.height * 0.75;
+
+    const page_pdf = pdfDoc.addPage([pdfWidth, pdfHeight]);
+    page_pdf.drawImage(pngImage, {
+        x: 0,
+        y: 0,
+        width: pdfWidth,
+        height: pdfHeight
+    });
+
+    const pdfBytes = await pdfDoc.save();
+    fs.writeFileSync(outputPath, pdfBytes);
 
     await browser.close();
     console.log(`PDF written to: ${outputPath}`);

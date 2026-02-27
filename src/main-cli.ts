@@ -2,7 +2,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { Parser } from './parser';
-import { renderPrompt } from './renderPrompt';
+import { renderPrompts } from './renderPrompt';
 
 async function main() {
     const rawArgs = process.argv.slice(2);
@@ -36,12 +36,12 @@ async function main() {
             const content = fs.readFileSync(filePath, 'utf-8');
             try {
                 const parser = new Parser(content);
-                const ast = parser.parsePrompt();
-                
+                const prompts = parser.parseFile();
+
                 // PASS STYLE HERE
                 combinedBody += `<section class="prompt-section">`;
                 combinedBody += `<h3>Source: ${path.basename(filePath)}</h3>`;
-                combinedBody += renderPrompt(ast, style); 
+                combinedBody += renderPrompts(prompts, style); 
                 combinedBody += `</section><hr>`;
             } catch (err: any) {
                 combinedBody += `<div class="error-msg"><strong>Error in ${fileName}:</strong> ${err.message}</div>`;

@@ -34,6 +34,7 @@ import {
   NameDef,
   NameRef,
   ListComprehension,
+  EndBlock,
 } from "./types";
 
 
@@ -65,6 +66,34 @@ export function renderPrompt(
   // - layout variants
   // - compact vs expanded rendering
   return `<div class="prompt-container prompt-style-${style}">${titleHtml}${bodyHtml}</div>`;
+}
+
+/**
+ * Render multiple prompts and comments from a file.
+ * Prompts are separated by dividers, comments appear inline.
+ */
+export function renderPrompts(
+  blocks: (Prompt | CommentBlock)[],
+  style: string = "default"
+): string {
+  const parts: string[] = [];
+  let lastWasPrompt = false;
+
+  for (const block of blocks) {
+    if (block.kind === "prompt") {
+      // Add divider before prompt if previous block was also a prompt
+      if (lastWasPrompt) {
+        parts.push('<div class="prompt-divider"></div>');
+      }
+      parts.push(renderPrompt(block, style));
+      lastWasPrompt = true;
+    } else if (block.kind === "comment-block") {
+      parts.push(`<div class="file-comment">// ${escapeHtml(block.text)}</div>`);
+      lastWasPrompt = false;
+    }
+  }
+
+  return parts.join('');
 }
 
 /**
@@ -159,8 +188,10 @@ function renderExpressionTokens(tokens: ExpressionToken[]): string {
         }
 
         // Continue for path components: . ident ( ) [ ] @
+        // Note: KEYWORD is included because words like "name", "for", "in" may appear as path segments
         if (t.value === "." ||
             t.type === "IDENT" ||
+            t.type === "KEYWORD" ||
             t.value === "(" ||
             t.value === ")" ||
             t.value === "[" ||
@@ -510,6 +541,9 @@ function renderTopLevelBlock(block: PromptBlock): string {
 
     case "name-def":
       return renderNameDef(block);
+
+    case "end-block":
+      return renderEndBlock(block);
   }
 }
 
@@ -684,6 +718,9 @@ function renderRoleBuildingBlock(block: RoleBuildingBlock): string {
 
     case "other-index":
       return renderIndexValue(block);
+
+    case "end-block":
+      return renderEndBlock(block);
   }
 }
 
@@ -1254,5 +1291,14 @@ function renderConditionalOutsideRole(block: ConditionalBlockOutsideRole): strin
   }
 
   return result;
+}
+
+/**
+ * Render an EndBlock: END If (condition)
+ * Conditional early termination that can appear anywhere.
+ */
+function renderEndBlock(block: EndBlock): string {
+  const conditionHtml = renderExpressionTokens(block.condition);
+  return `<div class="end-block"><span class="end-keyword">END</span> <span class="keyword">If</span> (<span class="condition-expr">${conditionHtml}</span>)</div>`;
 }
 

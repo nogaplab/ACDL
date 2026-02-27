@@ -7,7 +7,7 @@ export const acdlLinter = linter((view) => {
   if (!doc.trim()) return diagnostics;
 
   try {
-    new Parser(doc).parsePrompt();
+    new Parser(doc).parseFile();
   } catch (err: any) {
     // Parser errors have the format: [line:col] message
     const match = err.message.match(/\[(\d+):(\d+)\]\s*(.*)/);

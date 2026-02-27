@@ -1,14 +1,21 @@
 BasicRAG[@T]: {
-    S: INSTRUCTIONS
+    MARK 1{
+        S: INSTRUCTIONS
+    }
     U: {
         env.user_input
-        If retrieve(env.user_input).len > 0 {
-            ForEach(i: range(1,retrieve(env.user_input).len)) {
-                retrieve(env.user_input)[i]
+        MARK 2 {
+            If sys.use_rag {
+                MARK 3 {
+                    ForEach(i: range(1,retrieve(env.user_input).len)) {
+                        retrieve(env.user_input)[i]
+                    }
+                }
+                ANSWER_QUESTION_BASED_ON_DOCS
             }
-        }
-        Else {
-            NO_RETRIEVALS 
+            Else {
+                ANSWER_QUESTION
+            }
         }
     }
 }

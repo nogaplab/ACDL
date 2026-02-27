@@ -5,7 +5,7 @@ import * as path from 'path';
 import puppeteer from 'puppeteer';
 import { PDFDocument, AFRelationship } from 'pdf-lib';
 import { Parser } from './parser';
-import { renderPrompt } from './renderPrompt';
+import { renderPrompts } from './renderPrompt';
 
 const OVERLEAF_DIR = path.join(process.cwd(), 'overleaf');
 
@@ -53,15 +53,20 @@ async function renderToPdf(htmlContent: string, outputPath: string): Promise<voi
         const comments = document.querySelectorAll('.comment, .inline-comment');
         comments.forEach(c => (c as HTMLElement).style.display = 'none');
 
-        const container = document.querySelector('.prompt-container');
-        if (!container) return 400;
+        const containers = document.querySelectorAll('.prompt-container');
+        if (containers.length === 0) return 400;
 
-        const width = container.getBoundingClientRect().width;
+        // Find the widest container
+        let maxWidth = 0;
+        containers.forEach(container => {
+            const width = container.getBoundingClientRect().width;
+            if (width > maxWidth) maxWidth = width;
+        });
 
         // Restore comments
         comments.forEach(c => (c as HTMLElement).style.display = '');
 
-        return Math.ceil(width);
+        return Math.ceil(maxWidth);
     });
 
     // Minimum width of 6cm (≈227px at 96 DPI)
@@ -78,14 +83,21 @@ async function renderToPdf(htmlContent: string, outputPath: string): Promise<voi
 
     // Get final dimensions after comments have wrapped
     const contentBox = await page.evaluate(() => {
-        const container = document.querySelector('.prompt-container');
-        if (!container) return { width: 400, height: 200 };
+        const containers = document.querySelectorAll('.prompt-container');
+        if (containers.length === 0) return { width: 400, height: 200 };
 
-        const containerRect = container.getBoundingClientRect();
+        // Find the widest container and the bottom-most point
+        let maxWidth = 0;
+        let maxBottom = 0;
+        containers.forEach(container => {
+            const rect = container.getBoundingClientRect();
+            if (rect.width > maxWidth) maxWidth = rect.width;
+            if (rect.bottom > maxBottom) maxBottom = rect.bottom;
+        });
 
         return {
-            width: Math.ceil(containerRect.width) + 2,
-            height: Math.ceil(containerRect.bottom) + 2
+            width: Math.ceil(maxWidth) + 2,
+            height: Math.ceil(maxBottom) + 2
         };
     });
 
@@ -121,8 +133,8 @@ async function embedSourceAttachment(pdfPath: string, acdlContent: string, fileN
 
 function generateHtml(acdlContent: string, fileName: string): string {
     const parser = new Parser(acdlContent);
-    const ast = parser.parsePrompt();
-    const renderedPrompt = renderPrompt(ast, 'default');
+    const prompts = parser.parseFile();
+    const renderedPrompt = renderPrompts(prompts, 'default');
 
     const cssContent = fs.existsSync('./styles.css')
         ? fs.readFileSync('./styles.css', 'utf-8')
@@ -214,12 +226,25 @@ function generateHtml(acdlContent: string, fileName: string): string {
         .compact .block-with-comment {
             display: inline-flex;
             flex-wrap: wrap;
-            align-items: flex-start;
+            align-items: center;
         }
 
         /* PDF minimum width override */
         .compact .prompt-container {
             min-width: 227px !important;
+        }
+
+        /* PDF vertical alignment fixes for boxed inline elements
+           Force symmetric vertical padding and use flexbox centering */
+        .compact .context-var,
+        .compact .template-block,
+        .compact .func-block,
+        .compact .name-ref {
+            display: inline-flex !important;
+            align-items: center !important;
+            padding-top: 0.15em !important;
+            padding-bottom: 0.15em !important;
+            line-height: 1 !important;
         }
     </style>
 </head>

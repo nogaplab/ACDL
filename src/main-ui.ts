@@ -1,6 +1,6 @@
 import { EditorView } from "@codemirror/view";
 import { Parser } from "./parser";
-import { renderPrompt } from "./renderPrompt";
+import { renderPrompts } from "./renderPrompt";
 import { enableCollapsibleBlocks } from "./ui";
 import { createEditor } from "./editor/setup.js";
 
@@ -79,9 +79,9 @@ function processAndRender(text: string, output: HTMLElement) {
 
   try {
     const parser = new Parser(text);
-    const ast = parser.parsePrompt();
+    const prompts = parser.parseFile();
 
-    output.innerHTML = renderPrompt(ast);
+    output.innerHTML = renderPrompts(prompts);
     enableCollapsibleBlocks();
   } catch (err: any) {
     output.innerHTML = `<div class="error-msg"><strong>Parsing Error:</strong> ${err.message}</div>`;

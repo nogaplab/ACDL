@@ -27,8 +27,10 @@
     "@codemirror/state": "^6.5.4",
     "@codemirror/view": "^6.39.12",
     "@lezer/highlight": "^1.2.3",
+    "@types/pdfkit": "^0.17.5",
     "dompdf.js": "^1.1.1",
     "pdf-lib": "^1.17.1",
+    "pdfkit": "^0.17.2",
     "puppeteer": "^24.37.5"
   }
 }
