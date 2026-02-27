@@ -1416,24 +1416,24 @@ body {
 /* Compact END block */
 .compact .end-block {
   padding: 2px 0;
+  padding-right: 6px;
   margin: 2px 0;
+  margin-left: -10px;
+  border-radius: 2px;
   font-size: 9px;
-  gap: 4px;
+  gap: 6px;
+  width: calc(100% + 10px);
 }
 
-.compact .end-block-line {
-  height: 2px;
-  background: repeating-linear-gradient(
-    to right,
-    var(--text-primary) 0,
-    var(--text-primary) 8px,
-    transparent 8px,
-    transparent 12px
-  );
+.compact .end-dashed-line {
+  border-bottom-width: 1px;
+  min-width: 10px;
+  margin-left: 10px;
 }
 
-.compact .end-block-content {
-  gap: 2px;
+.compact .end-text {
+  gap: 3px;
+  font-size: 9px;
 }
 
 .compact .end-keyword {
@@ -1442,12 +1442,6 @@ body {
 
 .compact .end-block .keyword {
   font-size: 9px;
-}
-
-.compact .end-dashed-line {
-  border-bottom-width: 1px;
-  margin: 0 6px;
-  min-width: 10px;
 }
 
 .compact .loop-block-outside-role .role-message,
