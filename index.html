@@ -621,8 +621,11 @@
 
       // Helper function to capture full content
       async function captureFullContent() {
-        const content = output.querySelector(".prompt-container");
-        if (!content) return null;
+        // Check if there's any content to capture
+        if (!output.querySelector(".prompt-container")) return null;
+
+        // Capture the entire output element to include all prompts and dividers
+        const content = output;
 
         // Store original styles for all affected elements
         const originalOutputStyle = output.style.cssText;
@@ -647,6 +650,35 @@
         inlineFlexEls.forEach(el => {
           savedDisplays.push(el.style.display);
           el.style.display = "inline-block";
+        });
+
+        // Fix mark blocks - html2canvas has issues with absolute positioning
+        // Convert back to flex layout for capture
+        const markBlocks = content.querySelectorAll(".mark-block");
+        const savedMarkBlockStyles = [];
+        markBlocks.forEach(el => {
+          savedMarkBlockStyles.push(el.style.cssText);
+          el.style.display = "flex";
+          el.style.alignItems = "stretch";
+          el.style.paddingRight = "0";
+        });
+
+        const markBrackets = content.querySelectorAll(".mark-block-bracket");
+        const savedMarkBracketStyles = [];
+        markBrackets.forEach(el => {
+          savedMarkBracketStyles.push(el.style.cssText);
+          el.style.position = "relative";
+          el.style.right = "auto";
+          el.style.top = "auto";
+          el.style.bottom = "auto";
+          el.style.marginLeft = "8px";
+        });
+
+        const markContents = content.querySelectorAll(".mark-block-content");
+        const savedMarkContentStyles = [];
+        markContents.forEach(el => {
+          savedMarkContentStyles.push(el.style.cssText);
+          el.style.flex = "1";
         });
 
         // Fix time-index and other-index elements - html2canvas doesn't support CSS variables
@@ -713,7 +745,7 @@
             backgroundColor: "#ffffff",
             scale: window.devicePixelRatio * 2 || 3,
             useCORS: true,
-            logging: false,
+            logging: true, // Enable logging for debugging
             width: captureWidth,
             height: captureHeight,
             windowWidth: captureWidth,
@@ -723,13 +755,32 @@
             x: 0,
             y: 0,
             allowTaint: true,
-            imageTimeout: 0
+            imageTimeout: 0,
+            // Ensure styles are cloned properly
+            onclone: (clonedDoc) => {
+              // Copy all stylesheets to the cloned document
+              const styles = document.querySelectorAll('link[rel="stylesheet"], style');
+              styles.forEach(style => {
+                clonedDoc.head.appendChild(style.cloneNode(true));
+              });
+            }
           });
           return canvas;
         } finally {
           // Restore inline-flex display on captured elements
           inlineFlexEls.forEach((el, i) => {
             el.style.display = savedDisplays[i];
+          });
+
+          // Restore mark block styles
+          markBlocks.forEach((el, i) => {
+            el.style.cssText = savedMarkBlockStyles[i];
+          });
+          markBrackets.forEach((el, i) => {
+            el.style.cssText = savedMarkBracketStyles[i];
+          });
+          markContents.forEach((el, i) => {
+            el.style.cssText = savedMarkContentStyles[i];
           });
 
           // Restore time-index and other-index styles
@@ -757,6 +808,275 @@
         }
       }
 
+      // Helper to capture a single prompt container
+      async function captureSinglePrompt(promptContainer) {
+        // Store original styles
+        const originalOutputStyle = output.style.cssText;
+        const originalWrapperStyle = outputWrapper.style.cssText;
+        const originalBodyStyle = document.body.style.cssText;
+
+        // Temporarily remove all constraints
+        output.style.overflow = "visible";
+        output.style.height = "auto";
+        output.style.maxHeight = "none";
+        output.style.position = "relative";
+        outputWrapper.style.overflow = "visible";
+        outputWrapper.style.height = "auto";
+        document.body.style.overflow = "visible";
+
+        // Fix inline-flex elements
+        const inlineFlexEls = promptContainer.querySelectorAll(".context-var, .template-block, .func-block, .expr-context-var");
+        const savedDisplays = [];
+        inlineFlexEls.forEach(el => {
+          savedDisplays.push(el.style.display);
+          el.style.display = "inline-block";
+        });
+
+        // Fix mark blocks
+        const markBlocks = promptContainer.querySelectorAll(".mark-block");
+        const savedMarkBlockStyles = [];
+        markBlocks.forEach(el => {
+          savedMarkBlockStyles.push(el.style.cssText);
+          el.style.display = "flex";
+          el.style.alignItems = "stretch";
+          el.style.paddingRight = "0";
+        });
+
+        const markBrackets = promptContainer.querySelectorAll(".mark-block-bracket");
+        const savedMarkBracketStyles = [];
+        markBrackets.forEach(el => {
+          savedMarkBracketStyles.push(el.style.cssText);
+          el.style.position = "relative";
+          el.style.right = "auto";
+          el.style.top = "auto";
+          el.style.bottom = "auto";
+          el.style.marginLeft = "8px";
+        });
+
+        const markContents = promptContainer.querySelectorAll(".mark-block-content");
+        const savedMarkContentStyles = [];
+        markContents.forEach(el => {
+          savedMarkContentStyles.push(el.style.cssText);
+          el.style.flex = "1";
+        });
+
+        // Fix time-index elements
+        const timeIndexEls = promptContainer.querySelectorAll(".time-index, .other-index");
+        const savedTimeIndexStyles = [];
+        timeIndexEls.forEach(el => {
+          savedTimeIndexStyles.push(el.style.cssText);
+          el.style.display = "inline";
+          el.style.color = "#0969da";
+          el.style.fontWeight = "700";
+          el.style.fontFamily = "'JetBrains Mono', 'SF Mono', monospace";
+        });
+
+        // Fix title
+        const titleH1 = promptContainer.querySelector(".prompt-title h1");
+        const savedTitleStyle = titleH1 ? titleH1.style.cssText : "";
+        if (titleH1) {
+          titleH1.style.whiteSpace = "nowrap";
+        }
+
+        // Add export fix style
+        const exportFixStyle = document.createElement("style");
+        exportFixStyle.textContent = `
+          .template-block::before {
+            vertical-align: middle;
+            line-height: 1;
+            position: relative;
+            top: -1px;
+          }
+        `;
+        document.head.appendChild(exportFixStyle);
+
+        // Force layout recalculation
+        promptContainer.offsetHeight;
+
+        // Get dimensions
+        const fullWidth = Math.max(
+          promptContainer.scrollWidth,
+          promptContainer.offsetWidth,
+          promptContainer.getBoundingClientRect().width
+        );
+        const fullHeight = Math.max(
+          promptContainer.scrollHeight,
+          promptContainer.offsetHeight,
+          promptContainer.getBoundingClientRect().height
+        );
+
+        const captureWidth = Math.ceil(fullWidth) + 40;
+        const captureHeight = Math.ceil(fullHeight) + 60;
+
+        try {
+          const canvas = await html2canvas(promptContainer, {
+            backgroundColor: "#ffffff",
+            scale: window.devicePixelRatio * 2 || 3,
+            useCORS: true,
+            logging: false,
+            width: captureWidth,
+            height: captureHeight,
+            windowWidth: captureWidth,
+            windowHeight: captureHeight,
+            scrollX: 0,
+            scrollY: 0,
+            x: 0,
+            y: 0,
+            allowTaint: true,
+            imageTimeout: 0
+          });
+          return canvas;
+        } finally {
+          // Restore all styles
+          inlineFlexEls.forEach((el, i) => { el.style.display = savedDisplays[i]; });
+          markBlocks.forEach((el, i) => { el.style.cssText = savedMarkBlockStyles[i]; });
+          markBrackets.forEach((el, i) => { el.style.cssText = savedMarkBracketStyles[i]; });
+          markContents.forEach((el, i) => { el.style.cssText = savedMarkContentStyles[i]; });
+          timeIndexEls.forEach((el, i) => { el.style.cssText = savedTimeIndexStyles[i]; });
+          if (titleH1) { titleH1.style.cssText = savedTitleStyle; }
+          exportFixStyle.remove();
+          output.style.cssText = originalOutputStyle;
+          outputWrapper.style.cssText = originalWrapperStyle;
+          document.body.style.cssText = originalBodyStyle;
+        }
+      }
+
+      // Helper to capture all content (entire output)
+      async function captureAllContent() {
+        if (!output.querySelector(".prompt-container")) return null;
+
+        // Store original styles
+        const originalOutputStyle = output.style.cssText;
+        const originalWrapperStyle = outputWrapper.style.cssText;
+        const originalBodyStyle = document.body.style.cssText;
+
+        // Temporarily remove all constraints
+        output.style.overflow = "visible";
+        output.style.height = "auto";
+        output.style.maxHeight = "none";
+        output.style.position = "relative";
+        outputWrapper.style.overflow = "visible";
+        outputWrapper.style.height = "auto";
+        document.body.style.overflow = "visible";
+
+        // Fix inline-flex elements
+        const inlineFlexEls = output.querySelectorAll(".context-var, .template-block, .func-block, .expr-context-var");
+        const savedDisplays = [];
+        inlineFlexEls.forEach(el => {
+          savedDisplays.push(el.style.display);
+          el.style.display = "inline-block";
+        });
+
+        // Fix mark blocks
+        const markBlocks = output.querySelectorAll(".mark-block");
+        const savedMarkBlockStyles = [];
+        markBlocks.forEach(el => {
+          savedMarkBlockStyles.push(el.style.cssText);
+          el.style.display = "flex";
+          el.style.alignItems = "stretch";
+          el.style.paddingRight = "0";
+        });
+
+        const markBrackets = output.querySelectorAll(".mark-block-bracket");
+        const savedMarkBracketStyles = [];
+        markBrackets.forEach(el => {
+          savedMarkBracketStyles.push(el.style.cssText);
+          el.style.position = "relative";
+          el.style.right = "auto";
+          el.style.top = "auto";
+          el.style.bottom = "auto";
+          el.style.marginLeft = "8px";
+        });
+
+        const markContents = output.querySelectorAll(".mark-block-content");
+        const savedMarkContentStyles = [];
+        markContents.forEach(el => {
+          savedMarkContentStyles.push(el.style.cssText);
+          el.style.flex = "1";
+        });
+
+        // Fix time-index elements
+        const timeIndexEls = output.querySelectorAll(".time-index, .other-index");
+        const savedTimeIndexStyles = [];
+        timeIndexEls.forEach(el => {
+          savedTimeIndexStyles.push(el.style.cssText);
+          el.style.display = "inline";
+          el.style.color = "#0969da";
+          el.style.fontWeight = "700";
+          el.style.fontFamily = "'JetBrains Mono', 'SF Mono', monospace";
+        });
+
+        // Fix titles
+        const titleH1s = output.querySelectorAll(".prompt-title h1");
+        const savedTitleStyles = [];
+        titleH1s.forEach(el => {
+          savedTitleStyles.push(el.style.cssText);
+          el.style.whiteSpace = "nowrap";
+        });
+
+        // Add export fix style
+        const exportFixStyle = document.createElement("style");
+        exportFixStyle.textContent = `
+          .template-block::before {
+            vertical-align: middle;
+            line-height: 1;
+            position: relative;
+            top: -1px;
+          }
+        `;
+        document.head.appendChild(exportFixStyle);
+
+        // Force layout recalculation
+        output.offsetHeight;
+
+        // Get dimensions
+        const fullWidth = Math.max(
+          output.scrollWidth,
+          output.offsetWidth,
+          output.getBoundingClientRect().width
+        );
+        const fullHeight = Math.max(
+          output.scrollHeight,
+          output.offsetHeight,
+          output.getBoundingClientRect().height
+        );
+
+        const captureWidth = Math.ceil(fullWidth) + 40;
+        const captureHeight = Math.ceil(fullHeight) + 60;
+
+        try {
+          const canvas = await html2canvas(output, {
+            backgroundColor: "#ffffff",
+            scale: window.devicePixelRatio * 2 || 3,
+            useCORS: true,
+            logging: false,
+            width: captureWidth,
+            height: captureHeight,
+            windowWidth: captureWidth,
+            windowHeight: captureHeight,
+            scrollX: 0,
+            scrollY: 0,
+            x: 0,
+            y: 0,
+            allowTaint: true,
+            imageTimeout: 0
+          });
+          return canvas;
+        } finally {
+          // Restore all styles
+          inlineFlexEls.forEach((el, i) => { el.style.display = savedDisplays[i]; });
+          markBlocks.forEach((el, i) => { el.style.cssText = savedMarkBlockStyles[i]; });
+          markBrackets.forEach((el, i) => { el.style.cssText = savedMarkBracketStyles[i]; });
+          markContents.forEach((el, i) => { el.style.cssText = savedMarkContentStyles[i]; });
+          timeIndexEls.forEach((el, i) => { el.style.cssText = savedTimeIndexStyles[i]; });
+          titleH1s.forEach((el, i) => { el.style.cssText = savedTitleStyles[i]; });
+          exportFixStyle.remove();
+          output.style.cssText = originalOutputStyle;
+          outputWrapper.style.cssText = originalWrapperStyle;
+          document.body.style.cssText = originalBodyStyle;
+        }
+      }
+
       // Export as PNG
       exportPng.addEventListener("click", async () => {
         exportMenu.classList.remove("show");
@@ -769,7 +1089,7 @@
         exportBtn.classList.add("loading");
 
         try {
-          const canvas = await captureFullContent();
+          const canvas = await captureAllContent();
           if (!canvas) throw new Error("Failed to capture content");
 
           const link = document.createElement("a");
@@ -796,7 +1116,7 @@
         exportBtn.classList.add("loading");
 
         try {
-          const canvas = await captureFullContent();
+          const canvas = await captureAllContent();
           if (!canvas) throw new Error("Failed to capture content");
 
           const { jsPDF } = window.jspdf;

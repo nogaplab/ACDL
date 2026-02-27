@@ -58,7 +58,8 @@ var CONTROL_KEYWORDS = /* @__PURE__ */ new Set([
   "name",
   "for",
   "in",
-  "MARK"
+  "MARK",
+  "END"
 ]);
 var LOGIC_OP = /* @__PURE__ */ new Set([
   "=",
@@ -416,6 +417,9 @@ function nameRef(params) {
 function listComprehension(params) {
   return { ...params, kind: "list-comprehension" };
 }
+function endBlock(params) {
+  return { ...params, kind: "end-block" };
+}
 
 // ../src/parser.ts
 function toExprToken(tok) {
@@ -477,6 +481,22 @@ var Parser = class {
     this.consume("SYMBOL", "}");
     console.log("parsed prompt");
     return prompt({ title, body });
+  }
+  /**
+   * Parse a file containing one or more prompts and comments.
+   * Returns an array of Prompt and CommentBlock objects.
+   */
+  parseFile() {
+    const blocks = [];
+    while (!this.isEOF()) {
+      if (this.peek().type === "COMMENT") {
+        const text = this.consume("COMMENT").value;
+        blocks.push(commentBlock({ text }));
+      } else {
+        blocks.push(this.parsePrompt());
+      }
+    }
+    return blocks;
   }
   parseTitle() {
     const name = this.consume("IDENT").value;
@@ -585,6 +605,8 @@ var Parser = class {
           return this.parseNameDef();
         case "MARK":
           return this.parseMarkBlock();
+        case "END":
+          return this.parseEndBlock();
       }
     }
     if (tok.type === "COMMENT") {
@@ -731,6 +753,8 @@ var Parser = class {
         return this.parseSwitchInside();
       if (val === "MARK")
         return this.parseMarkBlockInside();
+      if (val === "END")
+        return this.parseEndBlock();
       if (val === "name")
         return this.parseNameDef();
       if (val === "break" || val === "continue") {
@@ -826,8 +850,9 @@ var Parser = class {
     const base = baseTok.value;
     const indices = this.parseOptionalIndices();
     let path2;
-    this.consume("SYMBOL", ".");
-    path2 = this.parsePathDesc();
+    if (this.match("SYMBOL", ".")) {
+      path2 = this.parsePathDesc();
+    }
     const comment = this.peek().type === "COMMENT" ? this.consume("COMMENT").value : void 0;
     return contextVar({ base, indices, path: path2, comment });
   }
@@ -916,7 +941,12 @@ var Parser = class {
       if (this.peekNext().value === "(") {
         return this.parseTemplateOrFunc();
       }
-      return identifier({ name: this.consume("IDENT").value });
+      const name = this.consume("IDENT").value;
+      let path2;
+      if (this.match("SYMBOL", ".")) {
+        path2 = this.parsePathDesc();
+      }
+      return otherIndex(identifier({ name, path: path2 }));
     }
     throw new Error(`[${tok.line}:${tok.col}] Unexpected token in arguments: ${tok.type} (${tok.value})`);
   }
@@ -996,6 +1026,31 @@ var Parser = class {
     throw new Error(`[${tok.line}:${tok.col}] Unexpected token in index: ${tok.type} (${tok.value})`);
   }
   /* ───────────────── Control Flow ───────────────── */
+  /**
+   * Parse an END block: END If (condition)
+   * Conditional early termination that can appear anywhere.
+   * Condition is delimited by parentheses, same style as conditionals.
+   */
+  parseEndBlock() {
+    this.consume("KEYWORD", "END");
+    this.consume("KEYWORD", "If");
+    this.consume("SYMBOL", "(");
+    const conditionTokens = [];
+    let depth = 1;
+    while (depth > 0) {
+      if (this.isEOF())
+        throw new Error("Unterminated END If condition");
+      const tok = this.consume();
+      if (tok.value === "(")
+        depth++;
+      if (tok.value === ")")
+        depth--;
+      if (depth > 0) {
+        conditionTokens.push(toExprToken(tok));
+      }
+    }
+    return endBlock({ condition: conditionTokens });
+  }
   parseLoopOutside() {
     this.consume("KEYWORD", "ForEach");
     this.consume("SYMBOL", "(");
@@ -1376,9 +1431,20 @@ function escapeHtml(text) {
 function renderExpressionTokens(tokens) {
   const result = [];
   let i = 0;
+  const noSpaceBefore = /* @__PURE__ */ new Set([")", "]", ",", "."]);
+  const noSpaceAfter = /* @__PURE__ */ new Set(["(", "[", "."]);
+  let lastTokenValue = null;
+  const addWithSpacing = (html, tokenValue) => {
+    if (lastTokenValue !== null && !noSpaceAfter.has(lastTokenValue) && !noSpaceBefore.has(tokenValue)) {
+      result.push(" ");
+    }
+    result.push(html);
+    lastTokenValue = tokenValue;
+  };
   const hasLogicalOps = tokens.some((t) => t.type === "IDENT" && (t.value === "and" || t.value === "or"));
   if (hasLogicalOps) {
     result.push("(");
+    lastTokenValue = "(";
   }
   while (i < tokens.length) {
     const tok = tokens[i];
@@ -1423,7 +1489,7 @@ function renderExpressionTokens(tokens) {
           i++;
           continue;
         }
-        if (t.value === "." || t.type === "IDENT" || t.value === "(" || t.value === ")" || t.value === "[" || t.value === "]" || t.value === "@" || t.type === "NUMBER") {
+        if (t.value === "." || t.type === "IDENT" || t.type === "KEYWORD" || t.value === "(" || t.value === ")" || t.value === "[" || t.value === "]" || t.value === "@" || t.type === "NUMBER") {
           contextVarTokens.push(escapeHtml(t.value));
           i++;
           if ((t.value === ")" || t.value === "]") && parenDepth === 0 && bracketDepth === 0) {
@@ -1436,7 +1502,7 @@ function renderExpressionTokens(tokens) {
         }
         break;
       }
-      result.push(`<span class="expr-context-var">${contextVarTokens.join("")}</span>`);
+      addWithSpacing(`<span class="expr-context-var">${contextVarTokens.join("")}</span>`, "ident");
       continue;
     }
     if (tok.type === "IDENT" && tok.value === "range" && i + 1 < tokens.length && tokens[i + 1].value === "(") {
@@ -1484,7 +1550,7 @@ function renderExpressionTokens(tokens) {
       const startHtml = renderExpressionTokens(startTokens);
       const endHtml = renderExpressionTokens(endTokens);
       const stepHtml = stepTokens ? ` <span class="range-keyword">every</span> ${renderExpressionTokens(stepTokens)}` : "";
-      result.push(`<span class="range-expr">${startHtml}<span class="range-dots">...</span>${endHtml}${stepHtml}</span>`);
+      addWithSpacing(`<span class="range-expr">${startHtml}<span class="range-dots">...</span>${endHtml}${stepHtml}</span>`, "range");
       continue;
     }
     if (tok.type === "IDENT" && i + 1 < tokens.length && tokens[i + 1].value === "(") {
@@ -1507,9 +1573,9 @@ function renderExpressionTokens(tokens) {
       const argsHtml = renderExpressionTokens(argTokens);
       const isBuiltinMath = tok.value === "min" || tok.value === "max";
       if (isBuiltinMath) {
-        result.push(`<span class="builtin-func">${funcName}(${argsHtml})</span>`);
+        addWithSpacing(`<span class="builtin-func">${funcName}(${argsHtml})</span>`, ")");
       } else {
-        result.push(`<span class="func-block"><span class="func-name">${funcName}</span><span class="func-parens">(</span>${argsHtml}<span class="func-parens">)</span></span>`);
+        addWithSpacing(`<span class="func-block"><span class="func-name">${funcName}</span><span class="func-parens">(</span>${argsHtml}<span class="func-parens">)</span></span>`, ")");
       }
       continue;
     }
@@ -1520,7 +1586,7 @@ function renderExpressionTokens(tokens) {
         combined += tokens[i].value;
         i++;
       }
-      result.push(`<span class="expr-logic-op">${escapeHtml(combined)}</span>`);
+      addWithSpacing(`<span class="expr-logic-op">${escapeHtml(combined)}</span>`, combined);
       continue;
     }
     if (tok.type === "SYMBOL" && tok.value === "@" && i + 1 < tokens.length) {
@@ -1540,43 +1606,44 @@ function renderExpressionTokens(tokens) {
             i++;
           }
         }
-        result.push(`<span class="time-index">@${timeIndexName}</span>`);
+        addWithSpacing(`<span class="time-index">@${timeIndexName}</span>`, "ident");
         continue;
       }
     }
     const escaped = escapeHtml(tok.value);
     switch (tok.type) {
       case "KEYWORD":
-        result.push(`<span class="keyword">${escaped}</span>`);
+        addWithSpacing(`<span class="keyword">${escaped}</span>`, tok.value);
         break;
       case "IDENT":
         if (tok.value === "and" || tok.value === "or") {
           result.push(`) <span class="expr-keyword">${escaped}</span> (`);
+          lastTokenValue = "(";
         } else {
-          result.push(`<span class="expr-ident">${escaped}</span>`);
+          addWithSpacing(`<span class="expr-ident">${escaped}</span>`, tok.value);
         }
         break;
       case "NUMBER":
-        result.push(`<span class="expr-number">${escaped}</span>`);
+        addWithSpacing(`<span class="expr-number">${escaped}</span>`, tok.value);
         break;
       case "SYMBOL":
         if (tok.value === "@") {
-          result.push(`<span class="expr-at">@</span>`);
+          addWithSpacing(`<span class="expr-at">@</span>`, "@");
         } else {
-          result.push(`<span class="expr-symbol">${escaped}</span>`);
+          addWithSpacing(`<span class="expr-symbol">${escaped}</span>`, tok.value);
         }
         break;
       case "ARITH_OP":
-        result.push(`<span class="expr-arith-op">${escaped}</span>`);
+        addWithSpacing(`<span class="expr-arith-op">${escaped}</span>`, tok.value);
         break;
       case "RANGE":
-        result.push(`<span class="expr-range">${escaped}</span>`);
+        addWithSpacing(`<span class="expr-range">${escaped}</span>`, tok.value);
         break;
       case "STRING":
-        result.push(`<span class="expr-string">"${escaped}"</span>`);
+        addWithSpacing(`<span class="expr-string">"${escaped}"</span>`, tok.value);
         break;
       default:
-        result.push(escaped);
+        addWithSpacing(escaped, tok.value);
     }
     i++;
   }
@@ -1676,6 +1743,8 @@ function renderTopLevelBlock(block) {
       return renderMarkBlock(block);
     case "name-def":
       return renderNameDef(block);
+    case "end-block":
+      return renderEndBlock(block);
   }
 }
 function renderCommentBlock(block) {
@@ -1776,6 +1845,8 @@ function renderRoleBuildingBlock(block) {
       return renderNameRef(block);
     case "other-index":
       return renderIndexValue(block);
+    case "end-block":
+      return renderEndBlock(block);
   }
 }
 function renderFuncBlock(block) {
@@ -1998,6 +2069,10 @@ function renderConditionalOutsideRole(block) {
     result += wrapBlock("conditional-block-outside-role", elseHeader, renderBody(block.elseBody));
   }
   return result;
+}
+function renderEndBlock(block) {
+  const conditionHtml = renderExpressionTokens(block.condition);
+  return `<div class="end-block"><span class="end-block-line"></span><span class="end-block-content"><span class="end-keyword">END</span> <span class="keyword">If</span> (<span class="condition-expr">${conditionHtml}</span>)</span></div>`;
 }
 
 // src/preview.ts

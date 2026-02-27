@@ -625,13 +625,33 @@ body {
    ====================================================== */
 
 .end-block {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
+  gap: 8px;
+  padding: 4px 0;
   margin: 4px 0;
   font-family: 'JetBrains Mono', 'SF Mono', monospace;
-  font-size: 12px;
+  font-size: 20px;
+}
+
+.end-block-line {
+  flex: 1 1 auto;
+  min-width: 75%;
+  height: 3px;
+  background: repeating-linear-gradient(
+    to right,
+    var(--text-primary) 0,
+    var(--text-primary) 12px,
+    transparent 12px,
+    transparent 20px
+  );
+}
+
+.end-block-content {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
 }
 
 .end-keyword {
@@ -851,22 +871,22 @@ body {
    ====================================================== */
 
 .mark-block {
-  display: flex;
-  align-items: stretch;
-  margin: 8px 0;
   position: relative;
+  margin: 8px 0;
+  padding-right: 40px; /* Reserve space for brackets on the right */
 }
 
 .mark-block-content {
-  flex: 1;
   min-width: 0;
 }
 
 .mark-block-bracket {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
   display: flex;
   align-items: center;
-  margin-left: 8px;
-  position: relative;
 }
 
 .mark-bracket-line {
@@ -884,6 +904,23 @@ body {
   font-weight: 700;
   color: #000000;
   margin-left: 4px;
+}
+
+/* Nested mark blocks - offset brackets to show nesting */
+.mark-block .mark-block {
+  padding-right: 12px;
+}
+
+.mark-block .mark-block .mark-block-bracket {
+  right: -12px;
+}
+
+.mark-block .mark-block .mark-block .mark-block-bracket {
+  right: -24px;
+}
+
+.mark-block .mark-block .mark-block .mark-block .mark-block-bracket {
+  right: -36px;
 }
 
 /* ======================================================
@@ -1327,6 +1364,19 @@ body {
 /* Compact mark blocks */
 .compact .mark-block {
   margin: 4px 0;
+  padding-right: 25px;
+}
+
+.compact .mark-block .mark-block {
+  padding-right: 12px;
+}
+
+.compact .mark-block .mark-block .mark-block-bracket {
+  right: -12px;
+}
+
+.compact .mark-block .mark-block .mark-block .mark-block-bracket {
+  right: -24px;
 }
 
 .compact .mark-bracket-line {
@@ -1365,11 +1415,25 @@ body {
 /* Compact nested spacing */
 /* Compact END block */
 .compact .end-block {
-  padding: 2px 6px;
+  padding: 2px 0;
   margin: 2px 0;
-  border-radius: 2px;
   font-size: 9px;
-  gap: 3px;
+  gap: 4px;
+}
+
+.compact .end-block-line {
+  height: 2px;
+  background: repeating-linear-gradient(
+    to right,
+    var(--text-primary) 0,
+    var(--text-primary) 8px,
+    transparent 8px,
+    transparent 12px
+  );
+}
+
+.compact .end-block-content {
+  gap: 2px;
 }
 
 .compact .end-keyword {

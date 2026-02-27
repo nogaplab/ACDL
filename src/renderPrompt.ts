@@ -408,7 +408,51 @@ function renderExpressionTokens(tokens: ExpressionToken[]): string {
     result.push(")");
   }
 
-  return result.join("");
+  // Join with spaces between tokens, but handle special cases
+  // We need to be smart about spacing: no space after ( [ . @ or before ) ] . ,
+  // Also no space within compound operators like !=, <=, >=, ==
+  let output = "";
+  for (let j = 0; j < result.length; j++) {
+    const part = result[j];
+    const prevPart = j > 0 ? result[j - 1] : "";
+
+    // Helper to check if a string ends with a specific plain character (not inside HTML)
+    const endsWithChar = (s: string, chars: string[]) => {
+      // Check for plain character at end, or character at end of a span (before </span>)
+      for (const c of chars) {
+        if (s.endsWith(c)) return true;
+        if (s.endsWith(`${c}</span>`)) return true;
+        if (s.endsWith(`">${c}`)) return true;
+      }
+      return false;
+    };
+
+    // Helper to check if a string starts with a specific plain character (not HTML tag)
+    const startsWithChar = (s: string, chars: string[]) => {
+      for (const c of chars) {
+        if (s.startsWith(c)) return true;
+        // Also check if it's a span containing just this character
+        if (s.startsWith(`<span`) && s.includes(`">${c}</span>`)) return true;
+      }
+      return false;
+    };
+
+    // Determine if we need a space before this part
+    const needsSpace = j > 0 &&
+      // Don't add space after opening brackets/parens or dots or @
+      !endsWithChar(prevPart, ["(", "[", ".", "@"]) &&
+      // Don't add space before closing brackets/parens, dots, or commas
+      !startsWithChar(part, [")", "]", ".", ","]) &&
+      // Don't add space within compound operators (!=, <=, >=, ==, etc.)
+      !(endsWithChar(prevPart, ["!", "<", ">", "="]) && startsWithChar(part, ["="]));
+
+    if (needsSpace) {
+      output += " ";
+    }
+    output += part;
+  }
+
+  return output;
 }
 
 function renderPromptTitle(title: PromptTitle): string {
@@ -1296,9 +1340,10 @@ function renderConditionalOutsideRole(block: ConditionalBlockOutsideRole): strin
 /**
  * Render an EndBlock: END If (condition)
  * Conditional early termination that can appear anywhere.
+ * Rendered as a dashed line spanning 2/3 width followed by the condition.
  */
 function renderEndBlock(block: EndBlock): string {
   const conditionHtml = renderExpressionTokens(block.condition);
-  return `<div class="end-block"><span class="end-keyword">END</span> <span class="keyword">If</span> (<span class="condition-expr">${conditionHtml}</span>)</div>`;
+  return `<div class="end-block"><span class="end-block-line"></span><span class="end-block-content"><span class="end-keyword">END</span> <span class="keyword">If</span> (<span class="condition-expr">${conditionHtml}</span>)</span></div>`;
 }
 

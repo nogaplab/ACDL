@@ -26,9 +26,7 @@ ForEach(t: range(@sys.last_compaction_turn + 1, @T)) {
 		sys.date_time[@t]
 		env.user_query[@t] 
 	}
-	If (@t == @T) { // XXX END
-	}
-	// XXX i like @t.substeps better than alternative
+	END If (@t == @T)
 	// tool-using loop history
 	ForEach(i: range(1,@t.substeps)) { 
 		// multiple requests in one assistant message

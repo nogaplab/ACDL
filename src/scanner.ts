@@ -49,29 +49,30 @@ export class Scanner {
   private line = 1;
   private col = 1;
   private input: string;
+  private hadWhitespace = false; // tracks if whitespace was skipped before current token
 
   constructor(input: string) {
     this.input = input;
   }
 
   nextToken(): Token {
-    this.skipWhitespace();
+    const spaceBefore = this.skipWhitespace();
     if (this.isEOF()) {
-        return { type: "EOF", value: null, line: this.line, col: this.col };
+        return { type: "EOF", value: null, line: this.line, col: this.col, spaceBefore };
     }
 
     const ch = this.peek();
 
     // COMMENT
     if (ch === "/" && this.peekNext() === "/") {
-        return this.readComment();
+        return this.readComment(spaceBefore);
     }
 
     // RANGE operator
     if (ch === "…" ) {
         const col = this.col;
         this.advance();
-        return { type: "RANGE", value: "…", line: this.line, col };
+        return { type: "RANGE", value: "…", line: this.line, col, spaceBefore };
         }
     if (ch === ".") {
         if (this.peekNext() === "." &&
@@ -79,7 +80,7 @@ export class Scanner {
         ) {
         const col = this.col;
         this.advance(); this.advance(); this.advance();
-        return { type: "RANGE", value: "...", line: this.line, col };
+        return { type: "RANGE", value: "...", line: this.line, col, spaceBefore };
         }
     }
 
@@ -92,6 +93,7 @@ export class Scanner {
             value,
             line: this.line,
             col,
+            spaceBefore,
         };
     }
 
@@ -103,28 +105,29 @@ export class Scanner {
             value,
             line: this.line,
             col,
+            spaceBefore,
         };
     }
 
     // STRING
     if (ch === '"') {
-        return this.readString();
+        return this.readString(spaceBefore);
     }
 
 
     // SYMBOL
     if (SYMBOLS.has(ch)) {
-        return this.readSymbol();
+        return this.readSymbol(spaceBefore);
     }
 
     // NUMBER
     if (this.isDigit(ch)) {
-        return this.readNumber();
+        return this.readNumber(spaceBefore);
     }
 
     // IDENTIFIER
     if (this.isIdentStart(ch)) {
-        return this.readIdentifier();
+        return this.readIdentifier(spaceBefore);
     }
 
     throw this.error(`Unexpected character '${ch}'`);
@@ -132,7 +135,7 @@ export class Scanner {
 
  /* ───────────── token readers ───────────── */
 
-  private readComment(): Token {
+  private readComment(spaceBefore: boolean): Token {
   const startCol = this.col;
 
   // consume //
@@ -154,6 +157,7 @@ export class Scanner {
     value: value.trim(),
     line: this.line,
     col: startCol,
+    spaceBefore,
   };
 }
 
@@ -276,15 +280,18 @@ export class Scanner {
     };
   }
 
-  private skipWhitespace() {
+  private skipWhitespace(): boolean {
+    let skipped = false;
     while (!this.isEOF()) {
         const ch = this.peek();
         if (ch === " " || ch === "\t" || ch === "\n" || ch === "\r") {
         this.advance();
+        skipped = true;
         } else {
         break;
         }
     }
+    return skipped;
   }
 
 

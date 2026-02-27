@@ -63,6 +63,7 @@ export type ArithmeticOperator = "-" | "+" | "%" | "*" | "/";
 export type ExpressionToken = {
   type: "KEYWORD" | "IDENT" | "NUMBER" | "SYMBOL" | "LOGIC_OP" | "ARITH_OP" | "RANGE" | "STRING";
   value: string;
+  spaceBefore?: boolean; // true if there was whitespace before this token
 };
 
 export type ArithmeticExpr = {
