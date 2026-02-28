@@ -941,7 +941,7 @@ var Parser = class {
   parseAtom() {
     const tok = this.peek();
     if (this.match("SYMBOL", "@")) {
-      return timeIndex(identifier({ name: this.consume("IDENT").value }));
+      return timeIndex(this.parseIndexValue());
     }
     if (tok.type === "SYMBOL" && tok.value === "$") {
       return this.parseNameRef();
@@ -1469,6 +1469,15 @@ function renderExpressionTokens(tokens) {
           bracketDepth--;
         if (t.value === "@" && i + 1 < tokens.length) {
           const nextTok = tokens[i + 1];
+          if (nextTok.type === "SYMBOL" && nextTok.value === "$" && i + 2 < tokens.length) {
+            const varNameTok = tokens[i + 2];
+            if (varNameTok.type === "IDENT") {
+              const varName = escapeHtml(varNameTok.value);
+              contextVarTokens.push(`<span class="time-index">@<span class="name-ref">${varName}</span></span>`);
+              i += 3;
+              continue;
+            }
+          }
           if (nextTok.type === "IDENT" || nextTok.type === "NUMBER") {
             let timeIndexName = escapeHtml(nextTok.value);
             i += 2;
@@ -1485,6 +1494,15 @@ function renderExpressionTokens(tokens) {
               }
             }
             contextVarTokens.push(`<span class="time-index">@${timeIndexName}</span>`);
+            continue;
+          }
+        }
+        if (t.value === "$" && i + 1 < tokens.length) {
+          const nextTok = tokens[i + 1];
+          if (nextTok.type === "IDENT") {
+            const varName = escapeHtml(nextTok.value);
+            contextVarTokens.push(`<span class="name-ref">${varName}</span>`);
+            i += 2;
             continue;
           }
         }
@@ -1595,6 +1613,15 @@ function renderExpressionTokens(tokens) {
     }
     if (tok.type === "SYMBOL" && tok.value === "@" && i + 1 < tokens.length) {
       const nextTok = tokens[i + 1];
+      if (nextTok.type === "SYMBOL" && nextTok.value === "$" && i + 2 < tokens.length) {
+        const varNameTok = tokens[i + 2];
+        if (varNameTok.type === "IDENT") {
+          const varName = escapeHtml(varNameTok.value);
+          result.push(`<span class="time-index">@<span class="name-ref">${varName}</span></span>`);
+          i += 3;
+          continue;
+        }
+      }
       if (nextTok.type === "IDENT" || nextTok.type === "NUMBER") {
         let timeIndexName = escapeHtml(nextTok.value);
         i += 2;
@@ -1611,6 +1638,15 @@ function renderExpressionTokens(tokens) {
           }
         }
         result.push(`<span class="time-index">@${timeIndexName}</span>`);
+        continue;
+      }
+    }
+    if (tok.type === "SYMBOL" && tok.value === "$" && i + 1 < tokens.length) {
+      const nextTok = tokens[i + 1];
+      if (nextTok.type === "IDENT") {
+        const varName = escapeHtml(nextTok.value);
+        result.push(`<span class="name-ref">${varName}</span>`);
+        i += 2;
         continue;
       }
     }
@@ -1723,7 +1759,7 @@ function renderIndexContent(value) {
       const right = renderIndexContent(value.right);
       return `<span class="arithmetic-expr">${left}<span class="arith-op">${escapeHtml(ops)}</span>${right}</span>`;
     case "name-ref":
-      return renderNameRef(value);
+      return `<span class="name-ref">${escapeHtml(value.name)}</span>`;
   }
 }
 function renderIndexValue(index) {
