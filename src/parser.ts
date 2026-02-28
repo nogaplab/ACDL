@@ -228,7 +228,7 @@ export class Parser {
         case "If": return this.parseConditionalOutside();
         case "ForEach": return this.parseLoopOutside();
         case "Switch": return this.parseSwitchOutside();
-        case "name": return this.parseNameDef();
+        case "Name": return this.parseNameDef();
         case "MARK": return this.parseMarkBlock();
       }
     }
@@ -441,8 +441,8 @@ export class Parser {
       if (val === "Switch") return this.parseSwitchInside();
       if (val === "MARK") return this.parseMarkBlockInside();
 
-      // 2. Check for name definition
-      if (val === "name") return this.parseNameDef();
+      // 2. Check for Name definition
+      if (val === "Name") return this.parseNameDef();
 
       // 3. Handle break and continue as template-like keywords
       if (val === "break" || val === "continue") {
@@ -475,7 +475,7 @@ export class Parser {
    * where expr is a ContextVar, Func, or ListComprehension
    */
   private parseNameDef(): AST.NameDef {
-    this.consume("KEYWORD", "name");
+    this.consume("KEYWORD", "Name");
     const varName = this.consume("IDENT").value as string;
     this.consume("SYMBOL", ":");
     this.consume("LOGIC_OP", "=");
@@ -679,8 +679,8 @@ export class Parser {
     const tok = this.peek();
 
     if (this.match("SYMBOL", "@")) {
-      // Time index like @t
-      return Create.timeIndex(Create.identifier({ name: this.consume("IDENT").value as string }));
+      // Time index like @t, @$C, @t+1, etc.
+      return Create.timeIndex(this.parseIndexValue());
     }
 
     // Name reference: $varname

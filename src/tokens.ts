@@ -16,7 +16,7 @@ export type ControlKeyword =
   | "Default"
   | "break"
   | "continue"
-  | "name"
+  | "Name"
   | "for"
   | "in"
   | "MARK"

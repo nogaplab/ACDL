@@ -545,19 +545,23 @@ body {
   font-size: 11px;
   margin-left: 8px;
   white-space: normal;
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   min-width: 0;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
+  max-width: 350px;
 }
 
 /* Wrapper for blocks with comments - keeps them together when wrapping */
 .block-with-comment {
   display: inline-flex;
-  align-items: flex-start;
+  align-items: center;
   vertical-align: top;
   max-width: 100%;
   gap: 4px;
+}
+
+/* When comment wraps to multiple lines, align to top */
+.block-with-comment.comment-wrapped {
+  align-items: flex-start;
 }
 
 /* Prioritize main content (templates/functions) over comments */

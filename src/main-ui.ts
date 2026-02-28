@@ -83,7 +83,28 @@ function processAndRender(text: string, output: HTMLElement) {
 
     output.innerHTML = renderPrompts(prompts);
     enableCollapsibleBlocks();
+    detectWrappedComments(output);
   } catch (err: any) {
     output.innerHTML = `<div class="error-msg"><strong>Parsing Error:</strong> ${err.message}</div>`;
   }
+}
+
+/**
+ * Detect comments that wrap to multiple lines and add a class for top alignment.
+ * Single-line comments stay centered, multi-line comments align to top.
+ */
+function detectWrappedComments(container: HTMLElement) {
+  const blockWithComments = container.querySelectorAll('.block-with-comment');
+  blockWithComments.forEach(el => {
+    const comment = el.querySelector('.inline-comment, .comment') as HTMLElement;
+    if (comment) {
+      // Check if comment height indicates wrapping (more than ~1.5 lines)
+      const lineHeight = parseFloat(getComputedStyle(comment).lineHeight) || 16;
+      if (comment.offsetHeight > lineHeight * 1.5) {
+        el.classList.add('comment-wrapped');
+      } else {
+        el.classList.remove('comment-wrapped');
+      }
+    }
+  });
 }

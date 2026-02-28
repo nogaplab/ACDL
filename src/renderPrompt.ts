@@ -151,9 +151,22 @@ function renderExpressionTokens(tokens: ExpressionToken[]): string {
         if (t.value === "[") bracketDepth++;
         if (t.value === "]") bracketDepth--;
 
-        // Check for @ followed by identifier (time index pattern)
+        // Check for @ followed by identifier or name reference (time index pattern)
         if (t.value === "@" && i + 1 < tokens.length) {
           const nextTok = tokens[i + 1];
+
+          // Handle @$varname (time index with name reference)
+          if (nextTok.type === "SYMBOL" && nextTok.value === "$" && i + 2 < tokens.length) {
+            const varNameTok = tokens[i + 2];
+            if (varNameTok.type === "IDENT") {
+              const varName = escapeHtml(varNameTok.value);
+              contextVarTokens.push(`<span class="time-index">@<span class="name-ref">${varName}</span></span>`);
+              i += 3; // skip @, $, and identifier
+              continue;
+            }
+          }
+
+          // Handle @identifier or @number (simple time index)
           if (nextTok.type === "IDENT" || nextTok.type === "NUMBER") {
             // Collect the full time index (e.g., @i, @t, @i.k)
             let timeIndexName = escapeHtml(nextTok.value);
@@ -176,6 +189,17 @@ function renderExpressionTokens(tokens: ExpressionToken[]): string {
             }
 
             contextVarTokens.push(`<span class="time-index">@${timeIndexName}</span>`);
+            continue;
+          }
+        }
+
+        // Check for $ followed by identifier (name reference)
+        if (t.value === "$" && i + 1 < tokens.length) {
+          const nextTok = tokens[i + 1];
+          if (nextTok.type === "IDENT") {
+            const varName = escapeHtml(nextTok.value);
+            contextVarTokens.push(`<span class="name-ref">${varName}</span>`);
+            i += 2; // skip $ and identifier
             continue;
           }
         }
@@ -326,9 +350,22 @@ function renderExpressionTokens(tokens: ExpressionToken[]): string {
       continue;
     }
 
-    // Check for @ followed by identifier (time index) before regular rendering
+    // Check for @ followed by identifier or name reference (time index) before regular rendering
     if (tok.type === "SYMBOL" && tok.value === "@" && i + 1 < tokens.length) {
       const nextTok = tokens[i + 1];
+
+      // Handle @$varname (time index with name reference)
+      if (nextTok.type === "SYMBOL" && nextTok.value === "$" && i + 2 < tokens.length) {
+        const varNameTok = tokens[i + 2];
+        if (varNameTok.type === "IDENT") {
+          const varName = escapeHtml(varNameTok.value);
+          result.push(`<span class="time-index">@<span class="name-ref">${varName}</span></span>`);
+          i += 3; // skip @, $, and identifier
+          continue;
+        }
+      }
+
+      // Handle @identifier or @number (simple time index)
       if (nextTok.type === "IDENT" || nextTok.type === "NUMBER") {
         // Collect the full time index (e.g., @i, @t, @i.k)
         let timeIndexName = escapeHtml(nextTok.value);
@@ -351,6 +388,17 @@ function renderExpressionTokens(tokens: ExpressionToken[]): string {
         }
 
         result.push(`<span class="time-index">@${timeIndexName}</span>`);
+        continue;
+      }
+    }
+
+    // Check for $ followed by identifier (name reference) before regular rendering
+    if (tok.type === "SYMBOL" && tok.value === "$" && i + 1 < tokens.length) {
+      const nextTok = tokens[i + 1];
+      if (nextTok.type === "IDENT") {
+        const varName = escapeHtml(nextTok.value);
+        result.push(`<span class="name-ref">${varName}</span>`);
+        i += 2; // skip $ and identifier
         continue;
       }
     }
@@ -496,7 +544,8 @@ function renderIndexContent(value: IndexValue): string {
       const right = renderIndexContent(value.right as IndexValue);
       return `<span class="arithmetic-expr">${left}<span class="arith-op">${escapeHtml(ops)}</span>${right}</span>`;
     case "name-ref":
-      return renderNameRef(value);
+      // Simplified rendering for name-ref in index context - just the pink text without $ prefix
+      return `<span class="name-ref">${escapeHtml(value.name)}</span>`;
   }
 }
 
@@ -613,7 +662,7 @@ function renderNameDef(block: NameDef): string {
     valueHtml = renderListComprehension(block.value);
   }
 
-  return `<div class="name-def"><span class="keyword">name</span> <span class="name-ref"><span class="segment">${varName}</span></span> <span class="name-assign">:=</span> ${valueHtml}</div>`;
+  return `<div class="name-def"><span class="keyword">Name</span> <span class="name-ref"><span class="segment">${varName}</span></span> <span class="name-assign">:=</span> ${valueHtml}</div>`;
 }
 
 /**

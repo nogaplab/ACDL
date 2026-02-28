@@ -44,38 +44,126 @@ async function renderToPng(htmlContent: string, outputPath: string): Promise<voi
         });
     });
 
-    // Step 1: Find the width of the widest non-comment content
+    // Step 1: Find the width of the widest LINE of non-comment content
     const contentWidth = await page.evaluate(() => {
+        // Remove max-width constraints on containers to allow natural sizing
+        const containers = document.querySelectorAll('.prompt-container');
+        containers.forEach(el => {
+            (el as HTMLElement).style.maxWidth = 'none';
+            (el as HTMLElement).style.width = 'auto';
+        });
+
         // Hide all comments temporarily to measure content width
         const comments = document.querySelectorAll('.comment, .inline-comment');
         comments.forEach(c => (c as HTMLElement).style.display = 'none');
 
-        const containers = document.querySelectorAll('.prompt-container');
+        // Force layout recalculation
+        document.body.offsetHeight;
+
         if (containers.length === 0) return 400;
 
-        // Find the widest container
+        // Find the widest LINE of content (not container width)
+        // Collect all elements that represent "lines" of content
+        const lineElements: Element[] = [];
+
+        // Prompt titles
+        document.querySelectorAll('.prompt-title h1').forEach(el => lineElements.push(el));
+
+        // Role body blocks - each child is a line
+        document.querySelectorAll('.role-body-block').forEach(block => {
+            Array.from(block.children).forEach(child => {
+                // For block-with-comment, we only measure the main content (first child)
+                if (child.classList.contains('block-with-comment')) {
+                    const mainContent = child.firstElementChild;
+                    if (mainContent) lineElements.push(mainContent);
+                } else if (!child.classList.contains('comment') && !child.classList.contains('inline-comment')) {
+                    lineElements.push(child);
+                }
+            });
+        });
+
+        // Control flow headers
+        document.querySelectorAll('.loop-block-outside-role-header, .loop-block-inside-role-header, .conditional-block-outside-role-header, .conditional-section-header, .switch-block-outside-role-header, .switch-block-inside-role-header, .switch-case-header, .switch-default-header').forEach(el => lineElements.push(el));
+
+        // Name definitions
+        document.querySelectorAll('.name-def').forEach(el => lineElements.push(el));
+
+        // End blocks
+        document.querySelectorAll('.end-block').forEach(el => lineElements.push(el));
+
+        // Label starts/ends
+        document.querySelectorAll('.label-start, .label-end').forEach(el => lineElements.push(el));
+
+        // Find the widest element
         let maxWidth = 0;
-        containers.forEach(container => {
-            const width = container.getBoundingClientRect().width;
-            if (width > maxWidth) maxWidth = width;
+        lineElements.forEach(el => {
+            const rect = el.getBoundingClientRect();
+            if (rect.width > maxWidth) maxWidth = rect.width;
         });
 
         // Restore comments
         comments.forEach(c => (c as HTMLElement).style.display = '');
 
-        return Math.ceil(maxWidth);
+        // Add padding for prompt-container border, padding, and some breathing room
+        return Math.ceil(maxWidth) + 60;
     });
 
     // Minimum width of 6cm (≈227px at 96 DPI)
     const minWidthPx = 227;
     const finalWidth = Math.max(contentWidth, minWidthPx);
 
-    // Step 2: Set the output width to force comments to wrap, let prompt-container size naturally
+    // Step 2: Set the output width and constrain comments to wrap within remaining space
     await page.evaluate((width) => {
         const output = document.querySelector('#output') as HTMLElement;
         if (output) {
             output.style.width = width + 'px';
         }
+
+        // Set container widths to constrain the layout
+        const containers = document.querySelectorAll('.prompt-container');
+        containers.forEach(el => {
+            (el as HTMLElement).style.width = (width - 40) + 'px';
+            (el as HTMLElement).style.maxWidth = (width - 40) + 'px';
+        });
+
+        // For each block-with-comment, calculate available width for comment
+        // and set explicit max-width so it wraps within that space (staying to the right of content)
+        const blockWithComments = document.querySelectorAll('.block-with-comment');
+        blockWithComments.forEach(el => {
+            const htmlEl = el as HTMLElement;
+            const mainContent = htmlEl.firstElementChild as HTMLElement;
+            const comment = htmlEl.querySelector('.inline-comment, .comment') as HTMLElement;
+
+            if (mainContent && comment) {
+                const mainWidth = mainContent.getBoundingClientRect().width;
+                const gap = 8; // gap + margin
+                const availableForComment = width - 40 - mainWidth - gap;
+
+                // Set max-width on comment so it wraps within available space
+                const commentMaxWidth = Math.max(80, availableForComment);
+                comment.style.maxWidth = commentMaxWidth + 'px';
+                comment.style.minWidth = '0';
+                comment.style.flex = '0 1 auto';
+                comment.style.whiteSpace = 'normal';
+                comment.style.overflowWrap = 'break-word';
+            }
+        });
+
+        // Force layout recalculation
+        document.body.offsetHeight;
+
+        // Detect wrapped comments and add class for top alignment
+        blockWithComments.forEach(el => {
+            const htmlEl = el as HTMLElement;
+            const comment = htmlEl.querySelector('.inline-comment, .comment') as HTMLElement;
+            if (comment) {
+                // Check if comment height indicates wrapping (more than ~1.5 lines)
+                const lineHeight = parseFloat(getComputedStyle(comment).lineHeight) || 16;
+                if (comment.offsetHeight > lineHeight * 1.5) {
+                    htmlEl.classList.add('comment-wrapped');
+                }
+            }
+        });
     }, finalWidth);
 
     // Get final dimensions after comments have wrapped

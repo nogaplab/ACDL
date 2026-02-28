@@ -21,7 +21,7 @@ const CONTROL_KEYWORDS = new Set<ControlKeyword>([
   "Default",
   "break",
   "continue",
-  "name",
+  "Name",
   "for",
   "in",
   "MARK",
