@@ -160,7 +160,7 @@ function renderExpressionTokens(tokens: ExpressionToken[]): string {
             const varNameTok = tokens[i + 2];
             if (varNameTok.type === "IDENT") {
               const varName = escapeHtml(varNameTok.value);
-              contextVarTokens.push(`<span class="time-index">@<span class="name-ref">${varName}</span></span>`);
+              contextVarTokens.push(`<span class="time-index"><span class="at-symbol">@</span><span class="name-ref">${varName}</span></span>`);
               i += 3; // skip @, $, and identifier
               continue;
             }
@@ -188,7 +188,7 @@ function renderExpressionTokens(tokens: ExpressionToken[]): string {
               }
             }
 
-            contextVarTokens.push(`<span class="time-index">@${timeIndexName}</span>`);
+            contextVarTokens.push(`<span class="time-index"><span class="at-symbol">@</span>${timeIndexName}</span>`);
             continue;
           }
         }
@@ -359,7 +359,7 @@ function renderExpressionTokens(tokens: ExpressionToken[]): string {
         const varNameTok = tokens[i + 2];
         if (varNameTok.type === "IDENT") {
           const varName = escapeHtml(varNameTok.value);
-          result.push(`<span class="time-index">@<span class="name-ref">${varName}</span></span>`);
+          result.push(`<span class="time-index"><span class="at-symbol">@</span><span class="name-ref">${varName}</span></span>`);
           i += 3; // skip @, $, and identifier
           continue;
         }
@@ -387,7 +387,7 @@ function renderExpressionTokens(tokens: ExpressionToken[]): string {
           }
         }
 
-        result.push(`<span class="time-index">@${timeIndexName}</span>`);
+        result.push(`<span class="time-index"><span class="at-symbol">@</span>${timeIndexName}</span>`);
         continue;
       }
     }
@@ -552,7 +552,7 @@ function renderIndexContent(value: IndexValue): string {
 function renderIndexValue(index: Index): string {
   const content = renderIndexContent(index.value);
   return index.kind === "time-index"
-    ? `<span class="time-index">@${content}</span>`
+    ? `<span class="time-index"><span class="at-symbol">@</span>${content}</span>`
     : `<span class="other-index">${content}</span>`;
 }
 

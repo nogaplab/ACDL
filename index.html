@@ -740,7 +740,8 @@
 
         // Step 2: Restore comments and constrain width so they wrap
         comments.forEach(c => c.style.display = '');
-        const constrainedWidth = Math.max(contentWidthWithoutComments, 200);
+        // Min 200px, max 450px
+        const constrainedWidth = Math.min(Math.max(contentWidthWithoutComments, 200), 450);
 
         // Set container widths to the constrained width
         containers.forEach(el => {
@@ -991,7 +992,8 @@
 
         // Step 2: Restore comments and constrain width so they wrap
         comments.forEach(c => c.style.display = '');
-        const constrainedWidth = Math.max(contentWidthWithoutComments, 200);
+        // Min 200px, max 450px
+        const constrainedWidth = Math.min(Math.max(contentWidthWithoutComments, 200), 450);
         promptContainer.style.width = constrainedWidth + 'px';
         promptContainer.style.maxWidth = constrainedWidth + 'px';
 
@@ -1238,7 +1240,8 @@
         // Step 2: Restore comments and constrain width so they wrap
         comments.forEach(c => c.style.display = '');
         const savedOutputWidth = output.style.width;
-        const constrainedWidth = Math.max(contentWidthWithoutComments, 200);
+        // Min 200px, max 450px
+        const constrainedWidth = Math.min(Math.max(contentWidthWithoutComments, 200), 450);
 
         // Set container widths to the constrained width
         containers.forEach(el => {
@@ -1327,7 +1330,7 @@
           timeIndexEls.forEach((el, i) => { el.style.cssText = savedTimeIndexStyles[i]; });
           titleH1s.forEach((el, i) => { el.style.cssText = savedTitleStyles[i]; });
           containers.forEach((el, i) => { el.style.cssText = savedContainerStyles[i]; });
-          savedBlockStyles.forEach(({ el, style }) => { el.style.cssText = style; });
+          savedBlockStyles.forEach(({ el, style, hadClass }) => { el.style.cssText = style; if (hadClass) el.classList.add('comment-wrapped'); else el.classList.remove('comment-wrapped'); });
           savedCommentStyles.forEach(({ el, style }) => { el.style.cssText = style; });
           exportFixStyle.remove();
           output.style.cssText = originalOutputStyle;

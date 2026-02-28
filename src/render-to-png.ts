@@ -1,5 +1,5 @@
 // src/render-to-png.ts
-// Batch render .acdl files to PNG using Puppeteer
+// Batch render .acdl files to PNG using Puppeteer + html2canvas (same as web version)
 import * as fs from 'fs';
 import * as path from 'path';
 import puppeteer from 'puppeteer';
@@ -18,61 +18,107 @@ async function renderToPng(htmlContent: string, outputPath: string): Promise<voi
     // Wait for fonts to load
     await page.evaluateHandle('document.fonts.ready');
 
-    // Convert CSS ::before pseudo-elements to real text for better rendering
-    await page.evaluate(() => {
-        // Map selectors to their ::before content symbols
-        const symbolMap: Record<string, string> = {
-            '.loop-block-outside-role-header': '↻',
-            '.loop-block-inside-role-header': '↻',
-            '.conditional-section-header': '◇',
-            '.conditional-block-outside-role-header': '◇',
-            '.switch-block-outside-role-header': '⎇',
-            '.switch-block-inside-role-header': '⎇',
-            '.template-block': '◆'
-        };
+    // Use html2canvas inside the page (same as web version)
+    const dataUrl = await page.evaluate(async () => {
+        const output = document.querySelector('#output') as HTMLElement;
+        if (!output) return null;
 
-        Object.entries(symbolMap).forEach(([selector, symbol]) => {
-            document.querySelectorAll(selector).forEach(el => {
-                if (!el.getAttribute('data-symbol-added')) {
-                    const span = document.createElement('span');
-                    span.textContent = symbol;
-                    span.className = 'pdf-symbol';
-                    el.insertBefore(span, el.firstChild);
-                    el.setAttribute('data-symbol-added', 'true');
-                }
-            });
+        // html2canvas doesn't render text inside inline-flex elements properly
+        // in certain nesting contexts (e.g. context-vars inside ForEach loops).
+        // Temporarily switch to inline-block for the capture.
+        const inlineFlexEls = output.querySelectorAll('.context-var, .template-block, .func-block, .expr-context-var');
+        inlineFlexEls.forEach(el => {
+            (el as HTMLElement).style.display = 'inline-block';
         });
-    });
 
-    // Step 1: Find the width of the widest LINE of non-comment content
-    const contentWidth = await page.evaluate(() => {
+        // Fix mark blocks - html2canvas has issues with absolute positioning
+        // Convert back to flex layout for capture
+        const markBlocks = output.querySelectorAll('.mark-block');
+        markBlocks.forEach(el => {
+            const htmlEl = el as HTMLElement;
+            htmlEl.style.display = 'flex';
+            htmlEl.style.alignItems = 'stretch';
+            htmlEl.style.paddingRight = '0';
+        });
+
+        const markBrackets = output.querySelectorAll('.mark-block-bracket');
+        markBrackets.forEach(el => {
+            const htmlEl = el as HTMLElement;
+            htmlEl.style.position = 'relative';
+            htmlEl.style.right = 'auto';
+            htmlEl.style.top = 'auto';
+            htmlEl.style.bottom = 'auto';
+            htmlEl.style.marginLeft = '8px';
+        });
+
+        const markContents = output.querySelectorAll('.mark-block-content');
+        markContents.forEach(el => {
+            (el as HTMLElement).style.flex = '1';
+        });
+
+        // Fix time-index and other-index elements - html2canvas doesn't support CSS variables
+        // Apply inline styles directly for reliable rendering
+        const timeIndexEls = output.querySelectorAll('.time-index, .other-index');
+        timeIndexEls.forEach(el => {
+            const htmlEl = el as HTMLElement;
+            htmlEl.style.display = 'inline';
+            htmlEl.style.color = '#0969da';
+            htmlEl.style.fontWeight = '700';
+            htmlEl.style.fontFamily = "'JetBrains Mono', 'SF Mono', monospace";
+        });
+
+        // Fix end-dashed-line - html2canvas doesn't render repeating-linear-gradient
+        // Convert to border-top dashed style
+        const endDashedLines = output.querySelectorAll('.end-dashed-line');
+        endDashedLines.forEach(el => {
+            const htmlEl = el as HTMLElement;
+            htmlEl.style.background = 'none';
+            htmlEl.style.borderTop = '1px dashed #6e7781';
+            htmlEl.style.height = '0';
+        });
+
+        // Fix title to prevent wrapping
+        const titleH1s = output.querySelectorAll('.prompt-title h1');
+        titleH1s.forEach(el => {
+            (el as HTMLElement).style.whiteSpace = 'nowrap';
+        });
+
+        // html2canvas misrenders ::before pseudo-elements when display is
+        // inline-block instead of inline-flex. Add a fix style.
+        const exportFixStyle = document.createElement('style');
+        exportFixStyle.textContent = `
+            .template-block::before {
+                vertical-align: middle;
+                line-height: 1;
+                position: relative;
+                top: -1px;
+            }
+        `;
+        document.head.appendChild(exportFixStyle);
+
         // Remove max-width constraints on containers to allow natural sizing
-        const containers = document.querySelectorAll('.prompt-container');
+        const containers = output.querySelectorAll('.prompt-container');
         containers.forEach(el => {
             (el as HTMLElement).style.maxWidth = 'none';
             (el as HTMLElement).style.width = 'auto';
         });
 
-        // Hide all comments temporarily to measure content width
-        const comments = document.querySelectorAll('.comment, .inline-comment');
+        // Step 1: Hide comments to measure content width
+        const comments = output.querySelectorAll('.comment, .inline-comment');
         comments.forEach(c => (c as HTMLElement).style.display = 'none');
 
         // Force layout recalculation
         document.body.offsetHeight;
 
-        if (containers.length === 0) return 400;
-
-        // Find the widest LINE of content (not container width)
-        // Collect all elements that represent "lines" of content
+        // Find the widest line of content (same logic as web version)
         const lineElements: Element[] = [];
 
         // Prompt titles
-        document.querySelectorAll('.prompt-title h1').forEach(el => lineElements.push(el));
+        output.querySelectorAll('.prompt-title h1').forEach(el => lineElements.push(el));
 
         // Role body blocks - each child is a line
-        document.querySelectorAll('.role-body-block').forEach(block => {
+        output.querySelectorAll('.role-body-block').forEach(block => {
             Array.from(block.children).forEach(child => {
-                // For block-with-comment, we only measure the main content (first child)
                 if (child.classList.contains('block-with-comment')) {
                     const mainContent = child.firstElementChild;
                     if (mainContent) lineElements.push(mainContent);
@@ -83,16 +129,16 @@ async function renderToPng(htmlContent: string, outputPath: string): Promise<voi
         });
 
         // Control flow headers
-        document.querySelectorAll('.loop-block-outside-role-header, .loop-block-inside-role-header, .conditional-block-outside-role-header, .conditional-section-header, .switch-block-outside-role-header, .switch-block-inside-role-header, .switch-case-header, .switch-default-header').forEach(el => lineElements.push(el));
+        output.querySelectorAll('.loop-block-outside-role-header, .loop-block-inside-role-header, .conditional-block-outside-role-header, .conditional-section-header, .switch-block-outside-role-header, .switch-block-inside-role-header, .switch-case-header, .switch-default-header').forEach(el => lineElements.push(el));
 
         // Name definitions
-        document.querySelectorAll('.name-def').forEach(el => lineElements.push(el));
+        output.querySelectorAll('.name-def').forEach(el => lineElements.push(el));
 
-        // End blocks
-        document.querySelectorAll('.end-block').forEach(el => lineElements.push(el));
+        // End blocks - measure only the end-text part, not the flex-grow dashed line
+        output.querySelectorAll('.end-block .end-text').forEach(el => lineElements.push(el));
 
         // Label starts/ends
-        document.querySelectorAll('.label-start, .label-end').forEach(el => lineElements.push(el));
+        output.querySelectorAll('.label-start, .label-end').forEach(el => lineElements.push(el));
 
         // Find the widest element
         let maxWidth = 0;
@@ -101,34 +147,24 @@ async function renderToPng(htmlContent: string, outputPath: string): Promise<voi
             if (rect.width > maxWidth) maxWidth = rect.width;
         });
 
-        // Restore comments
+        // Add padding for the prompt-container's border, padding, and breathing room
+        const contentWidthWithoutComments = Math.ceil(maxWidth) + 70;
+
+        // Step 2: Restore comments and constrain width so they wrap
         comments.forEach(c => (c as HTMLElement).style.display = '');
+        // Min 200px, max 450px
+        const constrainedWidth = Math.min(Math.max(contentWidthWithoutComments, 200), 450);
 
-        // Add padding for prompt-container border, padding, and some breathing room
-        return Math.ceil(maxWidth) + 60;
-    });
-
-    // Minimum width of 6cm (≈227px at 96 DPI)
-    const minWidthPx = 227;
-    const finalWidth = Math.max(contentWidth, minWidthPx);
-
-    // Step 2: Set the output width and constrain comments to wrap within remaining space
-    await page.evaluate((width) => {
-        const output = document.querySelector('#output') as HTMLElement;
-        if (output) {
-            output.style.width = width + 'px';
-        }
-
-        // Set container widths to constrain the layout
-        const containers = document.querySelectorAll('.prompt-container');
+        // Set container widths to the constrained width
         containers.forEach(el => {
-            (el as HTMLElement).style.width = (width - 40) + 'px';
-            (el as HTMLElement).style.maxWidth = (width - 40) + 'px';
+            (el as HTMLElement).style.width = (constrainedWidth - 40) + 'px';
+            (el as HTMLElement).style.maxWidth = (constrainedWidth - 40) + 'px';
         });
+        output.style.width = constrainedWidth + 'px';
+        output.style.minWidth = '200px';
 
         // For each block-with-comment, calculate available width for comment
-        // and set explicit max-width so it wraps within that space (staying to the right of content)
-        const blockWithComments = document.querySelectorAll('.block-with-comment');
+        const blockWithComments = output.querySelectorAll('.block-with-comment');
         blockWithComments.forEach(el => {
             const htmlEl = el as HTMLElement;
             const mainContent = htmlEl.firstElementChild as HTMLElement;
@@ -136,11 +172,10 @@ async function renderToPng(htmlContent: string, outputPath: string): Promise<voi
 
             if (mainContent && comment) {
                 const mainWidth = mainContent.getBoundingClientRect().width;
-                const gap = 8; // gap + margin
-                const availableForComment = width - 40 - mainWidth - gap;
-
-                // Set max-width on comment so it wraps within available space
+                const gap = 8;
+                const availableForComment = constrainedWidth - 40 - mainWidth - gap;
                 const commentMaxWidth = Math.max(80, availableForComment);
+
                 comment.style.maxWidth = commentMaxWidth + 'px';
                 comment.style.minWidth = '0';
                 comment.style.flex = '0 1 auto';
@@ -149,7 +184,7 @@ async function renderToPng(htmlContent: string, outputPath: string): Promise<voi
             }
         });
 
-        // Force layout recalculation
+        // Force layout recalculation with constrained width
         document.body.offsetHeight;
 
         // Detect wrapped comments and add class for top alignment
@@ -157,55 +192,61 @@ async function renderToPng(htmlContent: string, outputPath: string): Promise<voi
             const htmlEl = el as HTMLElement;
             const comment = htmlEl.querySelector('.inline-comment, .comment') as HTMLElement;
             if (comment) {
-                // Check if comment height indicates wrapping (more than ~1.5 lines)
                 const lineHeight = parseFloat(getComputedStyle(comment).lineHeight) || 16;
                 if (comment.offsetHeight > lineHeight * 1.5) {
                     htmlEl.classList.add('comment-wrapped');
+                } else {
+                    htmlEl.classList.remove('comment-wrapped');
                 }
             }
         });
-    }, finalWidth);
 
-    // Get final dimensions after comments have wrapped
-    const contentBox = await page.evaluate(() => {
-        const containers = document.querySelectorAll('.prompt-container');
-        if (containers.length === 0) return { width: 400, height: 200 };
+        // Step 3: Get final dimensions with comments wrapping
+        const fullWidth = Math.max(
+            output.scrollWidth,
+            output.offsetWidth,
+            output.getBoundingClientRect().width
+        );
+        const fullHeight = Math.max(
+            output.scrollHeight,
+            output.offsetHeight,
+            output.getBoundingClientRect().height
+        );
 
-        // Find the widest container and the bottom-most point
-        let maxWidth = 0;
-        let maxBottom = 0;
-        containers.forEach(container => {
-            const rect = container.getBoundingClientRect();
-            if (rect.width > maxWidth) maxWidth = rect.width;
-            if (rect.bottom > maxBottom) maxBottom = rect.bottom;
-        });
+        // Add padding to ensure nothing gets cropped
+        const captureWidth = Math.ceil(fullWidth) + 40;
+        const captureHeight = Math.ceil(fullHeight) + 60;
 
-        return {
-            width: Math.ceil(maxWidth) + 40,  // Add padding for PNG
-            height: Math.ceil(maxBottom) + 40
-        };
-    });
-
-    // Add padding to the body for better PNG appearance
-    await page.evaluate(() => {
-        const output = document.querySelector('#output') as HTMLElement;
-        if (output) {
-            output.style.padding = '20px';
-        }
-    });
-
-    // Take screenshot with high quality settings
-    await page.screenshot({
-        path: outputPath,
-        type: 'png',
-        clip: {
+        // Use html2canvas to render (same as web version)
+        // @ts-ignore - html2canvas is loaded via script tag
+        const canvas = await html2canvas(output, {
+            backgroundColor: '#ffffff',
+            scale: 2,
+            useCORS: true,
+            logging: false,
+            width: captureWidth,
+            height: captureHeight,
+            windowWidth: captureWidth,
+            windowHeight: captureHeight,
+            scrollX: 0,
+            scrollY: 0,
             x: 0,
             y: 0,
-            width: contentBox.width,
-            height: contentBox.height
-        },
-        omitBackground: false
+            allowTaint: true,
+            imageTimeout: 0
+        });
+
+        // Clean up the temporary style
+        exportFixStyle.remove();
+
+        return canvas.toDataURL('image/png');
     });
+
+    if (dataUrl) {
+        // Convert data URL to buffer and save
+        const base64Data = dataUrl.replace(/^data:image\/png;base64,/, '');
+        fs.writeFileSync(outputPath, Buffer.from(base64Data, 'base64'));
+    }
 
     await browser.close();
 }
@@ -219,7 +260,7 @@ function generateHtml(acdlContent: string, fileName: string): string {
         ? fs.readFileSync('./styles.css', 'utf-8')
         : '';
 
-    // Apply the same structure as the web version's PNG export
+    // Include html2canvas from CDN (same library as web version)
     return `
 <!DOCTYPE html>
 <html lang="en">
@@ -229,6 +270,7 @@ function generateHtml(acdlContent: string, fileName: string): string {
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         ${cssContent}
 
@@ -240,89 +282,9 @@ function generateHtml(acdlContent: string, fileName: string): string {
         }
 
         #output {
-            padding: 0;
+            padding: 20px;
             margin: 0;
             background: white;
-        }
-
-        /* Hide CSS pseudo-elements - we inject them as real text for PNG */
-        .loop-block-outside-role-header::before,
-        .loop-block-inside-role-header::before,
-        .conditional-section-header::before,
-        .conditional-block-outside-role-header::before,
-        .switch-block-outside-role-header::before,
-        .switch-block-inside-role-header::before,
-        .template-block::before {
-            content: none !important;
-        }
-
-        /* Style the injected symbols to match original pseudo-elements */
-        .pdf-symbol {
-            margin-right: 4px;
-            color: var(--control-border, #6e7781);
-        }
-        .template-block .pdf-symbol {
-            font-size: 6px;
-            opacity: 0.7;
-            color: inherit;
-        }
-        .compact .template-block .pdf-symbol {
-            font-size: 5px;
-        }
-        .loop-block-outside-role-header .pdf-symbol,
-        .loop-block-inside-role-header .pdf-symbol {
-            font-size: 12px;
-        }
-        .conditional-section-header .pdf-symbol,
-        .conditional-block-outside-role-header .pdf-symbol {
-            font-size: 10px;
-        }
-        .switch-block-outside-role-header .pdf-symbol,
-        .switch-block-inside-role-header .pdf-symbol {
-            font-size: 12px;
-        }
-        .compact .loop-block-outside-role-header .pdf-symbol,
-        .compact .loop-block-inside-role-header .pdf-symbol,
-        .compact .switch-block-outside-role-header .pdf-symbol,
-        .compact .switch-block-inside-role-header .pdf-symbol,
-        .compact .conditional-block-outside-role-header .pdf-symbol {
-            font-size: 8px;
-        }
-        .compact .conditional-section-header .pdf-symbol {
-            font-size: 7px;
-        }
-
-        /* Comments wrap within the constrained width */
-        .compact .comment,
-        .compact .inline-comment {
-            white-space: normal;
-            word-wrap: break-word;
-            flex-shrink: 1;
-            min-width: 0;
-        }
-
-        /* Block with comment should allow comment wrapping */
-        .compact .block-with-comment {
-            display: inline-flex;
-            flex-wrap: wrap;
-            align-items: center;
-        }
-
-        /* PNG minimum width override */
-        .compact .prompt-container {
-            min-width: 227px !important;
-        }
-
-        /* PNG vertical alignment fixes for boxed inline elements */
-        .compact .context-var,
-        .compact .template-block,
-        .compact .func-block,
-        .compact .name-ref {
-            display: inline-flex !important;
-            align-items: center !important;
-            padding-top: 0.15em !important;
-            padding-bottom: 0.15em !important;
-            line-height: 1 !important;
         }
     </style>
 </head>

@@ -246,7 +246,7 @@ body {
 
 .template-block {
   display: inline-flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 4px;
   background: var(--accent-template-bg);
   border: 1px solid var(--accent-template);
@@ -276,7 +276,7 @@ body {
 
 .func-block {
   display: inline-flex;
-  align-items: flex-start;
+  align-items: center;
   background: var(--accent-function-bg);
   border: 1px solid var(--accent-function);
   color: var(--accent-function);
@@ -351,6 +351,11 @@ body {
   font-family: 'JetBrains Mono', 'SF Mono', monospace;
   font-size: 12px;
   line-height: 1;
+}
+
+/* @ symbol in time indices - wrapped for html2canvas compatibility */
+.at-symbol {
+  color: inherit;
 }
 
 /* Ensure time-index is styled correctly even when nested inside context-var */
