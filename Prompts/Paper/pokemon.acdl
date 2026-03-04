@@ -1,0 +1,47 @@
+Pokemon[@T]: {
+    U: env.image.HUD // heads up display, a screenshot with things like HP, coordinates of the character on the map and ID codes for items printed on it
+    S: {
+        INTRO // you are playing pokemon blue
+        GOAL // beat the game
+        CONVENTIONS  // vision to text translation conventions, general gameplay tips
+        AVAILABLE_TOOLS // 
+    } 
+
+    History {
+        A: {
+            If @T>1 {
+                ForEach(i: range(@T-(@T%100),@T-1)) {
+                    resp.action[@i]
+                }
+                
+                If @T%100==0 {
+                    Name actions := [resp.action[@t] for t in range(@T-100, @T)]
+                    summarize($actions)
+                    If @T>999 and @T%1000==0 {
+                        Name relevant_summaries := [sys.summary[@t] for t in range(@T, @T-900, 100)]
+                        compress_summaries($relevant_summaries)
+                    }  
+                }
+                If @T>99 {
+                    ForEach(i: max(100, @T-(@T%100)-800), @T-(@T%100), 100) {  
+                        sys.summary[@i]
+                    }
+                    
+                    If @T>999 and @T%1000!=0 {
+                        ForEach(i: range(max(1000, @T-@T%1000-900), @T-(@T%1000), 1000)) { 
+                            sys.compressed_summary[@i]
+                        } 
+                    }
+                }
+            }
+        }    
+    }
+
+    If @T%25==0 {
+        //response from critique agents tracking of subgoals (primary, secondary, tertiary, contingency plants, preparation, exploration, team composition)
+        A: critique_performance(prompt.History[@T]) // gets action history of some sort, but not mentioned in the paper
+    }
+    U: env.xml_map[@T] // unseen coordinates are not viewable until explored
+    S: INSTRUCTION_TO_EXPLORE
+    S: CHOOSE_ACTION // instructions to choose next action and how
+}

@@ -296,10 +296,10 @@ function renderExpressionTokens(tokens: ExpressionToken[]): string {
       const startHtml = renderExpressionTokens(startTokens);
       const endHtml = renderExpressionTokens(endTokens);
       const stepHtml = stepTokens
-        ? ` <span class="range-keyword">every</span> ${renderExpressionTokens(stepTokens)}`
+        ? `<span class="range-step"><span class="range-keyword">every</span><span class="range-step-value">${renderExpressionTokens(stepTokens)}</span></span>`
         : "";
 
-      result.push(`<span class="range-expr">${startHtml}<span class="range-dots">...</span>${endHtml}${stepHtml}</span>`);
+      result.push(`<span class="range-expr"><span class="range-start">${startHtml}</span><span class="range-dots">...</span><span class="range-end">${endHtml}</span>${stepHtml}</span>`);
       continue;
     }
 
@@ -504,11 +504,7 @@ function renderExpressionTokens(tokens: ExpressionToken[]): string {
 }
 
 function renderPromptTitle(title: PromptTitle): string {
-  const indices = title.indices;
-
-  // Build something like:  prompt[@t][agent_name]
   const indexSuffix = renderIndexList(title.indices);
-
   return `<div class="prompt-title"><h1>${escapeHtml(title.name)}${indexSuffix}</h1></div>`;
 }
 
@@ -558,8 +554,8 @@ function renderIndexValue(index: Index): string {
 
 function renderIndexList(indices: Index[]): string {
   if (indices.length === 0) return "";
-  // Render each index in its own bracket set to preserve [@t][i] syntax
-  return indices.map(idx => `[${renderIndexValue(idx)}]`).join("");
+  // Render all indices in a single bracket set with commas: [idx1, idx2]
+  return `[${indices.map(idx => renderIndexValue(idx)).join(", ")}]`;
 }
 
 
@@ -886,10 +882,10 @@ function renderFuncBlock(block: Func): string {
     const startHtml = renderTextArgs(block.arguments[0]);
     const endHtml = renderTextArgs(block.arguments[1]);
     const stepHtml = block.arguments.length >= 3
-      ? ` <span class="range-keyword">every</span> ${renderTextArgs(block.arguments[2])}`
+      ? `<span class="range-step"><span class="range-keyword">every</span><span class="range-step-value">${renderTextArgs(block.arguments[2])}</span></span>`
       : "";
 
-    const rangeCore = `<span class="range-expr">${startHtml}<span class="range-dots">...</span>${endHtml}${stepHtml}</span>`;
+    const rangeCore = `<span class="range-expr"><span class="range-start">${startHtml}</span><span class="range-dots">...</span><span class="range-end">${endHtml}</span>${stepHtml}</span>`;
 
     if (block.comment) {
       return `<span class="block-with-comment">${rangeCore}<span class="inline-comment"> // ${escapeHtml(block.comment)}</span></span>`;
@@ -1110,10 +1106,10 @@ function renderRangeExpr(range: RangeExpr): string {
   const startHtml = renderExpressionTokens(range.start);
   const endHtml = renderExpressionTokens(range.end);
   const stepHtml = range.step
-    ? ` <span class="range-keyword">every</span> ${renderExpressionTokens(range.step)}`
+    ? `<span class="range-step"><span class="range-keyword">every</span><span class="range-step-value">${renderExpressionTokens(range.step)}</span></span>`
     : "";
 
-  return `<span class="range-expr">${startHtml}<span class="range-dots">...</span>${endHtml}${stepHtml}</span>`;
+  return `<span class="range-expr"><span class="range-start">${startHtml}</span><span class="range-dots">...</span><span class="range-end">${endHtml}</span>${stepHtml}</span>`;
 }
 
 function renderLoopOutsideRole(block: LoopBlockOutsideRole): string {
@@ -1339,43 +1335,23 @@ function renderConditionalInsideRole(block: ConditionalBlockInsideRole): string 
       )
       .join("\n");
 
-  const parts: string[] = [];
-
-  // IF
-  parts.push(
-    wrapBlock(
-      "conditional-section",
-      `<span class="keyword">If</span> (<span class="condition-expr">${renderExpressionTokens(block.Ifcondition)}</span>):`,
-      renderBody(block.IfBody)
-    )
-  );
+  // IF block
+  const ifHeader = `<span class="keyword">If</span> (<span class="condition-expr">${renderExpressionTokens(block.Ifcondition)}</span>):`;
+  let result = wrapBlock("conditional-block-inside-role", ifHeader, renderBody(block.IfBody));
 
   // ELSEIFs
   for (let i = 0; i < block.elseif.length; i++) {
-    parts.push(
-      wrapBlock(
-        "conditional-section",
-        `<span class="keyword">ElseIf</span> (<span class="condition-expr">${renderExpressionTokens(block.elseif[i])}</span>):`,
-        renderBody(block.elseifBody[i])
-      )
-    );
+    const elseifHeader = `<span class="keyword">ElseIf</span> (<span class="condition-expr">${renderExpressionTokens(block.elseif[i])}</span>):`;
+    result += wrapBlock("conditional-block-inside-role", elseifHeader, renderBody(block.elseifBody[i]));
   }
 
   // ELSE
   if (block.elseBody && block.elseBody.length > 0) {
-    parts.push(
-      wrapBlock(
-        "conditional-section",
-        `<span class="keyword">Else</span>:`,
-        renderBody(block.elseBody)
-      )
-    );
+    const elseHeader = `<span class="keyword">Else</span>:`;
+    result += wrapBlock("conditional-block-inside-role", elseHeader, renderBody(block.elseBody));
   }
 
-  return `
-<div class="conditional-block-inside-role">
-  ${parts.join("\n")}
-</div>`;
+  return result;
 }
 
 

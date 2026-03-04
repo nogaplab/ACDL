@@ -12,8 +12,7 @@ React2[@T.I]: {
           T: sys.tool_used[@t.i].tool_response
         }}
         A: resp.response // final response after ReAct loop
-    }
-  }
+    }}
     // Last turn
     U: env.user_question[@T]
     ForEach(i: range(1,@T.substeps)) {

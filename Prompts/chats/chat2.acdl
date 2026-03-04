@@ -1,9 +1,0 @@
-Chat2[@T]: {
-    S: INSTRUCTIONS 
-    ForEach(t: range(1,T-1)) {
-        U: env.user_input[@t]
-        A: resp.llm_answer[@t]
-    }
-
-    U: env.user_input[@T]
-}

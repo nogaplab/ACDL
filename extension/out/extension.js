@@ -55,7 +55,7 @@ var CONTROL_KEYWORDS = /* @__PURE__ */ new Set([
   "Default",
   "break",
   "continue",
-  "name",
+  "Name",
   "for",
   "in",
   "MARK",
@@ -439,6 +439,7 @@ function toExprToken(tok) {
 var Parser = class {
   tokens = [];
   pos = 0;
+  lastConsumedLine = 0;
   constructor(input) {
     const scanner = new Scanner(input);
     let token;
@@ -467,12 +468,14 @@ var Parser = class {
       throw new Error(`[${tok.line}:${tok.col}] Expected value "${value}", got "${tok.value}"`);
     }
     this.pos++;
+    this.lastConsumedLine = tok.line;
     return tok;
   }
   match(type, value) {
     const tok = this.peek();
     if (tok.type === type && (!value || tok.value === value)) {
       this.pos++;
+      this.lastConsumedLine = tok.line;
       return true;
     }
     return false;
@@ -609,7 +612,7 @@ var Parser = class {
           return this.parseLoopOutside();
         case "Switch":
           return this.parseSwitchOutside();
-        case "name":
+        case "Name":
           return this.parseNameDef();
         case "MARK":
           return this.parseMarkBlock();
@@ -762,7 +765,7 @@ var Parser = class {
         return this.parseSwitchInside();
       if (val === "MARK")
         return this.parseMarkBlockInside();
-      if (val === "name")
+      if (val === "Name")
         return this.parseNameDef();
       if (val === "break" || val === "continue") {
         const name = this.consume("KEYWORD").value;
@@ -786,7 +789,7 @@ var Parser = class {
    * where expr is a ContextVar, Func, or ListComprehension
    */
   parseNameDef() {
-    this.consume("KEYWORD", "name");
+    this.consume("KEYWORD", "Name");
     const varName = this.consume("IDENT").value;
     this.consume("SYMBOL", ":");
     this.consume("LOGIC_OP", "=");
@@ -868,7 +871,8 @@ var Parser = class {
     if (this.match("SYMBOL", ".")) {
       path2 = this.parsePathDesc();
     }
-    const comment = this.peek().type === "COMMENT" ? this.consume("COMMENT").value : void 0;
+    const nextTok = this.peek();
+    const comment = nextTok.type === "COMMENT" && nextTok.line === this.lastConsumedLine ? this.consume("COMMENT").value : void 0;
     return contextVar({ base, indices, path: path2, comment });
   }
   parsePathDesc() {
@@ -897,7 +901,8 @@ var Parser = class {
         args = this.parseTextArgs();
         this.consume("SYMBOL", ")");
       }
-      const comment = this.peek().type === "COMMENT" ? this.consume("COMMENT").value : void 0;
+      const nextTok = this.peek();
+      const comment = nextTok.type === "COMMENT" && nextTok.line === this.lastConsumedLine ? this.consume("COMMENT").value : void 0;
       return template({ name, arguments: args, comment });
     }
     if (this.peek().value === "(") {
@@ -905,7 +910,8 @@ var Parser = class {
       const args = this.parseTextArgs();
       this.consume("SYMBOL", ")");
       const indices = this.parseOptionalIndices();
-      const comment = this.peek().type === "COMMENT" ? this.consume("COMMENT").value : void 0;
+      const nextTok = this.peek();
+      const comment = nextTok.type === "COMMENT" && nextTok.line === this.lastConsumedLine ? this.consume("COMMENT").value : void 0;
       return func({ name, arguments: args, indices, comment });
     }
     let path2;
@@ -1473,7 +1479,7 @@ function renderExpressionTokens(tokens) {
             const varNameTok = tokens[i + 2];
             if (varNameTok.type === "IDENT") {
               const varName = escapeHtml(varNameTok.value);
-              contextVarTokens.push(`<span class="time-index">@<span class="name-ref">${varName}</span></span>`);
+              contextVarTokens.push(`<span class="time-index"><span class="at-symbol">@</span><span class="name-ref">${varName}</span></span>`);
               i += 3;
               continue;
             }
@@ -1493,7 +1499,7 @@ function renderExpressionTokens(tokens) {
                 i++;
               }
             }
-            contextVarTokens.push(`<span class="time-index">@${timeIndexName}</span>`);
+            contextVarTokens.push(`<span class="time-index"><span class="at-symbol">@</span>${timeIndexName}</span>`);
             continue;
           }
         }
@@ -1571,8 +1577,8 @@ function renderExpressionTokens(tokens) {
       i++;
       const startHtml = renderExpressionTokens(startTokens);
       const endHtml = renderExpressionTokens(endTokens);
-      const stepHtml = stepTokens ? ` <span class="range-keyword">every</span> ${renderExpressionTokens(stepTokens)}` : "";
-      result.push(`<span class="range-expr">${startHtml}<span class="range-dots">...</span>${endHtml}${stepHtml}</span>`);
+      const stepHtml = stepTokens ? `<span class="range-step"><span class="range-keyword">every</span><span class="range-step-value">${renderExpressionTokens(stepTokens)}</span></span>` : "";
+      result.push(`<span class="range-expr"><span class="range-start">${startHtml}</span><span class="range-dots">...</span><span class="range-end">${endHtml}</span>${stepHtml}</span>`);
       continue;
     }
     if (tok.type === "IDENT" && i + 1 < tokens.length && tokens[i + 1].value === "(") {
@@ -1617,7 +1623,7 @@ function renderExpressionTokens(tokens) {
         const varNameTok = tokens[i + 2];
         if (varNameTok.type === "IDENT") {
           const varName = escapeHtml(varNameTok.value);
-          result.push(`<span class="time-index">@<span class="name-ref">${varName}</span></span>`);
+          result.push(`<span class="time-index"><span class="at-symbol">@</span><span class="name-ref">${varName}</span></span>`);
           i += 3;
           continue;
         }
@@ -1637,7 +1643,7 @@ function renderExpressionTokens(tokens) {
             i++;
           }
         }
-        result.push(`<span class="time-index">@${timeIndexName}</span>`);
+        result.push(`<span class="time-index"><span class="at-symbol">@</span>${timeIndexName}</span>`);
         continue;
       }
     }
@@ -1764,7 +1770,7 @@ function renderIndexContent(value) {
 }
 function renderIndexValue(index) {
   const content = renderIndexContent(index.value);
-  return index.kind === "time-index" ? `<span class="time-index">@${content}</span>` : `<span class="other-index">${content}</span>`;
+  return index.kind === "time-index" ? `<span class="time-index"><span class="at-symbol">@</span>${content}</span>` : `<span class="other-index">${content}</span>`;
 }
 function renderIndexList(indices) {
   if (indices.length === 0)
@@ -1834,7 +1840,7 @@ function renderNameDef(block) {
   } else {
     valueHtml = renderListComprehension(block.value);
   }
-  return `<div class="name-def"><span class="keyword">name</span> <span class="name-ref"><span class="segment">${varName}</span></span> <span class="name-assign">:=</span> ${valueHtml}</div>`;
+  return `<div class="name-def"><span class="keyword">Name</span> <span class="name-ref"><span class="segment">${varName}</span></span> <span class="name-assign">:=</span> ${valueHtml}</div>`;
 }
 function renderListComprehension(block) {
   const elementHtml = block.element.kind === "context-var" ? renderContextVarBlock(block.element) : renderFuncBlock(block.element);
@@ -1951,8 +1957,8 @@ function renderFuncBlock(block) {
   if (block.name === "range" && block.arguments.length >= 2) {
     const startHtml = renderTextArgs(block.arguments[0]);
     const endHtml = renderTextArgs(block.arguments[1]);
-    const stepHtml = block.arguments.length >= 3 ? ` <span class="range-keyword">every</span> ${renderTextArgs(block.arguments[2])}` : "";
-    const rangeCore = `<span class="range-expr">${startHtml}<span class="range-dots">...</span>${endHtml}${stepHtml}</span>`;
+    const stepHtml = block.arguments.length >= 3 ? `<span class="range-step"><span class="range-keyword">every</span><span class="range-step-value">${renderTextArgs(block.arguments[2])}</span></span>` : "";
+    const rangeCore = `<span class="range-expr"><span class="range-start">${startHtml}</span><span class="range-dots">...</span><span class="range-end">${endHtml}</span>${stepHtml}</span>`;
     if (block.comment) {
       return `<span class="block-with-comment">${rangeCore}<span class="inline-comment"> // ${escapeHtml(block.comment)}</span></span>`;
     }
@@ -2034,8 +2040,8 @@ function renderIterable(iterable) {
 function renderRangeExpr(range) {
   const startHtml = renderExpressionTokens(range.start);
   const endHtml = renderExpressionTokens(range.end);
-  const stepHtml = range.step ? ` <span class="range-keyword">every</span> ${renderExpressionTokens(range.step)}` : "";
-  return `<span class="range-expr">${startHtml}<span class="range-dots">...</span>${endHtml}${stepHtml}</span>`;
+  const stepHtml = range.step ? `<span class="range-step"><span class="range-keyword">every</span><span class="range-step-value">${renderExpressionTokens(range.step)}</span></span>` : "";
+  return `<span class="range-expr"><span class="range-start">${startHtml}</span><span class="range-dots">...</span><span class="range-end">${endHtml}</span>${stepHtml}</span>`;
 }
 function renderLoopOutsideRole(block) {
   const indexHtml = `<span class="loop-var">${renderIndexContent(block.index.value)}</span>`;
@@ -2121,36 +2127,17 @@ function renderConditionalInsideRole(block) {
   const renderBody = (body) => body.map(
     (child) => `<div class="role-condition-child">${renderRoleBuildingBlock(child)}</div>`
   ).join("\n");
-  const parts = [];
-  parts.push(
-    wrapBlock(
-      "conditional-section",
-      `<span class="keyword">If</span> (<span class="condition-expr">${renderExpressionTokens(block.Ifcondition)}</span>):`,
-      renderBody(block.IfBody)
-    )
-  );
+  const ifHeader = `<span class="keyword">If</span> (<span class="condition-expr">${renderExpressionTokens(block.Ifcondition)}</span>):`;
+  let result = wrapBlock("conditional-block-inside-role", ifHeader, renderBody(block.IfBody));
   for (let i = 0; i < block.elseif.length; i++) {
-    parts.push(
-      wrapBlock(
-        "conditional-section",
-        `<span class="keyword">ElseIf</span> (<span class="condition-expr">${renderExpressionTokens(block.elseif[i])}</span>):`,
-        renderBody(block.elseifBody[i])
-      )
-    );
+    const elseifHeader = `<span class="keyword">ElseIf</span> (<span class="condition-expr">${renderExpressionTokens(block.elseif[i])}</span>):`;
+    result += wrapBlock("conditional-block-inside-role", elseifHeader, renderBody(block.elseifBody[i]));
   }
   if (block.elseBody && block.elseBody.length > 0) {
-    parts.push(
-      wrapBlock(
-        "conditional-section",
-        `<span class="keyword">Else</span>:`,
-        renderBody(block.elseBody)
-      )
-    );
+    const elseHeader = `<span class="keyword">Else</span>:`;
+    result += wrapBlock("conditional-block-inside-role", elseHeader, renderBody(block.elseBody));
   }
-  return `
-<div class="conditional-block-inside-role">
-  ${parts.join("\n")}
-</div>`;
+  return result;
 }
 function renderConditionalOutsideRole(block) {
   const renderBody = (body) => body.map(

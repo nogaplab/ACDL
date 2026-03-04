@@ -170,8 +170,8 @@ body {
   border-left: 1px solid var(--border-medium);
   border-radius: 0;
   margin: 4px 0;
+  padding-top: 6px;
   position: relative;
-  overflow: hidden;
 }
 
 .role-message.system {
@@ -194,7 +194,7 @@ body {
 .role-message-header {
   display: inline-block;
   padding: 2px 12px;
-  margin: 4px 6px;
+  margin: 0 6px 4px 6px;
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.5px;
@@ -1227,7 +1227,7 @@ body {
 
 .compact .role-message-header,
 .compact .none-message-header {
-  padding: 0 4px;
+  padding: 1px 4px;
   margin: 0;
   font-size: 7px;
   letter-spacing: 0.2px;
@@ -2017,12 +2017,6 @@ body.resizing {
     <a href="index.html" class="header-logo">ACDL</a>
     <span class="header-divider"></span>
     <h1>Live Editor</h1>
-    <div class="header-nav">
-      <a href="docs/SyntaxReference.html">Docs</a>
-      <a href="docs/examples/">Examples</a>
-      <a href="docs/vscode.html">VSCode</a>
-      <a href="https://github.com/acdlang26/acdl" class="external">GitHub</a>
-    </div>
     <label id="drop-zone" for="acdl-upload">
       Drop .acdl file here <span class="browse-btn">or browse</span>
       <input type="file" id="acdl-upload" accept=".acdl" style="display: none;" />
@@ -4180,21 +4174,307 @@ var ACDL = (() => {
   <!-- Embedded Prompts -->
   <script>
 const PROMPTS = {
-  "fig1_base": "ReactBase[@T]: {\r\n  S: {\r\n    INSTRUCTIONS\r\n    AVAILABLE_TOOLS\r\n  }\r\n  U: env.user_input[@1]\r\n  // history\r\n  ForEach(t: range(1,@T-1)) {\r\n    A: {\r\n      MARK 1 {\r\n        resp.tool_reasoning[@t] \r\n      }\r\n      sys.tool_used[@t]\r\n    }\r\n    T: sys.tool_used[@t].tool_response\r\n  }\r\n  S: USE_TOOLS_TO_SOLVE_TASK \r\n}",
-  "fig1_left": "ReactNoReasoningInHistory[@T]: {\r\n  S: {\r\n    INSTRUCTIONS\r\n    AVAILABLE_TOOLS\r\n  }\r\n  U: env.user_input[@1]\r\n  // history\r\n  ForEach(t: range(1,@T-1)) {\r\n    A: {\r\n      sys.tool_used[@t]\r\n    }\r\n    T: sys.tool_used[@t].tool_response\r\n  }\r\n  S: USE_TOOLS_TO_SOLVE_TASK \r\n}",
-  "fig1_right": "ReactToolRagAtEnd[@T]: {\r\n  S: {\r\n    INSTRUCTIONS\r\n  }\r\n  U: env.user_input[@1]\r\n  // history\r\n  ForEach(t: range(1,@T-1)) {\r\n    A: {\r\n      resp.tool_reasoning[@t] \r\n      sys.tool_used[@t]\r\n    }\r\n    T: sys.tool_used[@t].tool_response\r\n  }\r\n  S: {\r\n    MARK 1 {\r\n    locate_tools(env.user_input[@1])\r\n    }\r\n    USE_TOOLS_TO_SOLVE_TASK \r\n  }\r\n}",
-  "rag": "BasicRAG[@T]: {\r\n    S: INSTRUCTIONS\r\n    U: {\r\n        Name docs := k_relevant_docs(env.user_input[@T])\r\n        ForEach(i: range(1, $docs.len)) {\r\n          $docs[i].source\r\n          $docs[i].content\r\n        }\r\n        ANSWER_Q_FROM_DOCS\r\n        env.user_input[@T]\r\n    }\r\n}",
-  "mintagent": "MintOriginal[@T]: {\r\n    U: {\r\n        TASK_DESCRIPTION(sys.max_total_steps)\r\n        env.tool_descriptions // description of each tool, how to use them, and when to use them\r\n        env.in_context_examples\r\n        env.task_prompt // the question you need to answer, or task you need to complete\r\n    }\r\n\r\n    ForEach(@t: range(1,@T-1)) {\r\n        ForEach(i: range(1,@t.substeps)) {\r\n            A: {\r\n                MARK 1 {\r\n                resp.tool_reasoning[@t.i]\r\n                }\r\n                sys.tool_used[@t.i]\r\n            }\r\n            MARK 2 {\r\n            U: sys.tool_used[@t.i].tool_response\r\n            }\r\n    \r\n        A: {\r\n            resp.solution_reasoning[@t]\r\n            resp.solution[@t]\r\n        }\r\n        U: env.feedback[@t.i] // response if the answer was right or wrong, remaining tries if failed\r\n        }\r\n    }\r\n\r\n    ForEach(k: range(1, @T.substeps)) {\r\n        A: {\r\n            resp.tool_reasoning[@T.k]\r\n            resp.tool_used[@T.k]\r\n        }\r\n        MARK 2 {\r\n        U: sys.tool_used[@T.k].tool_response\r\n        }\r\n    }\r\n\r\n}\r\n",
-  "multiagent": "MultiAgent[@T, agent]: {\r\n  S: {\r\n    INSTRUCTIONS\r\n  }\r\n  U: {\r\n    // history\r\n    // NOTE: history does not show substeps\r\n    ForEach(@t: range(@T-50, @T-1)) {\r\n      sys[agent].performed_action[@t]\r\n      sys[agent].performed_action[@t].result\r\n    }\r\n    // what I have\r\n    sys[agent].inventory[@T]\r\n    // whom I see in the environment and what I know about them\r\n    ForEach(a: env.seen_actors[@T]) {\r\n      a.name\r\n      a.description\r\n      retrieve(sys[agent].memory[@T], a.name)\r\n    }\r\n    If sys[agent].in_conversation[@T] {\r\n     ForEach (convTurn: sys[agent].conversation[@T]) {\r\n       convTurn.speaker\r\n       convTurn.content\r\n     }\r\n    }\r\n  }\r\n  S: {\r\n    sys[agent].available_actions\r\n    If sys[agent].in_conversation[@T] {\r\n      // You can do things, but you are in a conversation\r\n      CONTINUE_THE_CONVERSATION\r\n    }\r\n  }\r\n}\r\n",
-  "openclaw": "OpenClaw[@T.I]: {\r\nS: {\r\n        // Very long system prompt detailing skills, tools, sub-agents, memory-files and various others.\r\n        // Out of scope for the current presentation.\r\n\tSystemPrompt()\r\n}\r\n// summarized early conversation (if exists)\r\nMARK 2 {\r\nName C := sys.last_compaction_time[@T] \r\nIf (@C > 1) {\r\n\tU: { \r\n\t\tTHIS_IS_A_SUMMARY\r\n\t\tsys.conversation_summary[@C]\r\n\t}\r\n\tA: resp.response[@C]\r\n}\r\n}\r\n// conversation history\r\nForEach(t: range(@C + 1, @T)) {\r\n\tU: {\r\n                MARK 6 {\r\n\t\t// The pending_messages list is often empty\r\n\t\tForEach(m: range(1,sys.pending_messages[@t].len)) {\r\n\t\t\tsys.pending_messages[@t][m].date_time\r\n\t\t\tsys.pending_messages[@t][m].message\r\n\t\t}\r\n                }\r\n    MARK 5 {\r\n    Switch env.input_source[@t] {\r\n      Case user: {\r\n        MARK 4 {\r\n          sys.date_time[@t]\r\n        }\r\n        env.user_query[@t] \r\n      }\r\n      Case heartbeat_timer: {\r\n        HEARTBEAT_INSTRUCTIONS\r\n      }\r\n    }\r\n    }\r\n\t}\r\n\tPromptEndsHere when (@t == @T && T.0) \r\n\t// tool-using loop history\r\n\tForEach(i: range(1,@t.substeps)) { \r\n          MARK 1 {\r\n            // multiple requests in one assistant message\r\n        A: {\r\n         ForEach(tool: sys.tool_requests[@t.i]) {\r\n           $tool.id_name_and_arg \r\n         }\r\n       }\r\n   // Loop of tool responses, each in own tool msg\r\n   ForEach(tool: sys.tool_requests[@t.i]) {\r\nT: { \r\n     $tool.id_and_response \r\n   }\r\n   }\r\n          }\r\n    PromptEndsHere when (@t == @T && @T.I)\r\n\t}\r\n  A: resp.response[@t] \r\n}\r\n}\r\n",
-  "opencode": "OpenCodeMain[@T.I]: {\r\n  // NOTE: tools, skills and subagents are all provided in tools and tool descriptions in the `tools` parameter\r\n  S: { \r\n    SYSTEM_PROMPT\r\n    ENV_INFO(env.working_directory[@1], env.is_dir_a_repo[@1], env.platform[@1], env.date[@1])   \r\n  }\r\n  MARK 2 {\r\n  Name C := sys.last_compaction_time[@T] \r\n  If @$C > 1 {\r\n    U: WHAT_DID_WE_DO\r\n    A: sys.conversation_summary[@$C]\r\n  }\r\n  }\r\n  ForEach(@t: range(@$C, @T)) {\r\n    U: {\r\n      env.user_input[@t]\r\n      MARK 3 {\r\n      If @T == @t {\r\n        If sys.is_plan_mode[@t] {\r\n          PLAN_MODE_REMINDER\r\n        }\r\n        If sys.is_build_mode[@t] && sys.prev_is_plan[@t] {\r\n          LEAVE_PLAN_MODE_REMINDER\r\n        }     \r\n      }\r\n      }\r\n    }\r\n     PromptEndsHere when (@T == @t && @T.0)\r\n    ForEach(@i: range(1,@t.substeps)) {\r\n     MARK 1 {\r\n      A: {\r\n        ForEach(tool: sys.tool_requests[@t.i]) {\r\n          $tool.id_name_and_args \r\n        }\r\n      }\r\n      // Loop of tool responses, each in own tool msg\r\n      ForEach(tool: tool_requests[@t.i]) {\r\n        T: { \r\n          $tool.id_and_response \r\n        }\r\n      }\r\n      }\r\n      PromptEndsHere when (@T == @t && @T.I)\r\n    }\r\n    A: sys.response[@t]\r\n  }\r\n}\r\n",
-  "pokemon": "Pokemon[@T]: {\r\n    U: env.image.HUD // heads up display, a screenshot with things like HP, coordinates of the character on the map and ID codes for items printed on it\r\n    S: {\r\n        INTRO // you are playing pokemon blue\r\n        GOAL // beat the game\r\n        CONVENTIONS  // vision to text translation conventions, general gameplay tips\r\n        AVAILABLE_TOOLS // \r\n    } \r\n\r\n    History {\r\n        A: {\r\n            If @T>1 {\r\n                ForEach(i: range(@T-(@T%100),@T-1)) {\r\n                    resp.action[@i]\r\n                }\r\n                \r\n                If @T%100==0 {\r\n                    Name actions := [resp.action[@t] for t in range(@T-100, @T)]\r\n                    summarize($actions)\r\n                    If @T>999 and @T%1000==0 {\r\n                        Name relevant_summaries := [sys.summary[@t] for t in range(@T, @T-900, 100)]\r\n                        compress_summaries($relevant_summaries)\r\n                    }  \r\n                }\r\n                If @T>99 {\r\n                    ForEach(i: max(100, @T-(@T%100)-800), @T-(@T%100), 100) {  \r\n                        sys.summary[@i]\r\n                    }\r\n                    \r\n                    If @T>999 and @T%1000!=0 {\r\n                        ForEach(i: range(max(1000, @T-@T%1000-900), @T-(@T%1000), 1000)) { \r\n                            sys.compressed_summary[@i]\r\n                        } \r\n                    }\r\n                }\r\n            }\r\n        }    \r\n    }\r\n\r\n    If @T%25==0 {\r\n        //response from critique agents tracking of subgoals (primary, secondary, tertiary, contingency plants, preparation, exploration, team composition)\r\n        A: critique_performance(prompt.History[@T]) // gets action history of some sort, but not mentioned in the paper\r\n    }\r\n    U: env.xml_map[@T] // unseen coordinates are not viewable until explored\r\n    S: INSTRUCTION_TO_EXPLORE\r\n    S: CHOOSE_ACTION // instructions to choose next action and how\r\n}"
+  "fig1_base": `ReactBase[@T]: {
+  S: {
+    INSTRUCTIONS
+    AVAILABLE_TOOLS
+  }
+  U: env.user_input[@1]
+  // history
+  ForEach(t: range(1,@T-1)) {
+    A: {
+      MARK 1 {
+        resp.tool_reasoning[@t]
+      }
+      sys.tool_used[@t]
+    }
+    T: sys.tool_used[@t].tool_response
+  }
+  S: USE_TOOLS_TO_SOLVE_TASK
+}`,
+  "fig1_left": `ReactNoReasoningInHistory[@T]: {
+  S: {
+    INSTRUCTIONS
+    AVAILABLE_TOOLS
+  }
+  U: env.user_input[@1]
+  // history
+  ForEach(t: range(1,@T-1)) {
+    A: {
+      sys.tool_used[@t]
+    }
+    T: sys.tool_used[@t].tool_response
+  }
+  S: USE_TOOLS_TO_SOLVE_TASK
+}`,
+  "fig1_right": `ReactToolRagAtEnd[@T]: {
+  S: {
+    INSTRUCTIONS
+  }
+  U: env.user_input[@1]
+  // history
+  ForEach(t: range(1,@T-1)) {
+    A: {
+      resp.tool_reasoning[@t]
+      sys.tool_used[@t]
+    }
+    T: sys.tool_used[@t].tool_response
+  }
+  S: {
+    MARK 1 {
+    locate_tools(env.user_input[@1])
+    }
+    USE_TOOLS_TO_SOLVE_TASK
+  }
+}`,
+  "rag": `BasicRAG[@T]: {
+    S: INSTRUCTIONS
+    U: {
+        Name docs := k_relevant_docs(env.user_input[@T])
+        ForEach(i: range(1, $docs.len)) {
+          $docs[i].source
+          $docs[i].content
+        }
+        ANSWER_Q_FROM_DOCS
+        env.user_input[@T]
+    }
+}`,
+  "mintagent": `MintOriginal[@T]: {
+    U: {
+        TASK_DESCRIPTION(sys.max_total_steps)
+        env.tool_descriptions // description of each tool, how to use them, and when to use them
+        env.in_context_examples
+        env.task_prompt // the question you need to answer, or task you need to complete
+    }
+
+    ForEach(@t: range(1,@T-1)) {
+        ForEach(i: range(1,@t.substeps)) {
+            A: {
+                MARK 1 {
+                resp.tool_reasoning[@t.i]
+                }
+                sys.tool_used[@t.i]
+            }
+            MARK 2 {
+            U: sys.tool_used[@t.i].tool_response
+            }
+
+        A: {
+            resp.solution_reasoning[@t]
+            resp.solution[@t]
+        }
+        U: env.feedback[@t.i] // response if the answer was right or wrong, remaining tries if failed
+        }
+    }
+
+    ForEach(k: range(1, @T.substeps)) {
+        A: {
+            resp.tool_reasoning[@T.k]
+            resp.tool_used[@T.k]
+        }
+        MARK 2 {
+        U: sys.tool_used[@T.k].tool_response
+        }
+    }
+
+}`,
+  "multiagent": `MultiAgent[@T, agent]: {
+  S: {
+    INSTRUCTIONS
+  }
+  U: {
+    // history
+    // NOTE: history does not show substeps
+    ForEach(@t: range(@T-50, @T-1)) {
+      sys[agent].performed_action[@t]
+      sys[agent].performed_action[@t].result
+    }
+    // what I have
+    sys[agent].inventory[@T]
+    // whom I see in the environment and what I know about them
+    ForEach(a: env.seen_actors[@T]) {
+      a.name
+      a.description
+      retrieve(sys[agent].memory[@T], a.name)
+    }
+    If sys[agent].in_conversation[@T] {
+     ForEach (convTurn: sys[agent].conversation[@T]) {
+       convTurn.speaker
+       convTurn.content
+     }
+    }
+  }
+  S: {
+    sys[agent].available_actions
+    If sys[agent].in_conversation[@T] {
+      // You can do things, but you are in a conversation
+      CONTINUE_THE_CONVERSATION
+    }
+  }
+}`,
+  "openclaw": `OpenClaw[@T.I]: {
+S: {
+        // Very long system prompt detailing skills, tools, sub-agents, memory-files and various others.
+        // Out of scope for the current presentation.
+	SystemPrompt()
+}
+// summarized early conversation (if exists)
+MARK 2 {
+Name C := sys.last_compaction_time[@T]
+If (@C > 1) {
+	U: {
+		THIS_IS_A_SUMMARY
+		sys.conversation_summary[@C]
+	}
+	A: resp.response[@C]
+}
+}
+// conversation history
+ForEach(t: range(@C + 1, @T)) {
+	U: {
+                MARK 6 {
+		// The pending_messages list is often empty
+		ForEach(m: range(1,sys.pending_messages[@t].len)) {
+			sys.pending_messages[@t][m].date_time
+			sys.pending_messages[@t][m].message
+		}
+                }
+    MARK 5 {
+    Switch env.input_source[@t] {
+      Case user: {
+        MARK 4 {
+          sys.date_time[@t]
+        }
+        env.user_query[@t]
+      }
+      Case heartbeat_timer: {
+        HEARTBEAT_INSTRUCTIONS
+      }
+    }
+    }
+	}
+	PromptEndsHere when (@t == @T && T.0)
+	// tool-using loop history
+	ForEach(i: range(1,@t.substeps)) {
+          MARK 1 {
+            // multiple requests in one assistant message
+        A: {
+         ForEach(tool: sys.tool_requests[@t.i]) {
+           $tool.id_name_and_arg
+         }
+       }
+   // Loop of tool responses, each in own tool msg
+   ForEach(tool: sys.tool_requests[@t.i]) {
+T: {
+     $tool.id_and_response
+   }
+   }
+          }
+    PromptEndsHere when (@t == @T && @T.I)
+	}
+  A: resp.response[@t]
+}
+}`,
+  "opencode": `OpenCodeMain[@T.I]: {
+  // NOTE: tools, skills and subagents are all provided in tools and tool descriptions in the \`tools\` parameter
+  S: {
+    SYSTEM_PROMPT
+    ENV_INFO(env.working_directory[@1], env.is_dir_a_repo[@1], env.platform[@1], env.date[@1])
+  }
+  MARK 2 {
+  Name C := sys.last_compaction_time[@T]
+  If @$C > 1 {
+    U: WHAT_DID_WE_DO
+    A: sys.conversation_summary[@$C]
+  }
+  }
+  ForEach(@t: range(@$C, @T)) {
+    U: {
+      env.user_input[@t]
+      MARK 3 {
+      If @T == @t {
+        If sys.is_plan_mode[@t] {
+          PLAN_MODE_REMINDER
+        }
+        If sys.is_build_mode[@t] && sys.prev_is_plan[@t] {
+          LEAVE_PLAN_MODE_REMINDER
+        }
+      }
+      }
+    }
+     PromptEndsHere when (@T == @t && @T.0)
+    ForEach(@i: range(1,@t.substeps)) {
+     MARK 1 {
+      A: {
+        ForEach(tool: sys.tool_requests[@t.i]) {
+          $tool.id_name_and_args
+        }
+      }
+      // Loop of tool responses, each in own tool msg
+      ForEach(tool: tool_requests[@t.i]) {
+        T: {
+          $tool.id_and_response
+        }
+      }
+      }
+      PromptEndsHere when (@T == @t && @T.I)
+    }
+    A: sys.response[@t]
+  }
+}`,
+  "pokemon": `Pokemon[@T]: {
+    U: env.image.HUD // heads up display, a screenshot with things like HP, coordinates of the character on the map and ID codes for items printed on it
+    S: {
+        INTRO // you are playing pokemon blue
+        GOAL // beat the game
+        CONVENTIONS  // vision to text translation conventions, general gameplay tips
+        AVAILABLE_TOOLS //
+    }
+
+    History {
+        A: {
+            If @T>1 {
+                ForEach(i: range(@T-(@T%100),@T-1)) {
+                    resp.action[@i]
+                }
+
+                If @T%100==0 {
+                    Name actions := [resp.action[@t] for t in range(@T-100, @T)]
+                    summarize($actions)
+                    If @T>999 and @T%1000==0 {
+                        Name relevant_summaries := [sys.summary[@t] for t in range(@T, @T-900, 100)]
+                        compress_summaries($relevant_summaries)
+                    }
+                }
+                If @T>99 {
+                    ForEach(i: max(100, @T-(@T%100)-800), @T-(@T%100), 100) {
+                        sys.summary[@i]
+                    }
+
+                    If @T>999 and @T%1000!=0 {
+                        ForEach(i: range(max(1000, @T-@T%1000-900), @T-(@T%1000), 1000)) {
+                            sys.compressed_summary[@i]
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    If @T%25==0 {
+        //response from critique agents tracking of subgoals (primary, secondary, tertiary, contingency plants, preparation, exploration, team composition)
+        A: critique_performance(prompt.History[@T]) // gets action history of some sort, but not mentioned in the paper
+    }
+    U: env.xml_map[@T] // unseen coordinates are not viewable until explored
+    S: INSTRUCTION_TO_EXPLORE
+    S: CHOOSE_ACTION // instructions to choose next action and how
+}`
 };
   </script>
 
   <!-- UI Logic -->
   <script>
-// Extract Parser and renderPrompt from the bundle
+// Extract Parser and renderPrompts from the bundle
 const { Parser, renderPrompts } = ACDL;
 
 function escapeHtml(text) {

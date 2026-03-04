@@ -20,6 +20,7 @@ function toExprToken(tok: Token): AST.ExpressionToken {
 export class Parser {
   private tokens: Token[] = [];
   private pos = 0;
+  private lastConsumedLine = 0;
 
   constructor(input: string) {
     const scanner = new Scanner(input);
@@ -53,6 +54,7 @@ export class Parser {
       throw new Error(`[${tok.line}:${tok.col}] Expected value "${value}", got "${(tok as any).value}"`);
     }
     this.pos++;
+    this.lastConsumedLine = tok.line;
     return tok;
   }
 
@@ -60,6 +62,7 @@ export class Parser {
     const tok = this.peek();
     if (tok.type === type && (!value || (tok as any).value === value)) {
       this.pos++;
+      this.lastConsumedLine = tok.line;
       return true;
     }
     return false;
@@ -582,7 +585,10 @@ export class Parser {
       path = this.parsePathDesc();
     }
 
-    const comment = this.peek().type === "COMMENT" ? (this.consume("COMMENT").value as string) : undefined;
+    const nextTok = this.peek();
+    const comment = (nextTok.type === "COMMENT" && nextTok.line === this.lastConsumedLine)
+      ? (this.consume("COMMENT").value as string)
+      : undefined;
     return Create.contextVar({ base, indices, path, comment });
   }
 
@@ -619,7 +625,10 @@ export class Parser {
         args = this.parseTextArgs();
         this.consume("SYMBOL", ")");
       }
-      const comment = this.peek().type === "COMMENT" ? (this.consume("COMMENT").value as string) : undefined;
+      const nextTok = this.peek();
+      const comment = (nextTok.type === "COMMENT" && nextTok.line === this.lastConsumedLine)
+        ? (this.consume("COMMENT").value as string)
+        : undefined;
       return Create.template({ name, arguments: args, comment });
     }
 
@@ -629,7 +638,10 @@ export class Parser {
       const args = this.parseTextArgs();
       this.consume("SYMBOL", ")");
       const indices = this.parseOptionalIndices() as AST.Index[];
-      const comment = this.peek().type === "COMMENT" ? (this.consume("COMMENT").value as string) : undefined;
+      const nextTok = this.peek();
+      const comment = (nextTok.type === "COMMENT" && nextTok.line === this.lastConsumedLine)
+        ? (this.consume("COMMENT").value as string)
+        : undefined;
       return Create.func({ name, arguments: args, indices, comment });
     }
 

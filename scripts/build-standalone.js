@@ -22,21 +22,20 @@ const rootDir = path.resolve(__dirname, '..');
 // Example configuration: maps keys to file paths and display info
 // Edit this to change which examples are included in the standalone build
 const EXAMPLE_CONFIG = {
-  // Papers
-  genagents: { file: 'Prompts/Papers/GenAgents.acdl', label: 'Generative Agents', group: 'Papers' },
-  rlm: { file: 'Prompts/other/rlm.acdl', label: 'RLM (REPL Language Model)', group: 'Papers' },
+  // React Variants
+  fig1_base: { file: 'Prompts/Paper/fig1-base.acdl', label: 'ReAct Base', group: 'React Variants' },
+  fig1_left: { file: 'Prompts/Paper/fig1-left.acdl', label: 'ReAct Left', group: 'React Variants' },
+  fig1_right: { file: 'Prompts/Paper/fig1-right.acdl', label: 'ReAct Right', group: 'React Variants' },
 
-  // React Patterns
-  basic_react: { file: 'Prompts/React/react_base.acdl', label: 'Basic ReAct', group: 'React Patterns' },
-  react_summ: { file: 'Prompts/React/react_summ.acdl', label: 'ReAct with Summary', group: 'React Patterns' },
-  mintagent: { file: 'Prompts/MintAgent/original.acdl', label: 'MintAgent', group: 'React Patterns' },
-
-  // Chats
-  chat1: { file: 'Prompts/chats/chat1.acdl', label: 'Simple Chat', group: 'Chats' },
-  rag: { file: 'Prompts/Paper/basicRAG.acdl', label: 'RAG Chat', group: 'Chats' },
+  // Examples
+  rag: { file: 'Prompts/Paper/basic-rag.acdl', label: 'RAG', group: 'Examples' },
+  mintagent: { file: 'Prompts/Paper/mint-original.acdl', label: 'MintAgent', group: 'Examples' },
+  multiagent: { file: 'Prompts/Paper/MultiAgent.acdl', label: 'MultiAgent', group: 'Examples' },
 
   // Advanced
-  pokemon: { file: 'Prompts/Papers/pokemon2.acdl', label: 'Pokemon Blue Agent', group: 'Advanced' },
+  openclaw: { file: 'Prompts/Paper/OpenClaw.acdl', label: 'OpenClaw', group: 'Advanced' },
+  opencode: { file: 'Prompts/Paper/OpenCode.acdl', label: 'OpenCode', group: 'Advanced' },
+  pokemon: { file: 'Prompts/Paper/pokemon.acdl', label: 'Pokemon', group: 'Advanced' },
 };
 
 // Load prompts from files
@@ -82,7 +81,7 @@ async function buildStandalone() {
   const entryContent = `
 export { Scanner } from './scanner';
 export { Parser } from './parser';
-export { renderPrompt } from './renderPrompt';
+export { renderPrompt, renderPrompts } from './renderPrompt';
 `;
 
   const tempEntryPath = path.join(rootDir, 'src', '_standalone_entry.ts');
@@ -615,7 +614,7 @@ const PROMPTS = ${JSON.stringify(prompts, null, 2)};
   <!-- UI Logic -->
   <script>
 // Extract Parser and renderPrompt from the bundle
-const { Parser, renderPrompt } = ACDL;
+const { Parser, renderPrompts } = ACDL;
 
 function escapeHtml(text) {
   return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
@@ -647,8 +646,8 @@ function doRender() {
   }
   try {
     const parser = new Parser(input);
-    const ast = parser.parsePrompt();
-    const html = renderPrompt(ast);
+    const ast = parser.parseFile();
+    const html = renderPrompts(ast);
     output.innerHTML = html;
     enableCollapsibleBlocks();
   } catch (err) {

@@ -1,0 +1,12 @@
+BasicRAG[@T]: {
+    S: INSTRUCTIONS
+    U: {
+        Name docs := k_relevant_docs(env.user_input[@T])
+        ForEach(i: range(1, $docs.len)) {
+          $docs[i].source
+          $docs[i].content
+        }
+        ANSWER_Q_FROM_DOCS
+        env.user_input[@T]
+    }
+}

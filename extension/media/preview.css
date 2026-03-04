@@ -90,7 +90,7 @@ body {
 
 .prompt-container {
   display: inline-block;
-  max-width: 600px;
+  max-width: 800px;
   margin: 0 auto;
   position: relative;
   padding-left: 24px;
@@ -246,7 +246,8 @@ body {
 
 .template-block {
   display: inline-flex;
-  align-items: flex-start;
+  align-items: center;
+  vertical-align: middle;
   gap: 4px;
   background: var(--accent-template-bg);
   border: 1px solid var(--accent-template);
@@ -256,7 +257,7 @@ body {
   font-family: 'JetBrains Mono', 'SF Mono', monospace;
   font-size: 12px;
   font-weight: 500;
-  line-height: 1.3;
+  line-height: 1;
   max-width: 100%;
 }
 
@@ -264,7 +265,7 @@ body {
   content: '◆';
   font-size: 10px;
   opacity: 0.7;
-  line-height: 1.3;
+  line-height: 1;
   flex-shrink: 0;
 }
 
@@ -276,7 +277,8 @@ body {
 
 .func-block {
   display: inline-flex;
-  align-items: flex-start;
+  align-items: center;
+  vertical-align: middle;
   background: var(--accent-function-bg);
   border: 1px solid var(--accent-function);
   color: var(--accent-function);
@@ -285,7 +287,7 @@ body {
   font-family: 'JetBrains Mono', 'SF Mono', monospace;
   font-size: 12px;
   font-weight: 500;
-  line-height: 1.3;
+  line-height: 1;
   max-width: 100%;
 }
 
@@ -308,6 +310,7 @@ body {
 .context-var {
   display: inline-flex;
   align-items: center;
+  vertical-align: middle;
   gap: 2px;
   background: var(--accent-context-bg);
   border: 1px solid var(--accent-context);
@@ -346,11 +349,17 @@ body {
 .time-index {
   display: inline-flex;
   align-items: center;
+  vertical-align: middle;
   color: var(--accent-variable);
   font-weight: 700;
   font-family: 'JetBrains Mono', 'SF Mono', monospace;
   font-size: 12px;
   line-height: 1;
+}
+
+/* @ symbol in time indices - wrapped for html2canvas compatibility */
+.at-symbol {
+  color: inherit;
 }
 
 /* Ensure time-index is styled correctly even when nested inside context-var */
@@ -365,6 +374,7 @@ body {
 .other-index {
   display: inline-flex;
   align-items: center;
+  vertical-align: middle;
   color: var(--accent-variable);
   font-weight: 700;
   font-family: 'JetBrains Mono', 'SF Mono', monospace;
@@ -388,6 +398,8 @@ body {
 
 /* Control flow keywords - bold and prominent */
 .keyword {
+  display: inline-flex;
+  align-items: center;
   color: #000000;
   font-weight: 800;
   letter-spacing: 0.3px;
@@ -401,6 +413,7 @@ body {
 .expr-context-var {
   display: inline-flex;
   align-items: center;
+  vertical-align: middle;
   gap: 2px;
   background: var(--accent-context-bg);
   border: 1px solid var(--accent-context);
@@ -487,6 +500,8 @@ body {
 
 /* Control flow expressions - high visibility */
 .loop-var {
+  display: inline-flex;
+  align-items: center;
   color: var(--accent-variable);
   font-weight: 700;
   font-family: 'JetBrains Mono', 'SF Mono', monospace;
@@ -513,7 +528,7 @@ body {
 .range-dots {
   color: var(--text-secondary);
   font-weight: 600;
-  padding: 0 2px;
+  padding: 0 1px;
 }
 
 .range-keyword {
@@ -523,7 +538,25 @@ body {
   font-weight: 600;
   font-family: 'JetBrains Mono', 'SF Mono', monospace;
   font-size: 10px;
-  padding: 0 4px;
+  padding: 0 2px;
+}
+
+.range-start,
+.range-end {
+  display: inline-flex;
+  align-items: center;
+}
+
+.range-step {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 2px;
+}
+
+.range-step-value {
+  display: inline-flex;
+  align-items: center;
+  padding-left: 2px;
 }
 
 /* Built-in math functions (min, max) - neutral styling */
@@ -545,19 +578,23 @@ body {
   font-size: 11px;
   margin-left: 8px;
   white-space: normal;
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   min-width: 0;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
+  max-width: 350px;
 }
 
 /* Wrapper for blocks with comments - keeps them together when wrapping */
 .block-with-comment {
   display: inline-flex;
-  align-items: flex-start;
+  align-items: center;
   vertical-align: top;
   max-width: 100%;
   gap: 4px;
+}
+
+/* When comment wraps to multiple lines, align to top */
+.block-with-comment.comment-wrapped {
+  align-items: flex-start;
 }
 
 /* Prioritize main content (templates/functions) over comments */
@@ -761,6 +798,7 @@ body {
   content: '↻';
   font-size: 12px;
   color: var(--control-border);
+  align-items: center;
 }
 
 /* Conditional headers (outside role) */
@@ -786,10 +824,12 @@ body {
 }
 
 /* Conditional headers */
-.conditional-section-header {
+.conditional-section-header,
+.conditional-block-inside-role-header,
+.conditional-block-outside-role-header {
   padding: 3px 10px;
-  margin: -4px -10px 3px -10px;
-  border-radius: 4px 4px 0 0;
+  margin: -6px -12px 4px -16px;
+  border-radius: 0 4px 0 0;
   font-family: 'JetBrains Mono', 'SF Mono', monospace;
   font-size: 11px;
   font-weight: 600;
@@ -801,7 +841,9 @@ body {
   background: var(--control-header-bg);
 }
 
-.conditional-section-header::before {
+.conditional-section-header::before,
+.conditional-block-inside-role-header::before,
+.conditional-block-outside-role-header::before {
   content: '◇';
   font-size: 10px;
   color: var(--control-border);
@@ -1129,7 +1171,8 @@ body {
 
 .compact .prompt-container {
   display: inline-block;
-  max-width: 400px;
+  min-width: 200px;
+  max-width: 1000px;
   padding-left: 10px;
   border-left-width: 1px;
 }
@@ -1192,17 +1235,17 @@ body {
   border-radius: 3px;
   font-size: 9px;
   gap: 2px;
-  line-height: 1.2;
+  line-height: 1;
 }
 
 .compact .template-block::before {
   font-size: 7px;
-  line-height: 1.2;
+  line-height: 1;
 }
 
 .compact .func-block {
   font-size: 9px;
-  line-height: 1.2;
+  line-height: 1;
 }
 
 .compact .context-var,
@@ -1224,6 +1267,23 @@ body {
 .compact .switch-expr,
 .compact .case-match {
   font-size: 9px;
+}
+
+.compact .range-expr {
+  font-size: 9px;
+}
+
+.compact .range-dots {
+  padding: 0;
+}
+
+.compact .range-keyword {
+  font-size: 9px;
+  padding: 0 1px;
+}
+
+.compact .range-step {
+  margin-left: 3px;
 }
 
 .compact .keyword {
@@ -1338,16 +1398,20 @@ body {
   border-radius: 0 !important;
 }
 
-.compact .conditional-section-header {
+.compact .conditional-section-header,
+.compact .conditional-block-inside-role-header,
+.compact .conditional-block-outside-role-header {
   padding: 1px 4px;
-  margin: -2px -5px 2px -5px;
-  border-radius: 2px 2px 0 0;
+  margin: -2px -6px 2px -8px;
+  border-radius: 0 2px 0 0;
   font-size: 7px;
   gap: 2px;
   background: var(--control-header-bg);
 }
 
-.compact .conditional-section-header::before {
+.compact .conditional-section-header::before,
+.compact .conditional-block-inside-role-header::before,
+.compact .conditional-block-outside-role-header::before {
   font-size: 7px;
 }
 
@@ -1435,7 +1499,7 @@ body {
 /* Compact line height */
 .compact,
 .compact * {
-  line-height: 1.1 !important;
+  line-height: 1 !important;
 }
 
 /* Remove margins on inline elements in compact mode */
