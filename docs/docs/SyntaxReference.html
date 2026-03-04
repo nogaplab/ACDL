@@ -279,6 +279,13 @@
       margin-top: 8px;
     }
 
+    p.figcaption {
+      font-size: 0.85rem;
+      color: rgba(10,10,10,0.6);
+      font-style: italic;
+      margin-top: 12px;
+    }
+
     /* Rendered output examples - matching actual visualizer compact mode */
     .rendered-output {
       background: #fff;
@@ -408,7 +415,7 @@
       padding: 1px 4px;
       margin: -2px -6px 2px -8px;
       border-radius: 0 2px 0 0;
-      font-size: 7px;
+      font-size: 9px;
       font-weight: 600;
       color: #57606a;
       background: #eaeef2;
@@ -447,16 +454,17 @@
     }
 
     /* Label blocks - compact */
-    .rendered-output .lbl-block {
+    .rendered-output .label-block {
       margin: 4px 0;
     }
-    .rendered-output .lbl-name {
-      font-size: 7px;
+    .rendered-output .label-start,
+    .rendered-output .label-end {
+      font-size: 9px;
       color: #8b949e;
       letter-spacing: 0.5px;
-      padding: 0;
+      padding: 2px 0;
     }
-    .rendered-output .lbl-body {
+    .rendered-output .label-block-body {
       border-left: 1px solid #e1e4e8;
       margin-left: 3px;
       padding-left: 6px;
@@ -748,22 +756,49 @@ PromptName2[idx1, idx2, ...]: {
         <p><strong>Important:</strong> Control flow constructs (<code>ForEach</code>, <code>If</code>, <code>Switch</code>) are <em>not</em> permitted in single-line role messages. To include control flow inside a role message, the multi-line braced form must be used:</p>
       </div>
 
-      <pre><span class="role">U</span>: {
+      <div class="code-and-render">
+        <pre><span class="role">U</span>: {
     <span class="keyword">ForEach</span>(item: <span class="context">env.items</span>) {
         <span class="context">env.item_detail</span>[<span class="context">@t</span>, item]
     }
 }</pre>
+        <div class="rendered-output">
+          <div class="render-label">Rendered Output</div>
+          <div class="role-msg user">
+            <span class="role-badge">Role: User</span>
+            <div class="role-body">
+              <div class="ctrl-block">
+                <div class="ctrl-header">ForEach <span class="idx">item</span> : <span class="ctx" >env.items</span></div>
+                <span class="ctx">env.item_detail[<span class="idx">@t</span>, <span class="idx">item</span>]</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <h3>Completion Format</h3>
       <p>The <code>N:</code> role (completion format) imposes two additional constraints: (1) exactly one <code>N:</code> block may appear per prompt, and (2) no chat roles (<code>S:</code>, <code>U:</code>, <code>A:</code>, <code>T:</code>) may appear in the same specification:</p>
 
-      <pre>CompletionPrompt[<span class="context">@t</span>]: {
+      <div class="code-and-render">
+        <pre>CompletionPrompt[<span class="context">@t</span>]: {
     <span class="role">N</span>: {
         <span class="template">TASK_DESCRIPTION</span>
         <span class="context">env.context</span>[<span class="context">@t</span>]
         <span class="template">QUESTION</span>
     }
 }</pre>
+        <div class="rendered-output">
+          <div class="render-label">Rendered Output</div>
+          <div class="role-msg" style="border-left-color: #6e7781;">
+            <span class="role-badge" style="background: #6e7781;">Role: None</span>
+            <div class="role-body">
+              <span class="tpl">TASK_DESCRIPTION</span><br>
+              <span class="ctx">env.context[<span class="idx">@t</span>]</span><br>
+              <span class="tpl">QUESTION</span>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <!-- SCOPING RULES -->
       <h2 id="scoping-rules">Scoping Rules</h2>
@@ -802,12 +837,23 @@ PromptName2[idx1, idx2, ...]: {
 
       <p>Paths may be nested using dot notation to reach into sub-fields of structured data. Indices may appear at any level of the path:</p>
 
-      <pre><span class="context">env.user_question</span>[<span class="context">@T</span>]            <span class="comment">// the user question at time T</span>
+      <div class="code-and-render">
+        <pre><span class="context">env.user_question</span>[<span class="context">@T</span>]            <span class="comment">// the user question at time T</span>
 <span class="context">sys.agent_desc</span>                     <span class="comment">// the agent description (constant)</span>
 <span class="context">sys.tool</span>[<span class="context">@t</span>].<span class="context">tool_response</span>[<span class="context">@t</span>]   <span class="comment">// tool response of tool at time t</span>
 <span class="context">env.bomb_location</span>[<span class="context">@T</span>, bomb]       <span class="comment">// bomb location of bomb at time T</span>
 <span class="context">prompt.History</span>[<span class="context">@T</span>-1]              <span class="comment">// the history label block at time T-1</span>
 <span class="context">prompt.Summarizer.history</span>[<span class="context">@T</span>]     <span class="comment">// history section of the Summarizer at T</span></pre>
+        <div class="rendered-output">
+          <div class="render-label">Rendered Output</div>
+          <div><span class="ctx">env.user_question[<span class="idx">@T</span>]</span> <span class="cmt">// the user question at time T</span></div>
+          <div><span class="ctx">sys.agent_desc</span> <span class="cmt">// the agent description (constant)</span></div>
+          <div><span class="ctx">sys.tool[<span class="idx">@t</span>].tool_response[<span class="idx">@t</span>]</span> <span class="cmt">// tool response</span></div>
+          <div><span class="ctx">env.bomb_location[<span class="idx">@T</span>, <span class="idx">bomb</span>]</span> <span class="cmt">// bomb location</span></div>
+          <div><span class="ctx">prompt.History[<span class="idx">@T</span>-1]</span> <span class="cmt">// the history label block</span></div>
+          <div><span class="ctx">prompt.Summarizer.history[<span class="idx">@T</span>]</span> <span class="cmt">// history section</span></div>
+        </div>
+      </div>
 
       <p>A variable without indices (e.g., <code>sys.agent_desc</code>) refers to data that does not vary over time or other dimensions.</p>
 
@@ -820,14 +866,25 @@ PromptName2[idx1, idx2, ...]: {
 
       <p>The current time is denoted with capital letters: <code>@T</code> for the main time step, and <code>I</code>, <code>J</code>, etc. for sub-steps. When iterating over time steps, the corresponding lower-case letters are used. Sub-steps are accessed using dot notation: <code>@t.i</code> refers to sub-step <code>i</code> within turn <code>t</code>, while <code>@T.I</code> refers to the current sub-step of the current turn. When iterating over the sub-steps of a previous turn, use <code>@t.substeps</code> to obtain the count.</p>
 
-      <pre><span class="context">@T</span>            <span class="comment">// Current time step</span>
+      <div class="code-and-render">
+        <pre><span class="context">@T</span>            <span class="comment">// Current time step</span>
 <span class="context">@T</span>-1          <span class="comment">// Previous time step</span>
 <span class="context">@0</span>            <span class="comment">// Initial step</span>
 <span class="context">@T</span>.<span class="context">I</span>          <span class="comment">// Current substep of current turn</span>
 <span class="context">@t</span>.<span class="context">i</span>          <span class="comment">// Substep i of turn t (in loops)</span></pre>
+        <div class="rendered-output">
+          <div class="render-label">Rendered Output</div>
+          <div><span class="idx">@T</span> <span class="cmt">// Current time step</span></div>
+          <div><span class="idx">@T</span>-1 <span class="cmt">// Previous time step</span></div>
+          <div><span class="idx">@0</span> <span class="cmt">// Initial step</span></div>
+          <div><span class="idx">@T</span>.<span class="idx">I</span> <span class="cmt">// Current substep</span></div>
+          <div><span class="idx">@t</span>.<span class="idx">i</span> <span class="cmt">// Substep i of turn t</span></div>
+        </div>
+      </div>
 
       <h3>Iteration Examples</h3>
-      <pre><span class="comment">// Iterating over all previous turns</span>
+      <div class="code-and-render">
+        <pre><span class="comment">// Iterating over all previous turns</span>
 <span class="keyword">ForEach</span>(<span class="context">t</span>: <span class="function">range</span>(1, <span class="context">@T</span>-1)) {
     <span class="context">env.observation</span>[<span class="context">@t</span>]
 }
@@ -843,12 +900,41 @@ PromptName2[idx1, idx2, ...]: {
         <span class="context">sys.action</span>[<span class="context">@t</span>.<span class="context">i</span>]
     }
 }</pre>
+        <div class="rendered-output">
+          <div class="render-label">Rendered Output</div>
+          <div><span class="cmt">// Iterating over all previous turns</span></div>
+          <div class="ctrl-block">
+            <div class="ctrl-header">ForEach <span class="idx">t</span> : range(<span class="idx">1</span>, <span class="idx">@T</span>-1)</div>
+            <span class="ctx">env.observation[<span class="idx">@t</span>]</span>
+          </div>
+          <div style="margin-top: 6px;"><span class="cmt">// Iterating over substeps</span></div>
+          <div class="ctrl-block">
+            <div class="ctrl-header">ForEach <span class="idx">i</span> : range(<span class="idx">1</span>, <span class="idx">@I</span>)</div>
+            <span class="ctx">sys.action[<span class="idx">@T</span>.<span class="idx">i</span>]</span>
+          </div>
+          <div style="margin-top: 6px;"><span class="cmt">// Nested: substeps within each turn</span></div>
+          <div class="ctrl-block">
+            <div class="ctrl-header">ForEach <span class="idx">@t</span> : range(<span class="idx">1</span>, <span class="idx">@T</span>-1)</div>
+            <div class="ctrl-block" style="margin-left: 6px;">
+              <div class="ctrl-header">ForEach <span class="idx">i</span> : range(<span class="idx">0</span>, <span class="idx">@t</span>.substeps)</div>
+              <span class="ctx">sys.action[<span class="idx">@t</span>.<span class="idx">i</span>]</span>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <h3>Non-Time Indices</h3>
       <p>Non-time indices have no prefix and address other dimensions&mdash;named entities, or context-variable-valued keys:</p>
 
-      <pre>[<span class="context">sys.agent_name</span>]
+      <div class="code-and-render">
+        <pre>[<span class="context">sys.agent_name</span>]
 [bomb]</pre>
+        <div class="rendered-output">
+          <div class="render-label">Rendered Output</div>
+          <div>[<span class="ctx" >sys.agent_name</span>]</div>
+          <div>[<span class="idx">bomb</span>]</div>
+        </div>
+      </div>
 
       <p>Multiple indices are comma-separated: <code>env.bomb_location[@t, bomb]</code> addresses a specific bomb at a specific time step. Standard arithmetic operators (<code>+</code>, <code>-</code>, <code>*</code>, <code>/</code>, <code>%</code>) are permitted in all index positions, enabling expressions such as <code>@t-1</code>, <code>@t+1</code>, <code>t-k</code>, or <code>@t % 25</code>.</p>
 
@@ -867,7 +953,7 @@ PromptName2[idx1, idx2, ...]: {
           <div style="line-height: 2;">
             <span class="tpl">INSTRUCTIONS</span> <span class="cmt">// Task explanation</span><br>
             <span class="tpl">AVAILABLE_TOOLS</span> <span class="cmt">// Tool list</span><br>
-            <span class="tpl">QUERY(<span class="ctx" style="border:none;background:none;padding:0;">sys.agent_name</span>)</span> <span class="cmt">// Parameterized</span>
+            <span class="tpl">QUERY(<span class="ctx" >sys.agent_name</span>)</span> <span class="cmt">// Parameterized</span>
           </div>
         </div>
       </div>
@@ -887,8 +973,8 @@ PromptName2[idx1, idx2, ...]: {
         <div class="rendered-output">
           <div class="render-label">Rendered Output</div>
           <div style="line-height: 2;">
-            <span class="fn">summarize(<span class="ctx" style="border:none;background:none;padding:0;">prompt.History[<span class="idx">@t</span>]</span>)</span><br>
-            <span class="fn">get_dialog_history(<span class="ctx" style="border:none;background:none;padding:0;">sys.agent_name</span>)</span><br>
+            <span class="fn">summarize(<span class="ctx" >prompt.History[<span class="idx">@t</span>]</span>)</span><br>
+            <span class="fn">get_dialog_history(<span class="ctx" >sys.agent_name</span>)</span><br>
             <span class="fn">range(<span class="idx">1</span>, <span class="idx">@T</span>-1, <span class="idx">2</span>)</span>
           </div>
         </div>
@@ -947,7 +1033,7 @@ PromptName2[idx1, idx2, ...]: {
             <span class="role-badge">Role: User</span>
             <div class="role-body">
               <div class="ctrl-block" style="border-left-color: #6e7781;">
-                <div class="ctrl-header">ForEach <span class="idx">bomb</span> : <span class="ctx" style="border:none;background:none;padding:0;">env.bombs</span></div>
+                <div class="ctrl-header">ForEach <span class="idx">bomb</span> : <span class="ctx" >env.bombs</span></div>
                 <span class="ctx">env.bomb_location[<span class="idx">@t</span>, <span class="idx">bomb</span>]</span><br>
                 <span class="ctx">env.bomb_details[<span class="idx">@t</span>, <span class="idx">bomb</span>]</span>
               </div>
@@ -972,7 +1058,7 @@ PromptName2[idx1, idx2, ...]: {
         <div class="rendered-output">
           <div class="render-label">Rendered (tool = search)</div>
           <div class="ctrl-block">
-            <div class="ctrl-header cond">If <span class="ctx" style="border:none;background:none;padding:0;">sys.tool[<span class="idx">@t</span>]</span> == search</div>
+            <div class="ctrl-header cond">If <span class="ctx" >sys.tool[<span class="idx">@t</span>]</span> == search</div>
             <div class="role-msg user">
               <span class="role-badge">Role: User</span>
               <div class="role-body"><span class="ctx">env.search_results[<span class="idx">@t</span>]</span></div>
@@ -983,12 +1069,31 @@ PromptName2[idx1, idx2, ...]: {
 
       <p>Conditionals can also guard entire sections including loops:</p>
 
-      <pre><span class="keyword">If</span> <span class="context">@T</span> &gt; 1 {
+      <div class="code-and-render">
+        <pre><span class="keyword">If</span> <span class="context">@T</span> &gt; 1 {
     <span class="keyword">ForEach</span>(<span class="context">t</span>: <span class="function">range</span>(1, <span class="context">@T</span>-1)) {
         <span class="role">U</span>: <span class="context">env.user_input</span>[<span class="context">@t</span>]
         <span class="role">A</span>: <span class="context">resp.answer</span>[<span class="context">@t</span>]
     }
 }</pre>
+        <div class="rendered-output">
+          <div class="render-label">Rendered Output (when @T &gt; 1)</div>
+          <div class="ctrl-block">
+            <div class="ctrl-header cond">If <span class="idx">@T</span> &gt; 1</div>
+            <div class="ctrl-block" style="margin-left: 6px;">
+              <div class="ctrl-header">ForEach <span class="idx">t</span> : range(<span class="idx">1</span>, <span class="idx">@T</span>-1)</div>
+              <div class="role-msg user">
+                <span class="role-badge">Role: User</span>
+                <div class="role-body"><span class="ctx">env.user_input[<span class="idx">@t</span>]</span></div>
+              </div>
+              <div class="role-msg assistant">
+                <span class="role-badge">Role: Assistant</span>
+                <div class="role-body"><span class="ctx">resp.answer[<span class="idx">@t</span>]</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <h3 id="switch">Switch / Case / Default</h3>
       <p><code>Switch</code> / <code>Case</code> / <code>Default</code> selects among multiple alternatives based on the value of an expression:</p>
@@ -1008,7 +1113,7 @@ PromptName2[idx1, idx2, ...]: {
         <div class="rendered-output">
           <div class="render-label">Rendered (action = "calculate")</div>
           <div class="ctrl-block">
-            <div class="ctrl-header switch">Switch <span class="ctx" style="border:none;background:none;padding:0;">sys.action_type[<span class="idx">@t</span>]</span></div>
+            <div class="ctrl-header switch">Switch <span class="ctx">sys.action_type[<span class="idx">@t</span>]</span></div>
             <div class="ctrl-block" style="margin-left: 12px;">
               <div class="ctrl-header case">Case "calculate"</div>
               <div class="role-msg user">
@@ -1077,9 +1182,9 @@ PromptName2[idx1, idx2, ...]: {
 }</pre>
         <div class="rendered-output">
           <div class="render-label">Rendered Output</div>
-          <div class="lbl-block">
-            <div class="lbl-name">Setup {</div>
-            <div class="lbl-body">
+          <div class="label-block">
+            <div class="label-start">╔══ Setup ══╗</div>
+            <div class="label-block-body">
               <div class="role-msg system">
                 <span class="role-badge">Role: System</span>
                 <div class="role-body"><span class="tpl">INSTRUCTIONS</span></div>
@@ -1089,11 +1194,11 @@ PromptName2[idx1, idx2, ...]: {
                 <div class="role-body"><span class="ctx">env.initial_context[<span class="idx">@0</span>]</span></div>
               </div>
             </div>
-            <div class="lbl-name">}</div>
+            <div class="label-end">╚══ End Setup ══╝</div>
           </div>
-          <div class="lbl-block">
-            <div class="lbl-name">History {</div>
-            <div class="lbl-body">
+          <div class="label-block">
+            <div class="label-start">╔══ History ══╗</div>
+            <div class="label-block-body">
               <div class="ctrl-block">
                 <div class="ctrl-header">ForEach <span class="idx">@t</span> : <span class="idx">1</span>..<span class="idx">@T-1</span></div>
                 <div class="role-msg user">
@@ -1106,7 +1211,7 @@ PromptName2[idx1, idx2, ...]: {
                 </div>
               </div>
             </div>
-            <div class="lbl-name">}</div>
+            <div class="label-end">╚══ End History ══╝</div>
           </div>
         </div>
       </div>
@@ -1118,10 +1223,23 @@ PromptName2[idx1, idx2, ...]: {
         <li><strong>Cross-prompt references</strong> allow a separate specification to access a labeled section, e.g., <code>prompt.Main.Reasoning[@t-1]</code>:</li>
       </ul>
 
-      <pre>SummaryPrompt[<span class="context">@T</span>]: {
+      <div class="code-and-render">
+        <pre>SummaryPrompt[<span class="context">@T</span>]: {
     <span class="role">S</span>: <span class="template">SUMMARIZE_INSTRUCTIONS</span>
     <span class="role">U</span>: <span class="context">prompt.Main.Reasoning</span>[<span class="context">@T</span>-1]
 }</pre>
+        <div class="rendered-output">
+          <div class="render-label">Rendered Output</div>
+          <div class="role-msg system">
+            <span class="role-badge">Role: System</span>
+            <div class="role-body"><span class="tpl">SUMMARIZE_INSTRUCTIONS</span></div>
+          </div>
+          <div class="role-msg user">
+            <span class="role-badge">Role: User</span>
+            <div class="role-body"><span class="ctx">prompt.Main.Reasoning[<span class="idx">@T</span>-1]</span></div>
+          </div>
+        </div>
+      </div>
 
       <p>The access syntax is <code>prompt.LabelName[@step]</code> for labels within the same prompt, and <code>prompt.PromptName.LabelName[@step]</code> for labels in a different prompt.</p>
 
@@ -1188,12 +1306,12 @@ PromptName2[idx1, idx2, ...]: {
         <div class="rendered-output">
           <div class="render-label">Rendered Output</div>
           <div style="margin-bottom: 8px;">
-            <span class="name-kw">Name</span> <span class="name-var">$docs</span> <span class="name-assign">:=</span> <span class="fn">k_relevant_docs(<span class="ctx" style="border:none;background:none;padding:0;">env.query[<span class="idx">@T</span>]</span>)</span>
+            <span class="name-kw">Name</span> <span class="name-var">docs</span> <span class="name-assign">:=</span> <span class="fn">k_relevant_docs(<span class="ctx">env.query[<span class="idx">@T</span>]</span>)</span>
           </div>
           <div class="ctrl-block">
-            <div class="ctrl-header">ForEach <span class="idx">i</span> : <span class="idx">1</span>..<span class="name-var">$docs</span>.len</div>
-            <span class="name-var">$docs</span>[<span class="idx">i</span>].source<br>
-            <span class="name-var">$docs</span>[<span class="idx">i</span>].content
+            <div class="ctrl-header">ForEach <span class="idx">i</span> : <span class="idx">1</span>..<span class="name-var">docs</span>.len</div>
+            <span class="name-var">docs</span>[<span class="idx">i</span>].source<br>
+            <span class="name-var">docs</span>[<span class="idx">i</span>].content
           </div>
         </div>
       </div>
@@ -1205,9 +1323,18 @@ PromptName2[idx1, idx2, ...]: {
       <h3>List Comprehensions</h3>
       <p>Name definitions also support list comprehensions, which construct a list by iterating over a range or collection:</p>
 
-      <pre><span class="keyword">Name</span> relevant_summaries :=
+      <div class="code-and-render">
+        <pre><span class="keyword">Name</span> relevant_summaries :=
     [<span class="context">sys.summary</span>[<span class="context">@t</span>] <span class="keyword">for</span> t <span class="keyword">in</span> <span class="function">range</span>(<span class="context">@T</span>, <span class="context">@T</span>-900, 100)]
 <span class="function">compress_summaries</span>($relevant_summaries)</pre>
+        <div class="rendered-output">
+          <div class="render-label">Rendered Output</div>
+          <div style="margin-bottom: 6px;">
+            <span class="name-kw">Name</span> <span class="name-var">relevant_summaries</span> <span class="name-assign">:=</span> [<span class="ctx">sys.summary[<span class="idx">@t</span>]</span> | <span class="idx">t</span> ∈ range(<span class="idx">@T</span>, <span class="idx">@T</span>-900, 100)]
+          </div>
+          <span class="fn">compress_summaries(<span class="name-var">relevant_summaries</span>)</span>
+        </div>
+      </div>
 
       <p>This binds <code>$relevant_summaries</code> to a list of summaries sampled every 100 steps, which is then passed as an argument to a function. The reference syntax is the same regardless of whether the bound value is a single expression or a list.</p>
 
@@ -1280,7 +1407,7 @@ PromptName2[idx1, idx2, ...]: {
       <h2 id="example-tool-agent">Example: Tool-Using Agent</h2>
       <p>A complete specification for a tool-using agent with conditional history replay:</p>
 
-      <figure class="example-figure">
+      <div class="code-and-render">
         <pre>ToolAgent[<span class="context">@T</span>]: {
     <span class="role">S</span>: {
         <span class="template">INSTRUCTIONS</span>
@@ -1302,13 +1429,48 @@ PromptName2[idx1, idx2, ...]: {
     }
     <span class="role">S</span>: {<span class="template">REACT_INSTRUCTIONS</span>}
 }</pre>
-        <figcaption><strong>Tool-using agent.</strong> System messages frame the task; a conditional loop replays interaction history with role assignment determined by action type.</figcaption>
-      </figure>
+        <div class="rendered-output">
+          <div class="render-label">Rendered Output</div>
+          <div class="role-msg system">
+            <span class="role-badge">Role: System</span>
+            <div class="role-body"><span class="tpl">INSTRUCTIONS</span><br><span class="tpl">AVAILABLE_TOOLS</span></div>
+          </div>
+          <div class="role-msg user">
+            <span class="role-badge">Role: User</span>
+            <div class="role-body"><span class="ctx">env.user_input[<span class="idx">@0</span>]</span><br><span class="ctx">env.user_document[<span class="idx">@0</span>]</span></div>
+          </div>
+          <div class="ctrl-block">
+            <div class="ctrl-header cond">If <span class="idx">t</span> &gt; 1</div>
+            <div class="ctrl-block" style="margin-left: 6px;">
+              <div class="ctrl-header">ForEach <span class="idx">@t</span> : range(<span class="idx">1</span>, <span class="idx">@T</span>-1)</div>
+              <div class="ctrl-block" style="margin-left: 6px;">
+                <div class="ctrl-header cond">If <span class="ctx" >sys.tool[<span class="idx">@t</span>]</span> == get_clarification</div>
+                <div class="role-msg user">
+                  <span class="role-badge">Role: User</span>
+                  <div class="role-body"><span class="ctx">env.user_input[<span class="idx">@t</span>]</span></div>
+                </div>
+              </div>
+              <div class="ctrl-block" style="margin-left: 6px;">
+                <div class="ctrl-header cond">Else</div>
+                <div class="role-msg assistant">
+                  <span class="role-badge">Role: Assistant</span>
+                  <div class="role-body"><span class="ctx">sys.tool[<span class="idx">@t</span>].tool_response</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="role-msg system">
+            <span class="role-badge">Role: System</span>
+            <div class="role-body"><span class="tpl">REACT_INSTRUCTIONS</span></div>
+          </div>
+        </div>
+      </div>
+      <p class="figcaption"><strong>Tool-using agent.</strong> System messages frame the task; a conditional loop replays interaction history with role assignment determined by action type.</p>
 
       <h2 id="example-multi-agent">Example: Multi-Agent Prompt</h2>
       <p>A multi-agent prompt with collection iteration and dialog retrieval:</p>
 
-      <figure class="example-figure">
+      <div class="code-and-render">
         <pre>MultiAgent[<span class="context">@T</span>, agent_name]: {
     <span class="role">S</span>: <span class="context">sys.agent_desc</span>[agent_name]
     <span class="role">U</span>: <span class="context">env.datetime</span>[<span class="context">@T</span>]
@@ -1319,8 +1481,33 @@ PromptName2[idx1, idx2, ...]: {
     }
     <span class="role">S</span>: <span class="template">QUESTION</span>(agent_name)
 }</pre>
-        <figcaption><strong>Multi-agent interaction.</strong> The prompt is parameterized by time and agent identity; dialog histories are conditionally included for agents currently in conversation.</figcaption>
-      </figure>
+        <div class="rendered-output">
+          <div class="render-label">Rendered Output</div>
+          <div class="role-msg system">
+            <span class="role-badge">Role: System</span>
+            <div class="role-body"><span class="ctx">sys.agent_desc[<span class="idx">agent_name</span>]</span></div>
+          </div>
+          <div class="role-msg user">
+            <span class="role-badge">Role: User</span>
+            <div class="role-body"><span class="ctx">env.datetime[<span class="idx">@T</span>]</span></div>
+          </div>
+          <div class="ctrl-block">
+            <div class="ctrl-header">ForEach <span class="idx">other</span> : <span class="ctx" >sys.agent_names</span></div>
+            <div class="ctrl-block" style="margin-left: 6px;">
+              <div class="ctrl-header cond">If <span class="fn" >env.in_dialog(<span class="idx">other</span>, <span class="idx">@T</span>)</span></div>
+              <div class="role-msg user">
+                <span class="role-badge">Role: User</span>
+                <div class="role-body"><span class="fn">get_dialog_history(<span class="idx">other</span>, <span class="idx">@T</span>)</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="role-msg system">
+            <span class="role-badge">Role: System</span>
+            <div class="role-body"><span class="tpl">QUESTION(<span class="idx" style="color: #9333ea;">agent_name</span>)</span></div>
+          </div>
+        </div>
+      </div>
+      <p class="figcaption"><strong>Multi-agent interaction.</strong> The prompt is parameterized by time and agent identity; dialog histories are conditionally included for agents currently in conversation.</p>
 
     </main>
   </div>
