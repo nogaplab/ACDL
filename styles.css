@@ -409,6 +409,24 @@ body {
    EXPRESSION TOKENS - Inside conditions, iterables, switches
    ====================================================== */
 
+/* Base expression class - all expression tokens inherit from this */
+.expr,
+.expr-context-var,
+.expr-namespace,
+.expr-ident,
+.expr-number,
+.expr-keyword,
+.expr-symbol,
+.expr-logic-op,
+.expr-arith-op,
+.expr-range,
+.expr-string {
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-size: 12px;
+  padding-left: 2px;
+  padding-right: 2px;
+}
+
 /* Context vars in expressions (env.foo, sys.bar(x), etc.) - green with box */
 .expr-context-var {
   display: inline-flex;
@@ -420,8 +438,6 @@ body {
   color: var(--accent-context);
   padding: 3px 8px;
   border-radius: 4px;
-  font-family: 'JetBrains Mono', 'SF Mono', monospace;
-  font-size: 12px;
   font-weight: 500;
   line-height: 1;
 }
@@ -430,48 +446,41 @@ body {
 .expr-namespace {
   color: var(--accent-context);
   font-weight: 700;
-  font-family: 'JetBrains Mono', 'SF Mono', monospace;
 }
 
 /* Identifiers in expressions - light blue like all variables */
 .expr-ident {
   color: var(--accent-variable);
   font-weight: 600;
-  font-family: 'JetBrains Mono', 'SF Mono', monospace;
 }
 
 /* Numbers in expressions - light blue like all variables */
 .expr-number {
   color: var(--accent-variable);
   font-weight: 600;
-  font-family: 'JetBrains Mono', 'SF Mono', monospace;
 }
 
 /* Logical keywords in expressions (and, or) */
 .expr-keyword {
   color: var(--text-primary);
   font-weight: 600;
-  font-family: 'JetBrains Mono', 'SF Mono', monospace;
 }
 
 /* Symbols like . [ ] , */
 .expr-symbol {
   color: var(--text-secondary);
-  font-family: 'JetBrains Mono', 'SF Mono', monospace;
 }
 
 /* @ symbol for time indices - light blue */
 .expr-at {
   color: var(--accent-variable);
   font-weight: 700;
-  font-family: 'JetBrains Mono', 'SF Mono', monospace;
 }
 
 /* Logical operators (=, !, <, >, &, |, ^) */
 .expr-logic-op {
   color: var(--text-primary);
   font-weight: 700;
-  font-family: 'JetBrains Mono', 'SF Mono', monospace;
   font-variant-ligatures: none;
   padding: 0 2px;
 }
@@ -480,7 +489,6 @@ body {
 .expr-arith-op {
   color: var(--text-primary);
   font-weight: 600;
-  font-family: 'JetBrains Mono', 'SF Mono', monospace;
   padding: 0 1px;
 }
 
@@ -488,14 +496,12 @@ body {
 .expr-range {
   color: var(--text-secondary);
   font-weight: 600;
-  font-family: 'JetBrains Mono', 'SF Mono', monospace;
   padding: 0 2px;
 }
 
 /* String literals */
 .expr-string {
   color: #a31515;
-  font-family: 'JetBrains Mono', 'SF Mono', monospace;
 }
 
 /* Control flow expressions - high visibility */
@@ -1290,7 +1296,8 @@ body {
   font-size: 9px;
 }
 
-/* Compact expression tokens */
+/* Compact expression tokens - override base .expr font-size */
+.compact .expr,
 .compact .expr-context-var,
 .compact .expr-namespace,
 .compact .expr-ident,

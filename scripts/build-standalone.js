@@ -637,6 +637,21 @@ function enableCollapsibleBlocks() {
   });
 }
 
+function detectWrappedComments(container) {
+  const blockWithComments = container.querySelectorAll('.block-with-comment');
+  blockWithComments.forEach(el => {
+    const comment = el.querySelector('.inline-comment, .comment');
+    if (comment) {
+      const lineHeight = parseFloat(getComputedStyle(comment).lineHeight) || 16;
+      if (comment.offsetHeight > lineHeight * 1.5) {
+        el.classList.add('comment-wrapped');
+      } else {
+        el.classList.remove('comment-wrapped');
+      }
+    }
+  });
+}
+
 function doRender() {
   const input = document.getElementById("acdl-editor").value;
   const output = document.getElementById("output");
@@ -650,6 +665,7 @@ function doRender() {
     const html = renderPrompts(ast);
     output.innerHTML = html;
     enableCollapsibleBlocks();
+    detectWrappedComments(output);
   } catch (err) {
     output.innerHTML = '<div class="error-msg">' + escapeHtml(err.message) + '</div>';
   }
@@ -799,9 +815,48 @@ document.addEventListener("DOMContentLoaded", () => {
 
   document.addEventListener("click", () => { exportMenu.classList.remove("show"); });
 
+  // Helper to find the widest line of content (excluding comments)
+  function findWidestLineWidth(container) {
+    const lineElements = [];
+
+    // Prompt titles
+    container.querySelectorAll('.prompt-title h1').forEach(el => lineElements.push(el));
+
+    // Role body blocks - each child is a line
+    container.querySelectorAll('.role-body-block').forEach(block => {
+      Array.from(block.children).forEach(child => {
+        if (child.classList.contains('block-with-comment')) {
+          const mainContent = child.firstElementChild;
+          if (mainContent) lineElements.push(mainContent);
+        } else if (!child.classList.contains('comment') && !child.classList.contains('inline-comment')) {
+          lineElements.push(child);
+        }
+      });
+    });
+
+    // Control flow headers
+    container.querySelectorAll('.loop-block-outside-role-header, .loop-block-inside-role-header, .conditional-block-outside-role-header, .conditional-section-header, .switch-block-outside-role-header, .switch-block-inside-role-header, .switch-case-header, .switch-default-header').forEach(el => lineElements.push(el));
+
+    // Name definitions, End blocks, Label starts/ends
+    container.querySelectorAll('.name-def').forEach(el => lineElements.push(el));
+    container.querySelectorAll('.end-block').forEach(el => lineElements.push(el));
+    container.querySelectorAll('.label-start, .label-end').forEach(el => lineElements.push(el));
+
+    let maxWidth = 0;
+    lineElements.forEach(el => {
+      const rect = el.getBoundingClientRect();
+      if (rect.width > maxWidth) maxWidth = rect.width;
+    });
+
+    return maxWidth;
+  }
+
+  // Helper function to capture full content
   async function captureFullContent() {
-    const content = output.querySelector(".prompt-container");
-    if (!content) return null;
+    if (!output.querySelector(".prompt-container")) return null;
+
+    const content = output;
+
     const originalOutputStyle = output.style.cssText;
     const originalContentStyle = content.style.cssText;
     const originalWrapperStyle = outputWrapper.style.cssText;
@@ -817,7 +872,38 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const inlineFlexEls = content.querySelectorAll(".context-var, .template-block, .func-block, .expr-context-var");
     const savedDisplays = [];
-    inlineFlexEls.forEach(el => { savedDisplays.push(el.style.display); el.style.display = "inline-block"; });
+    inlineFlexEls.forEach(el => {
+      savedDisplays.push(el.style.display);
+      el.style.display = "inline-block";
+    });
+
+    // Fix mark blocks
+    const markBlocks = content.querySelectorAll(".mark-block");
+    const savedMarkBlockStyles = [];
+    markBlocks.forEach(el => {
+      savedMarkBlockStyles.push(el.style.cssText);
+      el.style.display = "flex";
+      el.style.alignItems = "stretch";
+      el.style.paddingRight = "0";
+    });
+
+    const markBrackets = content.querySelectorAll(".mark-block-bracket");
+    const savedMarkBracketStyles = [];
+    markBrackets.forEach(el => {
+      savedMarkBracketStyles.push(el.style.cssText);
+      el.style.position = "relative";
+      el.style.right = "auto";
+      el.style.top = "auto";
+      el.style.bottom = "auto";
+      el.style.marginLeft = "8px";
+    });
+
+    const markContents = content.querySelectorAll(".mark-block-content");
+    const savedMarkContentStyles = [];
+    markContents.forEach(el => {
+      savedMarkContentStyles.push(el.style.cssText);
+      el.style.flex = "1";
+    });
 
     const timeIndexEls = content.querySelectorAll(".time-index, .other-index");
     const savedTimeIndexStyles = [];
@@ -829,11 +915,80 @@ document.addEventListener("DOMContentLoaded", () => {
       el.style.fontFamily = "'JetBrains Mono', 'SF Mono', monospace";
     });
 
+    const titleH1s = content.querySelectorAll(".prompt-title h1");
+    const savedTitleStyles = [];
+    titleH1s.forEach(el => {
+      savedTitleStyles.push(el.style.cssText);
+      el.style.whiteSpace = "nowrap";
+    });
+
     const exportFixStyle = document.createElement("style");
     exportFixStyle.textContent = '.template-block::before { vertical-align: middle; line-height: 1; position: relative; top: -1px; }';
     document.head.appendChild(exportFixStyle);
 
+    const containers = content.querySelectorAll('.prompt-container');
+    const savedContainerStyles = [];
+    containers.forEach(el => {
+      savedContainerStyles.push(el.style.cssText);
+      el.style.maxWidth = 'none';
+      el.style.width = 'auto';
+    });
+
+    // Hide comments and measure natural line widths
+    const comments = content.querySelectorAll('.comment, .inline-comment');
+    comments.forEach(c => c.style.display = 'none');
     content.offsetHeight;
+
+    const widestLineWidth = findWidestLineWidth(content);
+    const contentWidthWithoutComments = Math.ceil(widestLineWidth) + 60;
+
+    // Restore comments and constrain width
+    comments.forEach(c => c.style.display = '');
+    const constrainedWidth = Math.min(Math.max(contentWidthWithoutComments, 200), 450);
+
+    containers.forEach(el => {
+      el.style.width = (constrainedWidth - 40) + 'px';
+      el.style.maxWidth = (constrainedWidth - 40) + 'px';
+    });
+    content.style.width = constrainedWidth + 'px';
+    content.style.minWidth = "200px";
+
+    // Calculate available width for comments
+    const blockWithComments = content.querySelectorAll('.block-with-comment');
+    const savedBlockStyles = [];
+    const savedCommentStyles = [];
+    blockWithComments.forEach(el => {
+      savedBlockStyles.push({ el, style: el.style.cssText, hadClass: el.classList.contains('comment-wrapped') });
+      const mainContent = el.firstElementChild;
+      const comment = el.querySelector('.inline-comment, .comment');
+      if (mainContent && comment) {
+        savedCommentStyles.push({ el: comment, style: comment.style.cssText });
+        const mainWidth = mainContent.getBoundingClientRect().width;
+        const gap = 8;
+        const availableForComment = constrainedWidth - 40 - mainWidth - gap;
+        const commentMaxWidth = Math.max(80, availableForComment);
+        comment.style.maxWidth = commentMaxWidth + 'px';
+        comment.style.minWidth = '0';
+        comment.style.flex = '0 1 auto';
+        comment.style.whiteSpace = 'normal';
+        comment.style.overflowWrap = 'break-word';
+      }
+    });
+
+    content.offsetHeight;
+
+    // Detect wrapped comments
+    blockWithComments.forEach(el => {
+      const comment = el.querySelector('.inline-comment, .comment');
+      if (comment) {
+        const lineHeight = parseFloat(getComputedStyle(comment).lineHeight) || 16;
+        if (comment.offsetHeight > lineHeight * 1.5) {
+          el.classList.add('comment-wrapped');
+        } else {
+          el.classList.remove('comment-wrapped');
+        }
+      }
+    });
 
     const fullWidth = Math.max(content.scrollWidth, content.offsetWidth, content.getBoundingClientRect().width);
     const fullHeight = Math.max(content.scrollHeight, content.offsetHeight, content.getBoundingClientRect().height);
@@ -855,15 +1010,202 @@ document.addEventListener("DOMContentLoaded", () => {
         x: 0,
         y: 0,
         allowTaint: true,
+        imageTimeout: 0,
+        onclone: (clonedDoc) => {
+          const styles = document.querySelectorAll('link[rel="stylesheet"], style');
+          styles.forEach(style => {
+            clonedDoc.head.appendChild(style.cloneNode(true));
+          });
+        }
+      });
+      return canvas;
+    } finally {
+      inlineFlexEls.forEach((el, i) => { el.style.display = savedDisplays[i]; });
+      markBlocks.forEach((el, i) => { el.style.cssText = savedMarkBlockStyles[i]; });
+      markBrackets.forEach((el, i) => { el.style.cssText = savedMarkBracketStyles[i]; });
+      markContents.forEach((el, i) => { el.style.cssText = savedMarkContentStyles[i]; });
+      savedBlockStyles.forEach(({ el, style, hadClass }) => {
+        el.style.cssText = style;
+        if (hadClass) el.classList.add('comment-wrapped');
+        else el.classList.remove('comment-wrapped');
+      });
+      savedCommentStyles.forEach(({ el, style }) => { el.style.cssText = style; });
+      timeIndexEls.forEach((el, i) => { el.style.cssText = savedTimeIndexStyles[i]; });
+      titleH1s.forEach((el, i) => { el.style.cssText = savedTitleStyles[i]; });
+      containers.forEach((el, i) => { el.style.cssText = savedContainerStyles[i]; });
+      exportFixStyle.remove();
+      output.style.cssText = originalOutputStyle;
+      content.style.cssText = originalContentStyle;
+      outputWrapper.style.cssText = originalWrapperStyle;
+      document.body.style.cssText = originalBodyStyle;
+    }
+  }
+
+  // Helper to capture all content (entire output with multiple prompts)
+  async function captureAllContent() {
+    if (!output.querySelector(".prompt-container")) return null;
+
+    const originalOutputStyle = output.style.cssText;
+    const originalWrapperStyle = outputWrapper.style.cssText;
+    const originalBodyStyle = document.body.style.cssText;
+
+    output.style.overflow = "visible";
+    output.style.height = "auto";
+    output.style.maxHeight = "none";
+    output.style.position = "relative";
+    outputWrapper.style.overflow = "visible";
+    outputWrapper.style.height = "auto";
+    document.body.style.overflow = "visible";
+
+    const inlineFlexEls = output.querySelectorAll(".context-var, .template-block, .func-block, .expr-context-var");
+    const savedDisplays = [];
+    inlineFlexEls.forEach(el => {
+      savedDisplays.push(el.style.display);
+      el.style.display = "inline-block";
+    });
+
+    const markBlocks = output.querySelectorAll(".mark-block");
+    const savedMarkBlockStyles = [];
+    markBlocks.forEach(el => {
+      savedMarkBlockStyles.push(el.style.cssText);
+      el.style.display = "flex";
+      el.style.alignItems = "stretch";
+      el.style.paddingRight = "0";
+    });
+
+    const markBrackets = output.querySelectorAll(".mark-block-bracket");
+    const savedMarkBracketStyles = [];
+    markBrackets.forEach(el => {
+      savedMarkBracketStyles.push(el.style.cssText);
+      el.style.position = "relative";
+      el.style.right = "auto";
+      el.style.top = "auto";
+      el.style.bottom = "auto";
+      el.style.marginLeft = "8px";
+    });
+
+    const markContents = output.querySelectorAll(".mark-block-content");
+    const savedMarkContentStyles = [];
+    markContents.forEach(el => {
+      savedMarkContentStyles.push(el.style.cssText);
+      el.style.flex = "1";
+    });
+
+    const timeIndexEls = output.querySelectorAll(".time-index, .other-index");
+    const savedTimeIndexStyles = [];
+    timeIndexEls.forEach(el => {
+      savedTimeIndexStyles.push(el.style.cssText);
+      el.style.display = "inline";
+      el.style.color = "#0969da";
+      el.style.fontWeight = "700";
+      el.style.fontFamily = "'JetBrains Mono', 'SF Mono', monospace";
+    });
+
+    const titleH1s = output.querySelectorAll(".prompt-title h1");
+    const savedTitleStyles = [];
+    titleH1s.forEach(el => {
+      savedTitleStyles.push(el.style.cssText);
+      el.style.whiteSpace = "nowrap";
+    });
+
+    const exportFixStyle = document.createElement("style");
+    exportFixStyle.textContent = '.template-block::before { vertical-align: middle; line-height: 1; position: relative; top: -1px; }';
+    document.head.appendChild(exportFixStyle);
+
+    const containers = output.querySelectorAll('.prompt-container');
+    const savedContainerStyles = [];
+    containers.forEach(el => {
+      savedContainerStyles.push(el.style.cssText);
+      el.style.maxWidth = 'none';
+      el.style.width = 'auto';
+    });
+
+    const comments = output.querySelectorAll('.comment, .inline-comment');
+    comments.forEach(c => c.style.display = 'none');
+    output.offsetHeight;
+
+    const widestLineWidth = findWidestLineWidth(output);
+    const contentWidthWithoutComments = Math.ceil(widestLineWidth) + 60;
+
+    comments.forEach(c => c.style.display = '');
+    const constrainedWidth = Math.min(Math.max(contentWidthWithoutComments, 200), 450);
+
+    containers.forEach(el => {
+      el.style.width = (constrainedWidth - 40) + 'px';
+      el.style.maxWidth = (constrainedWidth - 40) + 'px';
+    });
+    output.style.width = constrainedWidth + 'px';
+
+    const blockWithComments = output.querySelectorAll('.block-with-comment');
+    const savedBlockStyles = [];
+    const savedCommentStyles = [];
+    blockWithComments.forEach(el => {
+      savedBlockStyles.push({ el, style: el.style.cssText, hadClass: el.classList.contains('comment-wrapped') });
+      const mainContent = el.firstElementChild;
+      const comment = el.querySelector('.inline-comment, .comment');
+      if (mainContent && comment) {
+        savedCommentStyles.push({ el: comment, style: comment.style.cssText });
+        const mainWidth = mainContent.getBoundingClientRect().width;
+        const gap = 8;
+        const availableForComment = constrainedWidth - 40 - mainWidth - gap;
+        const commentMaxWidth = Math.max(80, availableForComment);
+        comment.style.maxWidth = commentMaxWidth + 'px';
+        comment.style.minWidth = '0';
+        comment.style.flex = '0 1 auto';
+        comment.style.whiteSpace = 'normal';
+        comment.style.overflowWrap = 'break-word';
+      }
+    });
+
+    output.offsetHeight;
+
+    blockWithComments.forEach(el => {
+      const comment = el.querySelector('.inline-comment, .comment');
+      if (comment) {
+        const lineHeight = parseFloat(getComputedStyle(comment).lineHeight) || 16;
+        if (comment.offsetHeight > lineHeight * 1.5) {
+          el.classList.add('comment-wrapped');
+        } else {
+          el.classList.remove('comment-wrapped');
+        }
+      }
+    });
+
+    const fullWidth = Math.max(output.scrollWidth, output.offsetWidth, output.getBoundingClientRect().width);
+    const fullHeight = Math.max(output.scrollHeight, output.offsetHeight, output.getBoundingClientRect().height);
+    const captureWidth = Math.ceil(fullWidth) + 40;
+    const captureHeight = Math.ceil(fullHeight) + 60;
+
+    try {
+      const canvas = await html2canvas(output, {
+        backgroundColor: "#ffffff",
+        scale: window.devicePixelRatio * 2 || 3,
+        useCORS: true,
+        logging: false,
+        width: captureWidth,
+        height: captureHeight,
+        windowWidth: captureWidth,
+        windowHeight: captureHeight,
+        scrollX: 0,
+        scrollY: 0,
+        x: 0,
+        y: 0,
+        allowTaint: true,
         imageTimeout: 0
       });
       return canvas;
     } finally {
       inlineFlexEls.forEach((el, i) => { el.style.display = savedDisplays[i]; });
+      markBlocks.forEach((el, i) => { el.style.cssText = savedMarkBlockStyles[i]; });
+      markBrackets.forEach((el, i) => { el.style.cssText = savedMarkBracketStyles[i]; });
+      markContents.forEach((el, i) => { el.style.cssText = savedMarkContentStyles[i]; });
       timeIndexEls.forEach((el, i) => { el.style.cssText = savedTimeIndexStyles[i]; });
+      titleH1s.forEach((el, i) => { el.style.cssText = savedTitleStyles[i]; });
+      containers.forEach((el, i) => { el.style.cssText = savedContainerStyles[i]; });
+      savedBlockStyles.forEach(({ el, style, hadClass }) => { el.style.cssText = style; if (hadClass) el.classList.add('comment-wrapped'); else el.classList.remove('comment-wrapped'); });
+      savedCommentStyles.forEach(({ el, style }) => { el.style.cssText = style; });
       exportFixStyle.remove();
       output.style.cssText = originalOutputStyle;
-      content.style.cssText = originalContentStyle;
       outputWrapper.style.cssText = originalWrapperStyle;
       document.body.style.cssText = originalBodyStyle;
     }
@@ -877,7 +1219,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     exportBtn.classList.add("loading");
     try {
-      const canvas = await captureFullContent();
+      const canvas = await captureAllContent();
       if (!canvas) throw new Error("Failed to capture content");
       const link = document.createElement("a");
       link.download = "acdl-visualization.png";
@@ -899,7 +1241,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     exportBtn.classList.add("loading");
     try {
-      const canvas = await captureFullContent();
+      const canvas = await captureAllContent();
       if (!canvas) throw new Error("Failed to capture content");
       const { jsPDF } = window.jspdf;
       const imgData = canvas.toDataURL("image/png");

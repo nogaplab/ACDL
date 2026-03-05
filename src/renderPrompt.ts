@@ -118,11 +118,29 @@ function renderExpressionTokens(tokens: ExpressionToken[]): string {
   const result: string[] = [];
   let i = 0;
 
-  // Check if expression contains and/or - if so, we'll wrap sub-expressions in parens
-  const hasLogicalOps = tokens.some(t => t.type === "IDENT" && (t.value === "and" || t.value === "or"));
-  if (hasLogicalOps) {
-    result.push("(");
-  }
+  // Check if expression contains logical connectives (and/or or ||/&&/|/&)
+  // We'll wrap sub-expressions in parens around these operators (but not outer parens)
+  const logicalConnectives = ["and", "or"];
+  const logicalOpSymbols = ["||", "&&", "|", "&"];
+  const hasLogicalOps = tokens.some(t =>
+    (t.type === "IDENT" && logicalConnectives.includes(t.value)) ||
+    (t.type === "LOGIC_OP" && logicalOpSymbols.includes(t.value))
+  );
+
+  // Track if we need to open a paren before the next operand content
+  let needsOpenParen = hasLogicalOps;
+  // Track if we're inside an operand (need to close paren before next logical op)
+  let inOperand = false;
+
+  // Helper to push content with paren tracking
+  const pushContent = (html: string) => {
+    if (needsOpenParen) {
+      result.push("(");
+      needsOpenParen = false;
+      inOperand = true;
+    }
+    result.push(html);
+  };
 
   while (i < tokens.length) {
     const tok = tokens[i];
@@ -240,7 +258,7 @@ function renderExpressionTokens(tokens: ExpressionToken[]): string {
         break;
       }
 
-      result.push(`<span class="expr-context-var">${contextVarTokens.join("")}</span>`);
+      pushContent(`<span class="expr-context-var">${contextVarTokens.join("")}</span>`);
       continue;
     }
 
@@ -299,7 +317,7 @@ function renderExpressionTokens(tokens: ExpressionToken[]): string {
         ? `<span class="range-step"><span class="range-keyword">every</span><span class="range-step-value">${renderExpressionTokens(stepTokens)}</span></span>`
         : "";
 
-      result.push(`<span class="range-expr"><span class="range-start">${startHtml}</span><span class="range-dots">...</span><span class="range-end">${endHtml}</span>${stepHtml}</span>`);
+      pushContent(`<span class="range-expr"><span class="range-start">${startHtml}</span><span class="range-dots">...</span><span class="range-end">${endHtml}</span>${stepHtml}</span>`);
       continue;
     }
 
@@ -331,9 +349,9 @@ function renderExpressionTokens(tokens: ExpressionToken[]): string {
       // Special handling for min/max - render without function coloring
       const isBuiltinMath = tok.value === "min" || tok.value === "max";
       if (isBuiltinMath) {
-        result.push(`<span class="builtin-func">${funcName}(${argsHtml})</span>`);
+        pushContent(`<span class="builtin-func">${funcName}(${argsHtml})</span>`);
       } else {
-        result.push(`<span class="func-block"><span class="func-name">${funcName}</span><span class="func-parens">(</span>${argsHtml}<span class="func-parens">)</span></span>`);
+        pushContent(`<span class="func-block"><span class="func-name">${funcName}</span><span class="func-parens">(</span>${argsHtml}<span class="func-parens">)</span></span>`);
       }
       continue;
     }
@@ -346,7 +364,18 @@ function renderExpressionTokens(tokens: ExpressionToken[]): string {
         combined += tokens[i].value;
         i++;
       }
-      result.push(`<span class="expr-logic-op">${escapeHtml(combined)}</span>`);
+      // Check if this is a logical connective (||, &&, |, &) that needs parens around operands
+      if (logicalOpSymbols.includes(combined)) {
+        // Close the current operand paren, push the operator, prepare to open next operand
+        if (inOperand) {
+          result.push(")");
+          inOperand = false;
+        }
+        result.push(`<span class="expr-logic-op">${escapeHtml(combined)}</span>`);
+        needsOpenParen = true;
+      } else {
+        pushContent(`<span class="expr-logic-op">${escapeHtml(combined)}</span>`);
+      }
       continue;
     }
 
@@ -359,7 +388,7 @@ function renderExpressionTokens(tokens: ExpressionToken[]): string {
         const varNameTok = tokens[i + 2];
         if (varNameTok.type === "IDENT") {
           const varName = escapeHtml(varNameTok.value);
-          result.push(`<span class="time-index"><span class="at-symbol">@</span><span class="name-ref">${varName}</span></span>`);
+          pushContent(`<span class="time-index"><span class="at-symbol">@</span><span class="name-ref">${varName}</span></span>`);
           i += 3; // skip @, $, and identifier
           continue;
         }
@@ -387,7 +416,7 @@ function renderExpressionTokens(tokens: ExpressionToken[]): string {
           }
         }
 
-        result.push(`<span class="time-index"><span class="at-symbol">@</span>${timeIndexName}</span>`);
+        pushContent(`<span class="time-index"><span class="at-symbol">@</span>${timeIndexName}</span>`);
         continue;
       }
     }
@@ -397,7 +426,7 @@ function renderExpressionTokens(tokens: ExpressionToken[]): string {
       const nextTok = tokens[i + 1];
       if (nextTok.type === "IDENT") {
         const varName = escapeHtml(nextTok.value);
-        result.push(`<span class="name-ref">${varName}</span>`);
+        pushContent(`<span class="name-ref">${varName}</span>`);
         i += 2; // skip $ and identifier
         continue;
       }
@@ -408,51 +437,56 @@ function renderExpressionTokens(tokens: ExpressionToken[]): string {
 
     switch (tok.type) {
       case "KEYWORD":
-        result.push(`<span class="keyword">${escaped}</span>`);
+        pushContent(`<span class="keyword">${escaped}</span>`);
         break;
 
       case "IDENT":
-        // Add spacing and parentheses around logical keywords (and, or)
+        // Handle logical keywords (and, or) - close current operand, push operator, prepare for next
         if (tok.value === "and" || tok.value === "or") {
-          result.push(`) <span class="expr-keyword">${escaped}</span> (`);
+          if (inOperand) {
+            result.push(")");
+            inOperand = false;
+          }
+          result.push(`<span class="expr-keyword">${escaped}</span>`);
+          needsOpenParen = true;
         } else {
-          result.push(`<span class="expr-ident">${escaped}</span>`);
+          pushContent(`<span class="expr-ident">${escaped}</span>`);
         }
         break;
 
       case "NUMBER":
-        result.push(`<span class="expr-number">${escaped}</span>`);
+        pushContent(`<span class="expr-number">${escaped}</span>`);
         break;
 
       case "SYMBOL":
         if (tok.value === "@") {
           // Standalone @ without following identifier
-          result.push(`<span class="expr-at">@</span>`);
+          pushContent(`<span class="expr-at">@</span>`);
         } else {
-          result.push(`<span class="expr-symbol">${escaped}</span>`);
+          pushContent(`<span class="expr-symbol">${escaped}</span>`);
         }
         break;
 
       case "ARITH_OP":
-        result.push(`<span class="expr-arith-op">${escaped}</span>`);
+        pushContent(`<span class="expr-arith-op">${escaped}</span>`);
         break;
 
       case "RANGE":
-        result.push(`<span class="expr-range">${escaped}</span>`);
+        pushContent(`<span class="expr-range">${escaped}</span>`);
         break;
 
       case "STRING":
-        result.push(`<span class="expr-string">"${escaped}"</span>`);
+        pushContent(`<span class="expr-string">"${escaped}"</span>`);
         break;
 
       default:
-        result.push(escaped);
+        pushContent(escaped);
     }
     i++;
   }
 
-  // Close the final sub-expression paren if we had logical operators
-  if (hasLogicalOps) {
+  // Close the final sub-expression paren if we're still in an operand
+  if (inOperand) {
     result.push(")");
   }
 
@@ -1336,12 +1370,12 @@ function renderConditionalInsideRole(block: ConditionalBlockInsideRole): string 
       .join("\n");
 
   // IF block
-  const ifHeader = `<span class="keyword">If</span> (<span class="condition-expr">${renderExpressionTokens(block.Ifcondition)}</span>):`;
+  const ifHeader = `<span class="keyword">If</span> <span class="condition-expr">${renderExpressionTokens(block.Ifcondition)}</span>:`;
   let result = wrapBlock("conditional-block-inside-role", ifHeader, renderBody(block.IfBody));
 
   // ELSEIFs
   for (let i = 0; i < block.elseif.length; i++) {
-    const elseifHeader = `<span class="keyword">ElseIf</span> (<span class="condition-expr">${renderExpressionTokens(block.elseif[i])}</span>):`;
+    const elseifHeader = `<span class="keyword">ElseIf</span> <span class="condition-expr">${renderExpressionTokens(block.elseif[i])}</span>:`;
     result += wrapBlock("conditional-block-inside-role", elseifHeader, renderBody(block.elseifBody[i]));
   }
 
@@ -1394,12 +1428,12 @@ function renderConditionalOutsideRole(block: ConditionalBlockOutsideRole): strin
       .join("\n");
 
   // IF block
-  const ifHeader = `<span class="keyword">If</span> (<span class="condition-expr">${renderExpressionTokens(block.Ifcondition)}</span>):`;
+  const ifHeader = `<span class="keyword">If</span> <span class="condition-expr">${renderExpressionTokens(block.Ifcondition)}</span>:`;
   let result = wrapBlock("conditional-block-outside-role", ifHeader, renderBody(block.IfBody));
 
   // ELSEIFs
   for (let i = 0; i < block.elseif.length; i++) {
-    const elseifHeader = `<span class="keyword">ElseIf</span> (<span class="condition-expr">${renderExpressionTokens(block.elseif[i])}</span>):`;
+    const elseifHeader = `<span class="keyword">ElseIf</span> <span class="condition-expr">${renderExpressionTokens(block.elseif[i])}</span>:`;
     result += wrapBlock("conditional-block-outside-role", elseifHeader, renderBody(block.elseifBody[i]));
   }
 

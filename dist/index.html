@@ -451,8 +451,8 @@
     }
 
   </style>
-  <script type="module" crossorigin src="/assets/index-Dp1a0RII.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/index-ChO94rQr.css">
+  <script type="module" crossorigin src="/assets/index-urUpcDjT.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-BXEh-bZ7.css">
 </head>
 
 <body>
@@ -684,17 +684,12 @@
         });
 
         // Fix title to prevent wrapping
-        const titleH1 = content.querySelector(".prompt-title h1");
-        const savedTitleStyle = titleH1 ? titleH1.style.cssText : "";
-        if (titleH1) {
-          titleH1.style.whiteSpace = "nowrap";
-        }
-
-        // Fix container width - html2canvas doesn't support fit-content
-        const savedContainerWidth = content.style.width;
-        const savedContainerMinWidth = content.style.minWidth;
-        content.style.width = "auto";
-        content.style.minWidth = "200px";
+        const titleH1s = content.querySelectorAll(".prompt-title h1");
+        const savedTitleStyles = [];
+        titleH1s.forEach(el => {
+          savedTitleStyles.push(el.style.cssText);
+          el.style.whiteSpace = "nowrap";
+        });
 
         // html2canvas misrenders ::before pseudo-elements when display is
         // inline-block instead of inline-flex (the diamond loses flex
@@ -711,10 +706,81 @@
         `;
         document.head.appendChild(exportFixStyle);
 
+        // Remove max-width constraints on containers to allow natural sizing
+        const containers = content.querySelectorAll('.prompt-container');
+        const savedContainerStyles = [];
+        containers.forEach(el => {
+          savedContainerStyles.push(el.style.cssText);
+          el.style.maxWidth = 'none';
+          el.style.width = 'auto';
+        });
+
+        // Step 1: Hide comments and set wide container to measure natural line widths
+        const comments = content.querySelectorAll('.comment, .inline-comment');
+        comments.forEach(c => c.style.display = 'none');
+
         // Force layout recalculation
         content.offsetHeight;
 
-        // Get the full scrollable dimensions
+        // Find the widest line of content (not the container width)
+        const widestLineWidth = findWidestLineWidth(content);
+
+        // Add padding for the prompt-container's border, padding, and breathing room
+        const contentWidthWithoutComments = Math.ceil(widestLineWidth) + 60; // Account for padding/borders
+
+        // Step 2: Restore comments and constrain width so they wrap
+        comments.forEach(c => c.style.display = '');
+        // Min 200px, max 450px
+        const constrainedWidth = Math.min(Math.max(contentWidthWithoutComments, 200), 450);
+
+        // Set container widths to the constrained width
+        containers.forEach(el => {
+          el.style.width = (constrainedWidth - 40) + 'px';
+          el.style.maxWidth = (constrainedWidth - 40) + 'px';
+        });
+        content.style.width = constrainedWidth + 'px';
+        content.style.minWidth = "200px";
+
+        // For each block-with-comment, calculate available width for comment
+        // so it wraps within remaining space (staying to the right of content)
+        const blockWithComments = content.querySelectorAll('.block-with-comment');
+        const savedBlockStyles = [];
+        const savedCommentStyles = [];
+        blockWithComments.forEach(el => {
+            savedBlockStyles.push({ el, style: el.style.cssText, hadClass: el.classList.contains('comment-wrapped') });
+            const mainContent = el.firstElementChild;
+            const comment = el.querySelector('.inline-comment, .comment');
+            if (mainContent && comment) {
+                savedCommentStyles.push({ el: comment, style: comment.style.cssText });
+                const mainWidth = mainContent.getBoundingClientRect().width;
+                const gap = 8;
+                const availableForComment = constrainedWidth - 40 - mainWidth - gap;
+                const commentMaxWidth = Math.max(80, availableForComment);
+                comment.style.maxWidth = commentMaxWidth + 'px';
+                comment.style.minWidth = '0';
+                comment.style.flex = '0 1 auto';
+                comment.style.whiteSpace = 'normal';
+                comment.style.overflowWrap = 'break-word';
+            }
+        });
+
+        // Force layout recalculation with constrained width
+        content.offsetHeight;
+
+        // Detect wrapped comments and add class for top alignment
+        blockWithComments.forEach(el => {
+            const comment = el.querySelector('.inline-comment, .comment');
+            if (comment) {
+                const lineHeight = parseFloat(getComputedStyle(comment).lineHeight) || 16;
+                if (comment.offsetHeight > lineHeight * 1.5) {
+                    el.classList.add('comment-wrapped');
+                } else {
+                    el.classList.remove('comment-wrapped');
+                }
+            }
+        });
+
+        // Step 3: Get final dimensions with comments wrapping
         const fullWidth = Math.max(
           content.scrollWidth,
           content.offsetWidth,
@@ -773,19 +839,35 @@
             el.style.cssText = savedMarkContentStyles[i];
           });
 
+          // Restore block-with-comment styles and classes
+          savedBlockStyles.forEach(({ el, style, hadClass }) => {
+            el.style.cssText = style;
+            if (hadClass) {
+              el.classList.add('comment-wrapped');
+            } else {
+              el.classList.remove('comment-wrapped');
+            }
+          });
+
+          // Restore comment styles
+          savedCommentStyles.forEach(({ el, style }) => {
+            el.style.cssText = style;
+          });
+
           // Restore time-index and other-index styles
           timeIndexEls.forEach((el, i) => {
             el.style.cssText = savedTimeIndexStyles[i];
           });
 
-          // Restore title style
-          if (titleH1) {
-            titleH1.style.cssText = savedTitleStyle;
-          }
+          // Restore title styles
+          titleH1s.forEach((el, i) => {
+            el.style.cssText = savedTitleStyles[i];
+          });
 
-          // Restore container width
-          content.style.width = savedContainerWidth;
-          content.style.minWidth = savedContainerMinWidth;
+          // Restore container styles
+          containers.forEach((el, i) => {
+            el.style.cssText = savedContainerStyles[i];
+          });
 
           // Remove the temporary export fix style
           exportFixStyle.remove();
@@ -880,10 +962,70 @@
         `;
         document.head.appendChild(exportFixStyle);
 
+        // Remove max-width constraints to allow natural sizing
+        const savedContainerStyle = promptContainer.style.cssText;
+        promptContainer.style.maxWidth = 'none';
+        promptContainer.style.width = 'auto';
+
+        // Step 1: Hide comments and set wide container to measure natural line widths
+        const comments = promptContainer.querySelectorAll('.comment, .inline-comment');
+        comments.forEach(c => c.style.display = 'none');
+
         // Force layout recalculation
         promptContainer.offsetHeight;
 
-        // Get dimensions
+        // Find the widest line of content (not the container width)
+        const widestLineWidth = findWidestLineWidth(promptContainer);
+
+        // Add padding for the prompt-container's border, padding, and breathing room
+        const contentWidthWithoutComments = Math.ceil(widestLineWidth) + 60; // Account for padding/borders
+
+        // Step 2: Restore comments and constrain width so they wrap
+        comments.forEach(c => c.style.display = '');
+        // Min 200px, max 450px
+        const constrainedWidth = Math.min(Math.max(contentWidthWithoutComments, 200), 450);
+        promptContainer.style.width = constrainedWidth + 'px';
+        promptContainer.style.maxWidth = constrainedWidth + 'px';
+
+        // For each block-with-comment, calculate available width for comment
+        const blockWithComments = promptContainer.querySelectorAll('.block-with-comment');
+        const savedBlockStyles = [];
+        const savedCommentStyles = [];
+        blockWithComments.forEach(el => {
+            savedBlockStyles.push({ el, style: el.style.cssText, hadClass: el.classList.contains('comment-wrapped') });
+            const mainContent = el.firstElementChild;
+            const comment = el.querySelector('.inline-comment, .comment');
+            if (mainContent && comment) {
+                savedCommentStyles.push({ el: comment, style: comment.style.cssText });
+                const mainWidth = mainContent.getBoundingClientRect().width;
+                const gap = 8;
+                const availableForComment = constrainedWidth - mainWidth - gap;
+                const commentMaxWidth = Math.max(80, availableForComment);
+                comment.style.maxWidth = commentMaxWidth + 'px';
+                comment.style.minWidth = '0';
+                comment.style.flex = '0 1 auto';
+                comment.style.whiteSpace = 'normal';
+                comment.style.overflowWrap = 'break-word';
+            }
+        });
+
+        // Force layout recalculation with constrained width
+        promptContainer.offsetHeight;
+
+        // Detect wrapped comments and add class for top alignment
+        blockWithComments.forEach(el => {
+            const comment = el.querySelector('.inline-comment, .comment');
+            if (comment) {
+                const lineHeight = parseFloat(getComputedStyle(comment).lineHeight) || 16;
+                if (comment.offsetHeight > lineHeight * 1.5) {
+                    el.classList.add('comment-wrapped');
+                } else {
+                    el.classList.remove('comment-wrapped');
+                }
+            }
+        });
+
+        // Step 3: Get final dimensions with comments wrapping
         const fullWidth = Math.max(
           promptContainer.scrollWidth,
           promptContainer.offsetWidth,
@@ -923,12 +1065,59 @@
           markBrackets.forEach((el, i) => { el.style.cssText = savedMarkBracketStyles[i]; });
           markContents.forEach((el, i) => { el.style.cssText = savedMarkContentStyles[i]; });
           timeIndexEls.forEach((el, i) => { el.style.cssText = savedTimeIndexStyles[i]; });
+          savedBlockStyles.forEach(({ el, style, hadClass }) => { el.style.cssText = style; if (hadClass) el.classList.add('comment-wrapped'); else el.classList.remove('comment-wrapped'); });
+          savedCommentStyles.forEach(({ el, style }) => { el.style.cssText = style; });
           if (titleH1) { titleH1.style.cssText = savedTitleStyle; }
+          promptContainer.style.cssText = savedContainerStyle;
           exportFixStyle.remove();
           output.style.cssText = originalOutputStyle;
           outputWrapper.style.cssText = originalWrapperStyle;
           document.body.style.cssText = originalBodyStyle;
         }
+      }
+
+      // Helper to find the widest line of content (excluding comments)
+      function findWidestLineWidth(container) {
+        // Collect all elements that represent "lines" of content
+        const lineElements = [];
+
+        // Prompt titles
+        container.querySelectorAll('.prompt-title h1').forEach(el => lineElements.push(el));
+
+        // Role body blocks - each child is a line
+        container.querySelectorAll('.role-body-block').forEach(block => {
+          // Get direct children (excluding nested structures)
+          Array.from(block.children).forEach(child => {
+            // For block-with-comment, we only measure the main content (first child)
+            if (child.classList.contains('block-with-comment')) {
+              const mainContent = child.firstElementChild;
+              if (mainContent) lineElements.push(mainContent);
+            } else if (!child.classList.contains('comment') && !child.classList.contains('inline-comment')) {
+              lineElements.push(child);
+            }
+          });
+        });
+
+        // Control flow headers
+        container.querySelectorAll('.loop-block-outside-role-header, .loop-block-inside-role-header, .conditional-block-outside-role-header, .conditional-section-header, .switch-block-outside-role-header, .switch-block-inside-role-header, .switch-case-header, .switch-default-header').forEach(el => lineElements.push(el));
+
+        // Name definitions
+        container.querySelectorAll('.name-def').forEach(el => lineElements.push(el));
+
+        // End blocks
+        container.querySelectorAll('.end-block').forEach(el => lineElements.push(el));
+
+        // Label starts/ends
+        container.querySelectorAll('.label-start, .label-end').forEach(el => lineElements.push(el));
+
+        // Find the widest element
+        let maxWidth = 0;
+        lineElements.forEach(el => {
+          const rect = el.getBoundingClientRect();
+          if (rect.width > maxWidth) maxWidth = rect.width;
+        });
+
+        return maxWidth;
       }
 
       // Helper to capture all content (entire output)
@@ -1016,10 +1205,80 @@
         `;
         document.head.appendChild(exportFixStyle);
 
+        // Remove max-width constraints on containers to allow natural sizing
+        const containers = output.querySelectorAll('.prompt-container');
+        const savedContainerStyles = [];
+        containers.forEach(el => {
+          savedContainerStyles.push(el.style.cssText);
+          el.style.maxWidth = 'none';
+          el.style.width = 'auto';
+        });
+
+        // Step 1: Hide comments and set wide container to measure natural line widths
+        const comments = output.querySelectorAll('.comment, .inline-comment');
+        comments.forEach(c => c.style.display = 'none');
+
         // Force layout recalculation
         output.offsetHeight;
 
-        // Get dimensions
+        // Find the widest line of content (not the container width)
+        const widestLineWidth = findWidestLineWidth(output);
+
+        // Add padding for the prompt-container's border, padding, and breathing room
+        const contentWidthWithoutComments = Math.ceil(widestLineWidth) + 60; // Account for padding/borders
+
+        // Step 2: Restore comments and constrain width so they wrap
+        comments.forEach(c => c.style.display = '');
+        const savedOutputWidth = output.style.width;
+        // Min 200px, max 450px
+        const constrainedWidth = Math.min(Math.max(contentWidthWithoutComments, 200), 450);
+
+        // Set container widths to the constrained width
+        containers.forEach(el => {
+          el.style.width = (constrainedWidth - 40) + 'px';
+          el.style.maxWidth = (constrainedWidth - 40) + 'px';
+        });
+        output.style.width = constrainedWidth + 'px';
+
+        // For each block-with-comment, calculate available width for comment
+        const blockWithComments = output.querySelectorAll('.block-with-comment');
+        const savedBlockStyles = [];
+        const savedCommentStyles = [];
+        blockWithComments.forEach(el => {
+            savedBlockStyles.push({ el, style: el.style.cssText, hadClass: el.classList.contains('comment-wrapped') });
+            const mainContent = el.firstElementChild;
+            const comment = el.querySelector('.inline-comment, .comment');
+            if (mainContent && comment) {
+                savedCommentStyles.push({ el: comment, style: comment.style.cssText });
+                const mainWidth = mainContent.getBoundingClientRect().width;
+                const gap = 8;
+                const availableForComment = constrainedWidth - 40 - mainWidth - gap;
+                const commentMaxWidth = Math.max(80, availableForComment);
+                comment.style.maxWidth = commentMaxWidth + 'px';
+                comment.style.minWidth = '0';
+                comment.style.flex = '0 1 auto';
+                comment.style.whiteSpace = 'normal';
+                comment.style.overflowWrap = 'break-word';
+            }
+        });
+
+        // Force layout recalculation with constrained width
+        output.offsetHeight;
+
+        // Detect wrapped comments and add class for top alignment
+        blockWithComments.forEach(el => {
+            const comment = el.querySelector('.inline-comment, .comment');
+            if (comment) {
+                const lineHeight = parseFloat(getComputedStyle(comment).lineHeight) || 16;
+                if (comment.offsetHeight > lineHeight * 1.5) {
+                    el.classList.add('comment-wrapped');
+                } else {
+                    el.classList.remove('comment-wrapped');
+                }
+            }
+        });
+
+        // Step 3: Get final dimensions with comments wrapping
         const fullWidth = Math.max(
           output.scrollWidth,
           output.offsetWidth,
@@ -1060,6 +1319,9 @@
           markContents.forEach((el, i) => { el.style.cssText = savedMarkContentStyles[i]; });
           timeIndexEls.forEach((el, i) => { el.style.cssText = savedTimeIndexStyles[i]; });
           titleH1s.forEach((el, i) => { el.style.cssText = savedTitleStyles[i]; });
+          containers.forEach((el, i) => { el.style.cssText = savedContainerStyles[i]; });
+          savedBlockStyles.forEach(({ el, style, hadClass }) => { el.style.cssText = style; if (hadClass) el.classList.add('comment-wrapped'); else el.classList.remove('comment-wrapped'); });
+          savedCommentStyles.forEach(({ el, style }) => { el.style.cssText = style; });
           exportFixStyle.remove();
           output.style.cssText = originalOutputStyle;
           outputWrapper.style.cssText = originalWrapperStyle;

@@ -25,7 +25,8 @@ const CONTROL_KEYWORDS = new Set<ControlKeyword>([
   "for",
   "in",
   "MARK",
-  "when"
+  "when",
+  "not",
 ]);
 
 /* ───────────────── operators ───────────────── */
@@ -49,30 +50,29 @@ export class Scanner {
   private line = 1;
   private col = 1;
   private input: string;
-  private hadWhitespace = false; // tracks if whitespace was skipped before current token
-
   constructor(input: string) {
     this.input = input;
   }
 
   nextToken(): Token {
-    const spaceBefore = this.skipWhitespace();
+    this.skipWhitespace();
+
     if (this.isEOF()) {
-        return { type: "EOF", value: null, line: this.line, col: this.col, spaceBefore };
+        return { type: "EOF", value: null, line: this.line, col: this.col};
     }
 
     const ch = this.peek();
 
     // COMMENT
     if (ch === "/" && this.peekNext() === "/") {
-        return this.readComment(spaceBefore);
+        return this.readComment();
     }
 
     // RANGE operator
     if (ch === "…" ) {
         const col = this.col;
         this.advance();
-        return { type: "RANGE", value: "…", line: this.line, col, spaceBefore };
+        return { type: "RANGE", value: "…", line: this.line, col};
         }
     if (ch === ".") {
         if (this.peekNext() === "." &&
@@ -80,7 +80,7 @@ export class Scanner {
         ) {
         const col = this.col;
         this.advance(); this.advance(); this.advance();
-        return { type: "RANGE", value: "...", line: this.line, col, spaceBefore };
+        return { type: "RANGE", value: "...", line: this.line, col};
         }
     }
 
@@ -92,8 +92,7 @@ export class Scanner {
             type: "LOGIC_OP",
             value,
             line: this.line,
-            col,
-            spaceBefore,
+            col
         };
     }
 
@@ -105,29 +104,28 @@ export class Scanner {
             value,
             line: this.line,
             col,
-            spaceBefore,
         };
     }
 
     // STRING
     if (ch === '"') {
-        return this.readString(spaceBefore);
+        return this.readString();
     }
 
 
     // SYMBOL
     if (SYMBOLS.has(ch)) {
-        return this.readSymbol(spaceBefore);
+        return this.readSymbol();
     }
 
     // NUMBER
     if (this.isDigit(ch)) {
-        return this.readNumber(spaceBefore);
+        return this.readNumber();
     }
 
     // IDENTIFIER
     if (this.isIdentStart(ch)) {
-        return this.readIdentifier(spaceBefore);
+        return this.readIdentifier();
     }
 
     throw this.error(`Unexpected character '${ch}'`);
@@ -135,7 +133,7 @@ export class Scanner {
 
  /* ───────────── token readers ───────────── */
 
-  private readComment(spaceBefore: boolean): Token {
+  private readComment(): Token {
   const startCol = this.col;
 
   // consume //
@@ -156,8 +154,7 @@ export class Scanner {
     type: "COMMENT",
     value: value.trim(),
     line: this.line,
-    col: startCol,
-    spaceBefore,
+    col: startCol
   };
 }
 

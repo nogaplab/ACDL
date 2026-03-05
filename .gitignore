@@ -1,2 +1,7 @@
 openai_key.txt
 overleaf/
+dist/
+node_modules/
+.venv/
+.idea/
+.vscode/
