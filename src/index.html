@@ -638,9 +638,9 @@
           <div class="width-control">
             <label for="width-slider">Width:</label>
             <button class="width-btn" id="width-decrease" title="Decrease width">−</button>
-            <input type="range" id="width-slider" min="300" max="900" value="800" />
+            <input type="range" id="width-slider" min="200" max="1000" value="800" />
             <button class="width-btn" id="width-increase" title="Increase width">+</button>
-            <input type="number" id="width-input" min="300" max="900" value="800" />
+            <input type="number" id="width-input" min="200" max="1000" value="800" />
             <span class="width-unit">px</span>
           </div>
           <div class="export-dropdown">
@@ -814,7 +814,7 @@
 
       function updateWidth(value) {
         // Clamp value to valid range
-        value = Math.min(900, Math.max(300, parseInt(value) || 800));
+        value = Math.min(1000, Math.max(200, parseInt(value) || 800));
         currentWidth = value;
         widthSlider.value = value;
         widthInput.value = value;
@@ -976,10 +976,21 @@
         // Add padding for the prompt-container's border, padding, and breathing room
         const contentWidthWithoutComments = Math.ceil(widestLineWidth) + 60; // Account for padding/borders
 
-        // Step 2: Restore comments and constrain width so they wrap
+        // Step 2: Restore comments and measure actual content width with comments
         comments.forEach(c => c.style.display = '');
-        // Use the slider width for export
-        const constrainedWidth = currentWidth;
+
+        // Force layout recalculation with comments visible
+        content.offsetHeight;
+
+        // Measure the actual width of content including comments
+        let actualContentWidth = 0;
+        containers.forEach(el => {
+          const rect = el.getBoundingClientRect();
+          actualContentWidth = Math.max(actualContentWidth, rect.width);
+        });
+
+        // Cap the width to be at most 10px wider than the actual content
+        const constrainedWidth = Math.min(currentWidth, Math.ceil(actualContentWidth) + 10);
 
         // Set container widths to match the live preview (just max-width, not fixed width)
         containers.forEach(el => {
@@ -1027,37 +1038,52 @@
             }
         });
 
-        // Step 3: Get final dimensions with comments wrapping
-        const fullWidth = Math.max(
-          content.scrollWidth,
-          content.offsetWidth,
-          content.getBoundingClientRect().width
-        );
-        const fullHeight = Math.max(
-          content.scrollHeight,
-          content.offsetHeight,
-          content.getBoundingClientRect().height
-        );
+        // Step 3: Calculate actual content bounds (not the full container size)
+        const contentElements = content.querySelectorAll('.prompt-container, .prompt-divider');
+        const contentRect = content.getBoundingClientRect();
+        let contentMinLeft = Infinity;
+        let contentMinTop = Infinity;
+        let contentMaxRight = 0;
+        let contentMaxBottom = 0;
 
-        // Add padding to ensure nothing gets cropped (especially bottom)
-        // Minimal padding to avoid cropping
-        const captureWidth = Math.ceil(fullWidth) + 10;
-        const captureHeight = Math.ceil(fullHeight) + 10;
+        contentElements.forEach(el => {
+          const rect = el.getBoundingClientRect();
+          contentMinLeft = Math.min(contentMinLeft, rect.left - contentRect.left);
+          contentMinTop = Math.min(contentMinTop, rect.top - contentRect.top);
+          contentMaxRight = Math.max(contentMaxRight, rect.right - contentRect.left);
+          contentMaxBottom = Math.max(contentMaxBottom, rect.bottom - contentRect.top);
+        });
+
+        // Calculate content dimensions
+        const contentWidth = contentMaxRight - contentMinLeft;
+        const contentHeight = contentMaxBottom - contentMinTop;
+
+        // Use the actual content bounds (or fallback to scrollWidth if no content found)
+        const fullWidth = contentWidth > 0 ? contentWidth : content.scrollWidth;
+        const fullHeight = contentHeight > 0 ? contentHeight : content.scrollHeight;
+
+        // Add 4px padding on each side
+        const captureWidth = Math.ceil(fullWidth) + 8;
+        const captureHeight = Math.ceil(fullHeight) + 8;
+
+        // Calculate offset to start capture at content (minus 4px padding)
+        const captureX = contentMinLeft !== Infinity ? contentMinLeft - 4 : 0;
+        const captureY = contentMinTop !== Infinity ? contentMinTop - 4 : 0;
 
         try {
           const canvas = await html2canvas(content, {
             backgroundColor: "#ffffff",
             scale: window.devicePixelRatio * 2 || 3,
             useCORS: true,
-            logging: true, // Enable logging for debugging
+            logging: false,
             width: captureWidth,
             height: captureHeight,
-            windowWidth: captureWidth,
-            windowHeight: captureHeight,
+            windowWidth: captureWidth + captureX,
+            windowHeight: captureHeight + captureY,
             scrollX: 0,
             scrollY: 0,
-            x: 0,
-            y: 0,
+            x: captureX,
+            y: captureY,
             allowTaint: true,
             imageTimeout: 0,
             // Ensure styles are cloned properly
@@ -1228,10 +1254,17 @@
         // Add padding for the prompt-container's border, padding, and breathing room
         const contentWidthWithoutComments = Math.ceil(widestLineWidth) + 60; // Account for padding/borders
 
-        // Step 2: Restore comments and constrain width so they wrap
+        // Step 2: Restore comments and measure actual content width with comments
         comments.forEach(c => c.style.display = '');
-        // Use the slider width for export
-        const constrainedWidth = currentWidth;
+
+        // Force layout recalculation with comments visible
+        promptContainer.offsetHeight;
+
+        // Measure the actual width of content including comments
+        const actualContentWidth = promptContainer.getBoundingClientRect().width;
+
+        // Cap the width to be at most 10px wider than the actual content
+        const constrainedWidth = Math.min(currentWidth, Math.ceil(actualContentWidth) + 10);
         promptContainer.style.maxWidth = constrainedWidth + 'px';
 
         // For each block-with-comment, calculate available width for comment
@@ -1272,21 +1305,14 @@
             }
         });
 
-        // Step 3: Get final dimensions with comments wrapping
-        const fullWidth = Math.max(
-          promptContainer.scrollWidth,
-          promptContainer.offsetWidth,
-          promptContainer.getBoundingClientRect().width
-        );
-        const fullHeight = Math.max(
-          promptContainer.scrollHeight,
-          promptContainer.offsetHeight,
-          promptContainer.getBoundingClientRect().height
-        );
+        // Step 3: Get actual content bounds
+        const containerRect = promptContainer.getBoundingClientRect();
+        const fullWidth = containerRect.width;
+        const fullHeight = containerRect.height;
 
-        // Minimal padding to avoid cropping
-        const captureWidth = Math.ceil(fullWidth) + 10;
-        const captureHeight = Math.ceil(fullHeight) + 10;
+        // Add 4px padding on each side
+        const captureWidth = Math.ceil(fullWidth) + 8;
+        const captureHeight = Math.ceil(fullHeight) + 8;
 
         try {
           const canvas = await html2canvas(promptContainer, {
@@ -1491,12 +1517,23 @@
         // Add padding for the prompt-container's border, padding, and breathing room
         const contentWidthWithoutComments = Math.ceil(widestLineWidth) + 60; // Account for padding/borders
 
-        // Step 2: Restore comments and constrain width so they wrap
+        // Step 2: Restore comments and measure actual content width with comments
         comments.forEach(c => c.style.display = '');
+
+        // Force layout recalculation with comments visible
+        output.offsetHeight;
+
+        // Measure the actual width of content including comments
+        // Check both block-with-comment elements and the prompt containers themselves
+        let actualContentWidth = 0;
+        containers.forEach(el => {
+          const rect = el.getBoundingClientRect();
+          actualContentWidth = Math.max(actualContentWidth, rect.width);
+        });
+
+        // Cap the width to be at most 10px wider than the actual content
         const savedOutputWidth = output.style.width;
-        // Use the slider width for export
-        const constrainedWidth = currentWidth;
-        console.log('Export using width:', constrainedWidth, 'px (slider currentWidth)');
+        const constrainedWidth = Math.min(currentWidth, Math.ceil(actualContentWidth) + 10);
 
         // Add a style element to FORCE the width with !important
         const widthOverrideStyle = document.createElement('style');
@@ -1549,21 +1586,37 @@
             }
         });
 
-        // Step 3: Get final dimensions with comments wrapping
-        const fullWidth = Math.max(
-          output.scrollWidth,
-          output.offsetWidth,
-          output.getBoundingClientRect().width
-        );
-        const fullHeight = Math.max(
-          output.scrollHeight,
-          output.offsetHeight,
-          output.getBoundingClientRect().height
-        );
+        // Step 3: Calculate actual content bounds (not the full container size)
+        const contentElements = output.querySelectorAll('.prompt-container, .prompt-divider');
+        const outputRect = output.getBoundingClientRect();
+        let contentMinLeft = Infinity;
+        let contentMinTop = Infinity;
+        let contentMaxRight = 0;
+        let contentMaxBottom = 0;
 
-        // Minimal padding to avoid cropping
-        const captureWidth = Math.ceil(fullWidth) + 10;
-        const captureHeight = Math.ceil(fullHeight) + 10;
+        contentElements.forEach(el => {
+          const rect = el.getBoundingClientRect();
+          contentMinLeft = Math.min(contentMinLeft, rect.left - outputRect.left);
+          contentMinTop = Math.min(contentMinTop, rect.top - outputRect.top);
+          contentMaxRight = Math.max(contentMaxRight, rect.right - outputRect.left);
+          contentMaxBottom = Math.max(contentMaxBottom, rect.bottom - outputRect.top);
+        });
+
+        // Calculate content dimensions
+        const contentWidth = contentMaxRight - contentMinLeft;
+        const contentHeight = contentMaxBottom - contentMinTop;
+
+        // Use the actual content bounds (or fallback to scrollWidth if no content found)
+        const fullWidth = contentWidth > 0 ? contentWidth : output.scrollWidth;
+        const fullHeight = contentHeight > 0 ? contentHeight : output.scrollHeight;
+
+        // Add 4px padding on each side
+        const captureWidth = Math.ceil(fullWidth) + 8;
+        const captureHeight = Math.ceil(fullHeight) + 8;
+
+        // Calculate offset to start capture at content (minus 4px padding)
+        const captureX = contentMinLeft !== Infinity ? contentMinLeft - 4 : 0;
+        const captureY = contentMinTop !== Infinity ? contentMinTop - 4 : 0;
 
         try {
           const canvas = await html2canvas(output, {
@@ -1573,12 +1626,12 @@
             logging: false,
             width: captureWidth,
             height: captureHeight,
-            windowWidth: captureWidth,
-            windowHeight: captureHeight,
+            windowWidth: captureWidth + captureX,
+            windowHeight: captureHeight + captureY,
             scrollX: 0,
             scrollY: 0,
-            x: 0,
-            y: 0,
+            x: captureX,
+            y: captureY,
             allowTaint: true,
             imageTimeout: 0,
             onclone: (clonedDoc) => {
