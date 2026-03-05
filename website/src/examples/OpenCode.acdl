@@ -1,0 +1,47 @@
+OpenCodeMain[@T.I]: {
+  // NOTE: tools, skills and subagents are all provided in tools and tool descriptions in the `tools` parameter
+  S: { 
+    SYSTEM_PROMPT
+    ENV_INFO(env.working_directory[@1], env.is_dir_a_repo[@1], env.platform[@1], env.date[@1])   
+  }
+  MARK 2 {
+  Name C := sys.last_compaction_time[@T] 
+  If @$C > 1 {
+    U: WHAT_DID_WE_DO
+    A: sys.conversation_summary[@$C]
+  }
+  }
+  ForEach(@t: range(@$C, @T)) {
+    U: {
+      env.user_input[@t]
+      MARK 3 {
+      If @T == @t {
+        If sys.is_plan_mode[@t] {
+          PLAN_MODE_REMINDER
+        }
+        If sys.is_build_mode[@t] && sys.prev_is_plan[@t] {
+          LEAVE_PLAN_MODE_REMINDER
+        }     
+      }
+      }
+    }
+     PromptEndsHere when (@T == @t && @T.0)
+    ForEach(@i: range(1,@t.substeps)) {
+     MARK 1 {
+      A: {
+        ForEach(tool: sys.tool_requests[@t.i]) {
+          $tool.id_name_and_args 
+        }
+      }
+      // Loop of tool responses, each in own tool msg
+      ForEach(tool: tool_requests[@t.i]) {
+        T: { 
+          $tool.id_and_response 
+        }
+      }
+      }
+      PromptEndsHere when (@T == @t && @T.I)
+    }
+    A: sys.response[@t]
+  }
+}

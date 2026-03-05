@@ -256,8 +256,8 @@ function generateHtml(acdlContent: string, fileName: string): string {
     const prompts = parser.parseFile();
     const renderedPrompt = renderPrompts(prompts, 'default');
 
-    const cssContent = fs.existsSync('./styles.css')
-        ? fs.readFileSync('./styles.css', 'utf-8')
+    const cssContent = fs.existsSync('./src/styles.css')
+        ? fs.readFileSync('./src/styles.css', 'utf-8')
         : '';
 
     // Include html2canvas from CDN (same library as web version)

@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Examples - ACDL</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #0a0a0a;
+      color: #fafafa;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Navigation */
+    nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      padding: 16px 32px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(10, 10, 10, 0.8);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .nav-logo {
+      font-weight: 700;
+      font-size: 1.25rem;
+      color: #fff;
+      text-decoration: none;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 32px;
+    }
+
+    .nav-links a {
+      color: rgba(255,255,255,0.6);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+
+    .nav-links a:hover { color: #fff; }
+    .nav-links a.active { color: #fff; }
+
+    .nav-links a.external::after {
+      content: '';
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      margin-left: 4px;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.6)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6'/%3E%3Cpolyline points='15 3 21 3 21 9'/%3E%3Cline x1='10' y1='14' x2='21' y2='3'/%3E%3C/svg%3E");
+      background-size: contain;
+      background-repeat: no-repeat;
+      vertical-align: middle;
+      opacity: 0.6;
+      transition: opacity 0.2s;
+    }
+
+    .nav-links a.external:hover::after {
+      opacity: 1;
+    }
+
+    /* Hero */
+    .hero {
+      padding: 140px 24px 80px;
+      text-align: center;
+      background: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(120, 119, 198, 0.15), transparent);
+    }
+
+    .hero h1 {
+      font-size: 3rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      margin-bottom: 16px;
+      background: linear-gradient(to bottom right, #fff 30%, rgba(255,255,255,0.4));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero p {
+      font-size: 1.2rem;
+      color: rgba(255,255,255,0.5);
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    /* Section */
+    .section {
+      padding: 80px 24px;
+    }
+
+    .section-light {
+      background: #fafafa;
+      color: #0a0a0a;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .section-header {
+      margin-bottom: 40px;
+    }
+
+    .section-header h2 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 8px;
+      color: #0a0a0a;
+    }
+
+    .section-header p {
+      font-size: 1rem;
+      color: rgba(10,10,10,0.6);
+    }
+
+    /* Example cards */
+    .examples-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: 24px;
+    }
+
+    .example-card {
+      background: #fff;
+      border: 1px solid rgba(0,0,0,0.08);
+      border-radius: 12px;
+      overflow: hidden;
+      transition: all 0.2s ease;
+    }
+
+    .example-card:hover {
+      border-color: rgba(0,0,0,0.15);
+      transform: translateY(-4px);
+      box-shadow: 0 12px 24px rgba(0,0,0,0.08);
+    }
+
+    .example-card-header {
+      padding: 24px;
+      border-bottom: 1px solid rgba(0,0,0,0.06);
+    }
+
+    .example-card h3 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #0a0a0a;
+    }
+
+    .example-card p {
+      font-size: 0.9rem;
+      color: rgba(10,10,10,0.6);
+      margin: 0;
+      line-height: 1.5;
+    }
+
+    .example-card-tags {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+      flex-wrap: wrap;
+    }
+
+    .tag {
+      font-size: 0.75rem;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-weight: 500;
+    }
+
+    .tag-react { background: rgba(120, 119, 198, 0.1); color: #7877c6; }
+    .tag-rag { background: rgba(13, 166, 107, 0.1); color: #0da66b; }
+    .tag-multiagent { background: rgba(147, 51, 234, 0.1); color: #9333ea; }
+    .tag-basic { background: rgba(107, 114, 128, 0.1); color: #6b7280; }
+
+    .example-card-code {
+      background: #1a1a1a;
+      padding: 16px;
+      max-height: 180px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .example-card-code::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 50px;
+      background: linear-gradient(transparent, #1a1a1a);
+    }
+
+    .example-card-code pre {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      line-height: 1.5;
+      color: #d4d4d4;
+      margin: 0;
+    }
+
+    .example-card-footer {
+      padding: 16px 24px;
+      display: flex;
+      gap: 16px;
+      background: #fff;
+    }
+
+    .example-card-footer a {
+      font-size: 0.9rem;
+      color: #7877c6;
+      text-decoration: none;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+
+    .example-card-footer a:hover {
+      color: #5a59a3;
+    }
+
+    /* Syntax highlighting */
+    .keyword { color: #569cd6; }
+    .role { color: #4ec9b0; }
+    .template { color: #c586c0; }
+    .context { color: #4fc1ff; }
+    .comment { color: #6a9955; }
+
+    /* Section dividers */
+    .section-divider {
+      margin: 56px 0 40px;
+      padding-top: 40px;
+      border-top: 1px solid rgba(0,0,0,0.08);
+    }
+
+    /* More link */
+    .more-link {
+      text-align: center;
+      padding-top: 40px;
+      border-top: 1px solid rgba(0,0,0,0.08);
+      margin-top: 56px;
+    }
+
+    .more-link p {
+      color: rgba(10,10,10,0.5);
+      font-size: 0.95rem;
+    }
+
+    .more-link a {
+      color: #7877c6;
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .more-link a:hover {
+      text-decoration: underline;
+    }
+
+    /* Footer */
+    footer {
+      padding: 48px 24px;
+      text-align: center;
+      background: #0a0a0a;
+      border-top: 1px solid rgba(255,255,255,0.06);
+    }
+
+    footer p {
+      font-size: 0.9rem;
+      color: rgba(255,255,255,0.4);
+    }
+
+    footer a {
+      color: rgba(255,255,255,0.6);
+      text-decoration: none;
+    }
+
+    footer a:hover { color: #fff; }
+
+    footer a.external::after,
+    .more-link a.external::after {
+      content: '';
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      margin-left: 4px;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.5)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6'/%3E%3Cpolyline points='15 3 21 3 21 9'/%3E%3Cline x1='10' y1='14' x2='21' y2='3'/%3E%3C/svg%3E");
+      background-size: contain;
+      background-repeat: no-repeat;
+      vertical-align: middle;
+    }
+
+    .more-link a.external::after {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='rgba(10,10,10,0.4)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6'/%3E%3Cpolyline points='15 3 21 3 21 9'/%3E%3Cline x1='10' y1='14' x2='21' y2='3'/%3E%3C/svg%3E");
+    }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .examples-grid {
+        grid-template-columns: 1fr;
+      }
+      .nav-links { display: none; }
+    }
+
+    @media (max-width: 600px) {
+      .hero h1 { font-size: 2rem; }
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <a href="../index.html" class="nav-logo">ACDL</a>
+    <div class="nav-links">
+      <a href="../visualizer.html" class="external">Live Editor</a>
+      <a href="../SyntaxReference.html">Documentation</a>
+      <a href="index.html" class="active">Examples</a>
+      <a href="../vscode.html">VSCode</a>
+      <a href="https://github.com/acdlang26/acdl" class="external">GitHub</a>
+    </div>
+  </nav>
+
+  <section class="hero">
+    <h1>ACDL Examples</h1>
+    <p>Explore ACDL specifications for common agentic patterns and real-world systems</p>
+  </section>
+
+  <section class="section section-light">
+    <div class="container">
+      <div class="section-header">
+        <h2>Basic Patterns</h2>
+        <p>Foundational structures for LLM context management</p>
+      </div>
+
+      <div class="examples-grid">
+        <div class="example-card">
+          <div class="example-card-header">
+            <h3>Basic Context</h3>
+            <p>The simplest ACDL specification: a system message with instructions</p>
+            <div class="example-card-tags">
+              <span class="tag tag-basic">Basic</span>
+            </div>
+          </div>
+          <div class="example-card-code">
+            <pre><span class="template">Context</span>[<span class="context">@T</span>]: {
+    <span class="role">S</span>: <span class="template">PERSONA</span>
+    <span class="role">S</span>: <span class="template">INSTRUCTIONS</span>
+}</pre>
+          </div>
+          <div class="example-card-footer">
+            <a href="../visualizer.html?example=basic">Open in Live Editor</a>
+          </div>
+        </div>
+
+        <div class="example-card">
+          <div class="example-card-header">
+            <h3>Basic RAG</h3>
+            <p>Retrieval-augmented generation with document context</p>
+            <div class="example-card-tags">
+              <span class="tag tag-rag">RAG</span>
+            </div>
+          </div>
+          <div class="example-card-code">
+            <pre><span class="template">BasicRAG</span>[<span class="context">@T</span>]: {
+    <span class="role">S</span>: <span class="template">INSTRUCTIONS</span>
+    <span class="role">U</span>: {
+        <span class="keyword">Name</span> docs := k_relevant_docs(<span class="context">env.user_input</span>[<span class="context">@T</span>])
+        <span class="keyword">ForEach</span>(i: range(1, $docs.len)) {
+            $docs[i].source
+            $docs[i].content
+        }
+        <span class="template">ANSWER_Q_FROM_DOCS</span>
+        <span class="context">env.user_input</span>[<span class="context">@T</span>]
+    }
+}</pre>
+          </div>
+          <div class="example-card-footer">
+            <a href="../visualizer.html?example=basic_rag">Open in Live Editor</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-divider"></div>
+      <div class="section-header">
+        <h2>ReAct Patterns</h2>
+        <p>Reasoning and action loops for tool-using agents</p>
+      </div>
+
+      <div class="examples-grid">
+        <div class="example-card">
+          <div class="example-card-header">
+            <h3>ReAct Base</h3>
+            <p>Basic ReAct loop with tool reasoning and responses</p>
+            <div class="example-card-tags">
+              <span class="tag tag-react">ReAct</span>
+            </div>
+          </div>
+          <div class="example-card-code">
+            <pre><span class="template">ReactBase</span>[<span class="context">@T</span>]: {
+    <span class="role">S</span>: {
+        <span class="template">INSTRUCTIONS</span>
+        <span class="template">AVAILABLE_TOOLS</span>
+    }
+    <span class="role">U</span>: <span class="context">env.user_input</span>[<span class="context">@1</span>]  <span class="comment">// history</span>
+    <span class="keyword">ForEach</span>(<span class="context">@t</span>: range(1, <span class="context">@T</span>-1)) {
+        <span class="role">A</span>: {
+            <span class="context">resp.tool_reasoning</span>[<span class="context">@t</span>]
+            <span class="context">sys.tool_used</span>[<span class="context">@t</span>]
+        }
+        <span class="role">T</span>: <span class="context">sys.tool_used</span>[<span class="context">@t</span>].tool_response
+    }
+    <span class="role">S</span>: <span class="template">USE_TOOLS_TO_SOLVE_TASK</span>
+}</pre>
+          </div>
+          <div class="example-card-footer">
+            <a href="../visualizer.html?example=react_base">Open in Live Editor</a>
+          </div>
+        </div>
+
+        <div class="example-card">
+          <div class="example-card-header">
+            <h3>ReAct No Reasoning in History</h3>
+            <p>Variant without reasoning traces in action history</p>
+            <div class="example-card-tags">
+              <span class="tag tag-react">ReAct</span>
+              <span class="tag tag-basic">Variant</span>
+            </div>
+          </div>
+          <div class="example-card-code">
+            <pre><span class="template">ReactNoReasoningInHistory</span>[<span class="context">@T</span>]: {
+    <span class="role">S</span>: {
+        <span class="template">INSTRUCTIONS</span>
+        <span class="template">AVAILABLE_TOOLS</span>
+    }
+    <span class="role">U</span>: <span class="context">env.user_input</span>[<span class="context">@1</span>]  <span class="comment">// history</span>
+    <span class="keyword">ForEach</span>(<span class="context">@t</span>: range(1, <span class="context">@T</span>-1)) {
+        <span class="role">A</span>: <span class="context">sys.tool_used</span>[<span class="context">@t</span>]
+        <span class="role">T</span>: <span class="context">sys.tool_used</span>[<span class="context">@t</span>].tool_response
+    }
+    <span class="role">S</span>: <span class="template">USE_TOOLS_TO_SOLVE_TASK</span>
+}</pre>
+          </div>
+          <div class="example-card-footer">
+            <a href="../visualizer.html?example=react_no_reasoning">Open in Live Editor</a>
+          </div>
+        </div>
+
+        <div class="example-card">
+          <div class="example-card-header">
+            <h3>ReAct with Tool-RAG</h3>
+            <p>ReAct pattern with dynamic tool retrieval</p>
+            <div class="example-card-tags">
+              <span class="tag tag-react">ReAct</span>
+              <span class="tag tag-rag">RAG</span>
+            </div>
+          </div>
+          <div class="example-card-code">
+            <pre><span class="template">ReactToolRag</span>[<span class="context">@T</span>]: {
+    <span class="role">S</span>: <span class="template">INSTRUCTIONS</span>
+    <span class="role">U</span>: <span class="context">env.user_input</span>[<span class="context">@1</span>]
+    <span class="keyword">ForEach</span>(<span class="context">@t</span>: range(1, <span class="context">@T</span>-1)) {
+        <span class="role">A</span>: {
+            <span class="context">resp.tool_reasoning</span>[<span class="context">@t</span>]
+            <span class="context">sys.tool_used</span>[<span class="context">@t</span>]
+        }
+        <span class="role">T</span>: <span class="context">sys.tool_used</span>[<span class="context">@t</span>].tool_response
+    }
+    <span class="role">S</span>: {
+        <span class="keyword">Name</span> tools := retrieve_tools(<span class="context">env.context</span>[<span class="context">@T</span>])
+        <span class="keyword">ForEach</span>(tool: $tools) { $tool.description }
+        <span class="template">USE_TOOLS_TO_SOLVE_TASK</span>
+    }
+}</pre>
+          </div>
+          <div class="example-card-footer">
+            <a href="../visualizer.html?example=react_tool_rag">Open in Live Editor</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-divider"></div>
+      <div class="section-header">
+        <h2>Real-World Systems</h2>
+        <p>Production-grade agent architectures</p>
+      </div>
+
+      <div class="examples-grid">
+        <div class="example-card">
+          <div class="example-card-header">
+            <h3>OpenCode (Claude Code-like)</h3>
+            <p>Coding assistant with conversation compaction, plan mode, and tool use</p>
+            <div class="example-card-tags">
+              <span class="tag tag-react">ReAct</span>
+              <span class="tag tag-basic">Production</span>
+            </div>
+          </div>
+          <div class="example-card-code">
+            <pre><span class="template">OpenCodeMain</span>[<span class="context">@T.I</span>]: {
+  <span class="role">S</span>: {
+    <span class="template">SYSTEM_PROMPT</span>
+    <span class="template">ENV_INFO</span>(<span class="context">env.working_directory</span>[<span class="context">@1</span>], ...)
+  }
+  <span class="keyword">Name</span> C := <span class="context">sys.last_compaction_time</span>[<span class="context">@T</span>]
+  <span class="keyword">If</span> <span class="context">@$C</span> &gt; 1 {
+    <span class="role">U</span>: <span class="template">WHAT_DID_WE_DO</span>
+    <span class="role">A</span>: <span class="context">sys.conversation_summary</span>[<span class="context">@$C</span>]
+  }
+  <span class="keyword">ForEach</span>(<span class="context">@t</span>: range(<span class="context">@$C</span>, <span class="context">@T</span>)) {
+    <span class="role">U</span>: {
+      <span class="context">env.user_input</span>[<span class="context">@t</span>]
+      <span class="keyword">If</span> <span class="context">@T</span> == <span class="context">@t</span> && <span class="context">sys.is_plan_mode</span>[<span class="context">@t</span>] {
+        <span class="template">PLAN_MODE_REMINDER</span>
+      }
+    }
+    ...
+  }
+}</pre>
+          </div>
+          <div class="example-card-footer">
+            <a href="../visualizer.html?example=opencode">Open in Live Editor</a>
+          </div>
+        </div>
+
+        <div class="example-card">
+          <div class="example-card-header">
+            <h3>OpenClaw (Letta-like)</h3>
+            <p>Persistent agent with heartbeat timer, pending messages, and memory</p>
+            <div class="example-card-tags">
+              <span class="tag tag-react">ReAct</span>
+              <span class="tag tag-multiagent">Persistent</span>
+            </div>
+          </div>
+          <div class="example-card-code">
+            <pre><span class="template">OpenClaw</span>[<span class="context">@T.I</span>]: {
+  <span class="role">S</span>: <span class="template">SystemPrompt</span>()
+  <span class="keyword">Name</span> C := <span class="context">sys.last_compaction_time</span>[<span class="context">@T</span>]
+  <span class="keyword">If</span> (<span class="context">@C</span> &gt; 1) {
+    <span class="role">U</span>: { <span class="template">THIS_IS_A_SUMMARY</span>  <span class="context">sys.conversation_summary</span>[<span class="context">@C</span>] }
+    <span class="role">A</span>: <span class="context">resp.response</span>[<span class="context">@C</span>]
+  }
+  <span class="keyword">ForEach</span>(t: range(<span class="context">@C</span> + 1, <span class="context">@T</span>)) {
+    <span class="role">U</span>: {
+      <span class="keyword">ForEach</span>(m: <span class="context">sys.pending_messages</span>[<span class="context">@t</span>]) {...}
+      <span class="keyword">Switch</span> <span class="context">env.input_source</span>[<span class="context">@t</span>] {
+        <span class="keyword">Case</span> user: { <span class="context">env.user_query</span>[<span class="context">@t</span>] }
+        <span class="keyword">Case</span> heartbeat_timer: { <span class="template">HEARTBEAT</span> }
+      }
+    }
+    ...
+  }
+}</pre>
+          </div>
+          <div class="example-card-footer">
+            <a href="../visualizer.html?example=openclaw">Open in Live Editor</a>
+          </div>
+        </div>
+
+        <div class="example-card">
+          <div class="example-card-header">
+            <h3>Pokemon Agent</h3>
+            <p>Game-playing agent with hierarchical summarization and critique</p>
+            <div class="example-card-tags">
+              <span class="tag tag-react">ReAct</span>
+              <span class="tag tag-rag">Memory</span>
+            </div>
+          </div>
+          <div class="example-card-code">
+            <pre><span class="template">Pokemon</span>[<span class="context">@T</span>]: {
+  <span class="role">U</span>: <span class="context">env.image.HUD</span> <span class="comment">// heads up display screenshot</span>
+  <span class="role">S</span>: { <span class="template">INTRO</span> <span class="template">GOAL</span> <span class="template">CONVENTIONS</span> <span class="template">AVAILABLE_TOOLS</span> }
+  <span class="template">History</span> {
+    <span class="role">A</span>: {
+      <span class="keyword">If</span> <span class="context">@T</span>&gt;1 {
+        <span class="keyword">ForEach</span>(i: range(<span class="context">@T</span>-(<span class="context">@T</span>%100),<span class="context">@T</span>-1)) {
+          <span class="context">resp.action</span>[<span class="context">@i</span>]
+        }
+        <span class="keyword">If</span> <span class="context">@T</span>%100==0 {
+          summarize($actions)
+        }
+      }
+    }
+  }
+  <span class="keyword">If</span> <span class="context">@T</span>%25==0 {
+    <span class="role">A</span>: critique_performance(<span class="context">prompt.History</span>[<span class="context">@T</span>])
+  }
+  <span class="role">U</span>: <span class="context">env.xml_map</span>[<span class="context">@T</span>]
+  <span class="role">S</span>: <span class="template">CHOOSE_ACTION</span>
+}</pre>
+          </div>
+          <div class="example-card-footer">
+            <a href="../visualizer.html?example=pokemon">Open in Live Editor</a>
+          </div>
+        </div>
+
+        <div class="example-card">
+          <div class="example-card-header">
+            <h3>Multi-Agent Simulation</h3>
+            <p>Agent with memory, peer awareness, and conversation handling</p>
+            <div class="example-card-tags">
+              <span class="tag tag-multiagent">Multi-Agent</span>
+            </div>
+          </div>
+          <div class="example-card-code">
+            <pre><span class="comment">// agent is self, agent2 is who we converse with</span>
+<span class="template">MultiAgent</span>[<span class="context">@T</span>, agent]: {
+  <span class="role">S</span>: <span class="template">INSTRUCTIONS</span>
+  <span class="role">U</span>: {
+    <span class="comment">// history (last 50 actions)</span>
+    <span class="keyword">ForEach</span>(<span class="context">@t</span>: range(<span class="context">@T</span>-50, <span class="context">@T</span>-1)) {
+      <span class="context">sys</span>[agent].performed_action[<span class="context">@t</span>]
+      <span class="context">sys</span>[agent].performed_action[<span class="context">@t</span>].result
+    }
+    <span class="context">sys</span>[agent].inventory[<span class="context">@T</span>]
+    <span class="comment">// whom I see and what I know</span>
+    <span class="keyword">ForEach</span>(a: <span class="context">env.seen_actors</span>[<span class="context">@T</span>]) {
+      a.name  a.description
+      retrieve(<span class="context">sys</span>[agent].memory[<span class="context">@T</span>], a.name)
+    }
+  }
+  ...
+}</pre>
+          </div>
+          <div class="example-card-footer">
+            <a href="../visualizer.html?example=multiagent">Open in Live Editor</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="more-link">
+        <p>More examples available in the <a href="https://github.com/acdlang26/acdl/tree/main/Prompts" class="external">GitHub repository</a></p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <p>ACDL — Agentic Context Description Language · <a href="https://github.com/acdlang26/acdl" class="external">GitHub</a></p>
+  </footer>
+</body>
+</html>

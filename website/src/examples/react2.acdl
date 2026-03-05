@@ -1,0 +1,22 @@
+React2[@T.I]: {
+    S: INSTRUCTIONS_AND_TOOLS
+    // History
+    MARK 1 {
+    // Chat loop (Main loop)
+    ForEach(t: range(1,@T-1)) {
+        U: env.user_question[@t]
+        MARK 2 {
+        // React loop (internal loop)
+        ForEach(i: range(1,@t.substeps)) {
+          A: sys.tool_used[@t.i].name_and_args
+          T: sys.tool_used[@t.i].tool_response
+        }}
+        A: resp.response // final response after ReAct loop
+    }}
+    // Last turn
+    U: env.user_question[@T]
+    ForEach(i: range(1,@T.substeps)) {
+      A: sys.tool_used[@T.i].name_and_args
+      T: sys.tool_used[@T.i].tool_response
+    }
+}

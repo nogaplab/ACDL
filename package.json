@@ -5,14 +5,13 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
     "cli": "bun run src/main-cli.ts",
     "render-pdf": "bun run src/render-to-pdf.ts",
     "render-png": "bun run src/render-to-png.ts",
-    "sync-css": "node -e \"require('fs').copyFileSync('styles.css', 'extension/media/preview.css')\"",
+    "sync-css": "node -e \"require('fs').copyFileSync('src/styles.css', 'extension/media/preview.css')\"",
     "build:extension": " npm run sync-css && cd extension && npm run package",
-    "build:standalone": "node scripts/build-standalone.js"
+    "build:standalone": "node scripts/build-standalone.js",
+    "build:website": "node scripts/build-website.js"
   },
   "devDependencies": {
     "@types/bun": "^1.1.0",

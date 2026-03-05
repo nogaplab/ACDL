@@ -1,7 +1,0 @@
-Context[@T]: {
-  S: INSTRUCTIONS(sys.conf.role, sys.time[@1])
-  U: {
-    sys.time[@T]
-    env.user_input[@T]
-  }
-}

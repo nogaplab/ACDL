@@ -3,9 +3,11 @@
  * Build script for generating the standalone ACDL Visualizer HTML file.
  *
  * This script:
- * 1. Bundles the TypeScript parser and renderer into plain JavaScript
- * 2. Reads the CSS from styles.css
- * 3. Combines them with the HTML template into standalone.html
+ * 1. Reads src/index.html as the base template
+ * 2. Bundles the TypeScript parser and renderer into plain JavaScript
+ * 3. Reads the CSS from src/styles.css and inlines it
+ * 4. Embeds example prompts and standalone UI logic
+ * 5. Outputs dist/website/visualizer.html
  *
  * Usage: node scripts/build-standalone.js
  */
@@ -23,19 +25,19 @@ const rootDir = path.resolve(__dirname, '..');
 // Edit this to change which examples are included in the standalone build
 const EXAMPLE_CONFIG = {
   // React Variants
-  fig1_base: { file: 'Prompts/Paper/fig1-base.acdl', label: 'ReAct Base', group: 'React Variants' },
-  fig1_left: { file: 'Prompts/Paper/fig1-left.acdl', label: 'ReAct Left', group: 'React Variants' },
-  fig1_right: { file: 'Prompts/Paper/fig1-right.acdl', label: 'ReAct Right', group: 'React Variants' },
+  fig1_base: { file: 'ACDL_examples/React_variants/fig1-base.acdl', label: 'ReAct Base', group: 'React Variants' },
+  fig1_left: { file: 'ACDL_examples/React_variants/fig1-left.acdl', label: 'ReAct Left', group: 'React Variants' },
+  fig1_right: { file: 'ACDL_examples/React_variants/fig1-right.acdl', label: 'ReAct Right', group: 'React Variants' },
 
   // Examples
-  rag: { file: 'Prompts/Paper/basic-rag.acdl', label: 'RAG', group: 'Examples' },
-  mintagent: { file: 'Prompts/Paper/mint-original.acdl', label: 'MintAgent', group: 'Examples' },
-  multiagent: { file: 'Prompts/Paper/MultiAgent.acdl', label: 'MultiAgent', group: 'Examples' },
+  rag: { file: 'ACDL_examples/other/basic-rag.acdl', label: 'RAG', group: 'Examples' },
+  mintagent: { file: 'ACDL_examples/MintAgent_variants/mint-original.acdl', label: 'MintAgent', group: 'Examples' },
+  multiagent: { file: 'ACDL_examples/complex_examples/MultiAgent.acdl', label: 'MultiAgent', group: 'Examples' },
 
   // Advanced
-  openclaw: { file: 'Prompts/Paper/OpenClaw.acdl', label: 'OpenClaw', group: 'Advanced' },
-  opencode: { file: 'Prompts/Paper/OpenCode.acdl', label: 'OpenCode', group: 'Advanced' },
-  pokemon: { file: 'Prompts/Paper/pokemon.acdl', label: 'Pokemon', group: 'Advanced' },
+  openclaw: { file: 'ACDL_examples/complex_examples/OpenClaw.acdl', label: 'OpenClaw', group: 'Advanced' },
+  opencode: { file: 'ACDL_examples/complex_examples/OpenCode.acdl', label: 'OpenCode', group: 'Advanced' },
+  pokemon: { file: 'ACDL_examples/complex_examples/pokemon.acdl', label: 'Pokemon', group: 'Advanced' },
 };
 
 // Load prompts from files
@@ -52,30 +54,16 @@ function loadPrompts() {
   return prompts;
 }
 
-// Generate the dropdown HTML from config
-function generateDropdownHTML() {
-  const groups = {};
-  for (const [key, config] of Object.entries(EXAMPLE_CONFIG)) {
-    if (!groups[config.group]) groups[config.group] = [];
-    groups[config.group].push({ key, label: config.label });
-  }
-
-  let html = `<option value="">-- Select --</option>\n`;
-  for (const [groupName, items] of Object.entries(groups)) {
-    html += `        <optgroup label="${groupName}">\n`;
-    for (const item of items) {
-      html += `          <option value="${item.key}">${item.label}</option>\n`;
-    }
-    html += `        </optgroup>\n`;
-  }
-  return html.trim();
-}
-
 async function buildStandalone() {
   console.log('Building standalone ACDL Visualizer...');
 
-  // 1. Bundle the parser and renderer using esbuild
-  console.log('  Bundling TypeScript...');
+  // 1. Read the source HTML template
+  console.log('  Reading src/index.html...');
+  const htmlPath = path.join(rootDir, 'src', 'index.html');
+  let html = fs.readFileSync(htmlPath, 'utf-8');
+
+  // 2. Bundle the parser and renderer using esbuild
+  console.log('  Bundling parser/renderer...');
 
   // Create a temporary entry point that exports what we need
   const entryContent = `
@@ -87,523 +75,198 @@ export { renderPrompt, renderPrompts } from './renderPrompt';
   const tempEntryPath = path.join(rootDir, 'src', '_standalone_entry.ts');
   fs.writeFileSync(tempEntryPath, entryContent);
 
+  // 3. Bundle the CodeMirror editor
+  console.log('  Bundling CodeMirror editor...');
+
+  const editorEntryContent = `
+import { EditorView, keymap, lineNumbers, highlightActiveLine,
+  highlightActiveLineGutter, drawSelection, placeholder } from "@codemirror/view";
+import { EditorState } from "@codemirror/state";
+import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
+import { bracketMatching, indentOnInput } from "@codemirror/language";
+import { closeBrackets, closeBracketsKeymap } from "@codemirror/autocomplete";
+import { searchKeymap, highlightSelectionMatches } from "@codemirror/search";
+import { acdlStreamLanguage } from "./editor/acdl-language.js";
+import { acdlHighlighting } from "./editor/acdl-theme.js";
+import { acdlLinter } from "./editor/acdl-lint.js";
+
+export function createEditor(parent, initialDoc) {
+  return new EditorView({
+    state: EditorState.create({
+      doc: initialDoc,
+      extensions: [
+        lineNumbers(),
+        highlightActiveLine(),
+        highlightActiveLineGutter(),
+        drawSelection(),
+        history(),
+        bracketMatching(),
+        closeBrackets(),
+        indentOnInput(),
+        highlightSelectionMatches(),
+        placeholder("Enter ACDL code here or select an example prompt..."),
+        acdlHighlighting,
+        acdlStreamLanguage,
+        acdlLinter,
+        keymap.of([
+          ...closeBracketsKeymap,
+          ...defaultKeymap,
+          ...searchKeymap,
+          ...historyKeymap,
+          indentWithTab,
+        ]),
+        EditorView.theme({
+          "&": {
+            fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+            fontSize: "13px",
+            lineHeight: "1.6",
+          },
+          ".cm-content": {
+            padding: "16px 0",
+          },
+          ".cm-gutters": {
+            background: "var(--bg-secondary)",
+            borderRight: "1px solid var(--border-subtle)",
+            color: "var(--text-muted)",
+          },
+          "&.cm-focused": {
+            outline: "none",
+          },
+          ".cm-activeLine": {
+            background: "rgba(0, 0, 0, 0.04)",
+          },
+          ".cm-activeLineGutter": {
+            background: "rgba(0, 0, 0, 0.06)",
+          },
+        }),
+      ],
+    }),
+    parent,
+  });
+}
+
+export { EditorView };
+`;
+
+  const tempEditorEntryPath = path.join(rootDir, 'src', '_standalone_editor_entry.ts');
+  fs.writeFileSync(tempEditorEntryPath, editorEntryContent);
+
   try {
-    const result = await esbuild.build({
-      entryPoints: [tempEntryPath],
-      bundle: true,
-      format: 'iife',
-      globalName: 'ACDL',
-      write: false,
-      target: 'es2020',
-      minify: false,
-      sourcemap: false,
-    });
+    const [parserResult, editorResult] = await Promise.all([
+      esbuild.build({
+        entryPoints: [tempEntryPath],
+        bundle: true,
+        format: 'iife',
+        globalName: 'ACDL',
+        write: false,
+        target: 'es2020',
+        minify: false,
+        sourcemap: false,
+      }),
+      esbuild.build({
+        entryPoints: [tempEditorEntryPath],
+        bundle: true,
+        format: 'iife',
+        globalName: 'ACDLEditor',
+        write: false,
+        target: 'es2020',
+        minify: false,
+        sourcemap: false,
+      }),
+    ]);
 
-    // Clean up temp file
+    // Clean up temp files
     fs.unlinkSync(tempEntryPath);
+    fs.unlinkSync(tempEditorEntryPath);
 
-    const bundledJS = result.outputFiles[0].text;
+    const bundledJS = parserResult.outputFiles[0].text;
+    const editorJS = editorResult.outputFiles[0].text;
 
-    // 2. Read CSS
+    // 4. Read CSS
     console.log('  Reading CSS...');
-    const cssPath = path.join(rootDir, 'styles.css');
+    const cssPath = path.join(rootDir, 'src', 'styles.css');
     const cssContent = fs.readFileSync(cssPath, 'utf-8');
 
-    // 3. Load prompts from files
+    // 5. Load prompts from files
     console.log('  Loading prompts...');
     const prompts = loadPrompts();
 
-    // 4. Generate HTML
-    console.log('  Generating HTML...');
-    const html = generateStandaloneHTML(bundledJS, cssContent, prompts);
+    // 6. Transform the HTML
+    console.log('  Transforming HTML...');
+    html = transformHTML(html, bundledJS, editorJS, cssContent, prompts);
 
-    // 4. Write output
-    const outputPath = path.join(rootDir, 'standalone.html');
+    // 7. Write output to dist/website/visualizer.html
+    const websiteDir = path.join(rootDir, 'dist', 'website');
+    if (!fs.existsSync(websiteDir)) {
+      fs.mkdirSync(websiteDir, { recursive: true });
+    }
+    const outputPath = path.join(websiteDir, 'visualizer.html');
     fs.writeFileSync(outputPath, html);
 
-    console.log(`\nStandalone build complete: ${outputPath}`);
+    console.log(`\nStandalone build complete:`);
+    console.log(`  ${outputPath}`);
     console.log(`  Size: ${(html.length / 1024).toFixed(1)} KB`);
 
   } catch (error) {
-    // Clean up temp file on error
+    // Clean up temp files on error
     if (fs.existsSync(tempEntryPath)) {
       fs.unlinkSync(tempEntryPath);
+    }
+    if (fs.existsSync(tempEditorEntryPath)) {
+      fs.unlinkSync(tempEditorEntryPath);
     }
     throw error;
   }
 }
 
-function generateStandaloneHTML(bundledJS, cssContent, prompts) {
-  return `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8" />
-  <title>ACDL Prompt Visualizer - Standalone</title>
+/**
+ * Transform the source HTML into a standalone version:
+ * 1. Replace the external CSS link with inlined styles
+ * 2. Remove the Vite module scripts
+ * 3. Add bundled JS, embedded prompts, and standalone UI logic
+ */
+function transformHTML(html, bundledJS, editorJS, cssContent, prompts) {
+  // 1. Replace the external CSS link with inlined CSS
+  // Match: <link rel="stylesheet" href="./styles.css" />
+  // Note: We use replacer functions instead of strings to avoid issues with
+  // special replacement patterns ($1, $&, etc.) in the bundled JavaScript code.
 
-  <!-- Google Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  html = html.replace(
+    /<link\s+rel="stylesheet"\s+href="\.\/styles\.css"\s*\/?>/,
+    () => `<style>\n${cssContent}\n  </style>`
+  );
 
-  <!-- Export libraries -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  // 2. Remove the first <script type="module"> block (Vite imports from main-ui.ts)
+  // This block starts with: <script type="module"> and contains import from "./main-ui.ts"
+  html = html.replace(
+    /<script type="module">[\s\S]*?import[\s\S]*?from\s*"\.\/main-ui\.ts"[\s\S]*?<\/script>/,
+    () => ''
+  );
 
-  <style>
-${cssContent}
+  // 3. Remove the second inline <script> block (resize/export handlers - we'll replace with standalone version)
+  // This is the large script block that handles resizing, collapsing, and export functionality
+  // Match from the <script> tag containing "const sidebar" through the closing </body>
+  html = html.replace(
+    /<script>\s*document\.addEventListener\("DOMContentLoaded"[\s\S]*?const\s+sidebar[\s\S]*?<\/script>\s*<\/body>/,
+    () => generateStandaloneScripts(bundledJS, editorJS, prompts) + '\n</body>'
+  );
 
-/* App Shell Overrides */
-body {
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  overflow: hidden;
-  background: var(--bg-primary);
+  return html;
 }
 
-header {
-  height: 60px;
-  background: var(--bg-secondary);
-  border-bottom: 1px solid var(--border-subtle);
-  display: flex;
-  align-items: center;
-  padding: 0 20px;
-  gap: 16px;
-  box-sizing: border-box;
-}
-
-header h1 {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--text-primary);
-  white-space: nowrap;
-}
-
-#drop-zone {
-  flex: 1;
-  max-width: 400px;
-  height: 40px;
-  border: 1px dashed var(--border-medium);
-  border-radius: 8px;
-  padding: 0 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--bg-tertiary);
-  color: var(--text-secondary);
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-#drop-zone:hover,
-#drop-zone.hover {
-  background: rgba(59, 130, 246, 0.1);
-  border-color: var(--system-border);
-  color: var(--text-primary);
-}
-
-.browse-btn {
-  font-size: 12px;
-  color: var(--system-border);
-  margin-left: 6px;
-  font-weight: 400;
-}
-
-.prompt-selector {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.prompt-selector label {
-  font-size: 13px;
-  color: var(--text-secondary);
-}
-
-.prompt-selector select {
-  padding: 6px 10px;
-  border: 1px solid var(--border-medium);
-  border-radius: 6px;
-  background: var(--bg-primary);
-  color: var(--text-primary);
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.main-container {
-  display: flex;
-  flex: 1;
-  overflow: hidden;
-}
-
-#sidebar {
-  width: 420px;
-  min-width: 200px;
-  background: var(--bg-secondary);
-  border-right: 1px solid var(--border-subtle);
-  display: flex;
-  flex-direction: column;
-  padding: 20px;
-  gap: 12px;
-  box-sizing: border-box;
-  transition: width 0.3s ease, min-width 0.3s ease, padding 0.3s ease;
-}
-
-#sidebar.collapsed {
-  width: 0 !important;
-  min-width: 0 !important;
-  padding: 0 !important;
-  overflow: hidden;
-}
-
-.panel-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 4px;
-}
-
-.panel-header h3 {
-  margin: 0;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
-
-.panel-toggle-btn {
-  background: transparent;
-  border: 1px solid var(--border-subtle);
-  border-radius: 4px;
-  color: var(--text-secondary);
-  cursor: pointer;
-  padding: 4px 8px;
-  font-size: 12px;
-  transition: all 0.2s ease;
-}
-
-.panel-toggle-btn:hover {
-  background: var(--bg-tertiary);
-  color: var(--text-primary);
-  border-color: var(--border-medium);
-}
-
-#acdl-editor {
-  flex: 1;
-  width: 100%;
-  border: 1px solid var(--border-subtle);
-  border-radius: 8px;
-  padding: 12px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 13px;
-  line-height: 1.5;
-  resize: none;
-  background: var(--bg-primary);
-  color: var(--text-primary);
-  box-sizing: border-box;
-}
-
-#acdl-editor:focus {
-  outline: none;
-  border-color: var(--system-border);
-  box-shadow: 0 0 0 3px var(--system-glow);
-}
-
-#render-btn {
-  width: 100%;
-  padding: 14px;
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-weight: 600;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 4px 6px rgba(16, 185, 129, 0.25);
-}
-
-#render-btn:hover {
-  background: linear-gradient(135deg, #059669 0%, #047857 100%);
-  transform: translateY(-1px);
-  box-shadow: 0 6px 12px rgba(16, 185, 129, 0.35);
-}
-
-.resizer {
-  width: 6px;
-  background: var(--border-subtle);
-  cursor: col-resize;
-  flex-shrink: 0;
-  transition: background 0.2s ease;
-}
-
-.resizer:hover,
-.resizer.dragging {
-  background: var(--system-border);
-}
-
-#output-wrapper {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-width: 200px;
-  overflow: hidden;
-}
-
-#output-wrapper.collapsed {
-  min-width: 0 !important;
-  flex: 0 !important;
-  width: 0 !important;
-  overflow: hidden;
-}
-
-#output-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 20px;
-  background: var(--bg-secondary);
-  border-bottom: 1px solid var(--border-subtle);
-}
-
-#output-header h3 {
-  margin: 0;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
-
-#output {
-  flex: 1;
-  overflow-y: auto;
-  padding: 40px;
-  background: var(--bg-primary);
-}
-
-.restore-btn {
-  position: fixed;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-subtle);
-  border-radius: 4px;
-  color: var(--text-secondary);
-  cursor: pointer;
-  padding: 8px;
-  font-size: 12px;
-  transition: all 0.2s ease;
-  display: none;
-  z-index: 100;
-  writing-mode: vertical-rl;
-}
-
-.restore-btn:hover {
-  background: var(--bg-tertiary);
-  color: var(--text-primary);
-  border-color: var(--system-border);
-}
-
-#restore-sidebar {
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  border-left: none;
-  border-radius: 0 4px 4px 0;
-}
-
-#restore-output {
-  right: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  border-right: none;
-  border-radius: 4px 0 0 4px;
-}
-
-body.resizing {
-  user-select: none;
-  cursor: col-resize;
-}
-
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.export-dropdown {
-  position: relative;
-}
-
-.export-btn {
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-  color: white;
-  border: none;
-  border-radius: 6px;
-  padding: 6px 12px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  transition: all 0.2s ease;
-}
-
-.export-btn:hover {
-  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-  transform: translateY(-1px);
-}
-
-.export-btn svg {
-  width: 14px;
-  height: 14px;
-}
-
-.export-menu {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  margin-top: 4px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-subtle);
-  border-radius: 8px;
-  padding: 4px;
-  min-width: 140px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
-  z-index: 1000;
-  display: none;
-}
-
-.export-menu.show {
-  display: block;
-}
-
-.export-menu-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 8px 12px;
-  background: transparent;
-  border: none;
-  border-radius: 4px;
-  color: var(--text-primary);
-  font-size: 13px;
-  cursor: pointer;
-  transition: background 0.15s ease;
-}
-
-.export-menu-item:hover {
-  background: var(--bg-tertiary);
-}
-
-.export-menu-item svg {
-  width: 16px;
-  height: 16px;
-  color: var(--text-secondary);
-}
-
-.export-btn.loading {
-  pointer-events: none;
-  opacity: 0.7;
-}
-
-.info-msg {
-  color: var(--text-secondary);
-  text-align: center;
-  padding: 60px 40px;
-  font-size: 15px;
-}
-  </style>
-</head>
-
-<body>
-  <header>
-    <h1>ACDL Visualizer</h1>
-    <label id="drop-zone" for="acdl-upload">
-      Drop .acdl file here <span class="browse-btn">or browse</span>
-      <input type="file" id="acdl-upload" accept=".acdl" style="display: none;" />
-    </label>
-    <div class="prompt-selector">
-      <label for="prompt-select">Examples:</label>
-      <select id="prompt-select">
-        ${generateDropdownHTML()}
-      </select>
-    </div>
-  </header>
-
-  <div class="main-container">
-    <aside id="sidebar">
-      <div class="panel-header">
-        <h3>Source Editor</h3>
-        <button class="panel-toggle-btn" id="collapse-sidebar" title="Collapse editor">
-          <span>&#x25C0;</span>
-        </button>
-      </div>
-      <textarea id="acdl-editor" placeholder="Enter ACDL code here or select an example prompt..."></textarea>
-      <button id="render-btn">Render Visualization</button>
-    </aside>
-
-    <div class="resizer" id="resizer"></div>
-
-    <div id="output-wrapper">
-      <div id="output-header">
-        <h3>Visualization</h3>
-        <div class="header-actions">
-          <div class="export-dropdown">
-            <button class="export-btn" id="export-btn" title="Export visualization">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                <polyline points="7 10 12 15 17 10"/>
-                <line x1="12" y1="15" x2="12" y2="3"/>
-              </svg>
-              Export
-            </button>
-            <div class="export-menu" id="export-menu">
-              <button class="export-menu-item" id="export-png">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                  <circle cx="8.5" cy="8.5" r="1.5"/>
-                  <polyline points="21 15 16 10 5 21"/>
-                </svg>
-                Export as PNG
-              </button>
-              <button class="export-menu-item" id="export-pdf">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                  <polyline points="14 2 14 8 20 8"/>
-                  <line x1="16" y1="13" x2="8" y2="13"/>
-                  <line x1="16" y1="17" x2="8" y2="17"/>
-                </svg>
-                Export as PDF
-              </button>
-            </div>
-          </div>
-          <button class="panel-toggle-btn" id="collapse-output" title="Collapse visualization">
-            <span>&#x25B6;</span>
-          </button>
-        </div>
-      </div>
-      <main id="output" class="compact">
-        <div class="info-msg">
-          Select an example prompt from the dropdown or enter ACDL code, then click "Render Visualization"
-        </div>
-      </main>
-    </div>
-  </div>
-
-  <button class="restore-btn" id="restore-sidebar" title="Show editor">Editor</button>
-  <button class="restore-btn" id="restore-output" title="Show visualization">Viz</button>
-
+/**
+ * Generate the standalone-specific script blocks that replace the Vite module imports
+ */
+function generateStandaloneScripts(bundledJS, editorJS, prompts) {
+  return `
   <!-- Bundled Parser and Renderer -->
   <script>
 ${bundledJS}
+  </script>
+
+  <!-- Bundled CodeMirror Editor -->
+  <script>
+${editorJS}
   </script>
 
   <!-- Embedded Prompts -->
@@ -611,10 +274,23 @@ ${bundledJS}
 const PROMPTS = ${JSON.stringify(prompts, null, 2)};
   </script>
 
-  <!-- UI Logic -->
+  <!-- Standalone UI Logic -->
   <script>
-// Extract Parser and renderPrompt from the bundle
+${getStandaloneUILogic()}
+  </script>`;
+}
+
+/**
+ * Returns the standalone UI logic JavaScript.
+ * This is kept separately in the build script because it uses different
+ * initialization than the Vite development version.
+ */
+function getStandaloneUILogic() {
+  return `// Extract Parser and renderPrompt from the bundle
 const { Parser, renderPrompts } = ACDL;
+const { createEditor } = ACDLEditor;
+
+let editorView = null;
 
 function escapeHtml(text) {
   return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
@@ -653,7 +329,8 @@ function detectWrappedComments(container) {
 }
 
 function doRender() {
-  const input = document.getElementById("acdl-editor").value;
+  if (!editorView) return;
+  const input = editorView.state.doc.toString();
   const output = document.getElementById("output");
   if (!input.trim()) {
     output.innerHTML = '<div class="info-msg">Enter ACDL code and click "Render Visualization"</div>';
@@ -680,14 +357,24 @@ document.addEventListener("DOMContentLoaded", () => {
   const restoreSidebar = document.getElementById("restore-sidebar");
   const restoreOutput = document.getElementById("restore-output");
   const promptSelect = document.getElementById("prompt-select");
-  const editor = document.getElementById("acdl-editor");
+  const editorContainer = document.getElementById("acdl-editor-container");
   const renderBtn = document.getElementById("render-btn");
   const output = document.getElementById("output");
   const dropZone = document.getElementById("drop-zone");
   const fileInput = document.getElementById("acdl-upload");
 
+  // Initialize CodeMirror editor
+  editorView = createEditor(editorContainer, "");
+
   let isResizing = false;
   let lastSidebarWidth = 420;
+
+  // Helper to set editor content
+  function setEditorContent(text) {
+    editorView.dispatch({
+      changes: { from: 0, to: editorView.state.doc.length, insert: text }
+    });
+  }
 
   // File upload handling
   function handleFile(file) {
@@ -697,7 +384,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     const reader = new FileReader();
     reader.onload = (e) => {
-      editor.value = e.target.result;
+      setEditorContent(e.target.result);
       promptSelect.value = "";
       doRender();
     };
@@ -731,26 +418,16 @@ document.addEventListener("DOMContentLoaded", () => {
     if (file) handleFile(file);
   });
 
+  // Example prompt selection - uses embedded PROMPTS object
   promptSelect.addEventListener("change", () => {
     const key = promptSelect.value;
     if (key && PROMPTS[key]) {
-      editor.value = PROMPTS[key];
+      setEditorContent(PROMPTS[key]);
       doRender();
     }
   });
 
   renderBtn.addEventListener("click", doRender);
-
-  // Tab key handling for editor - insert spaces instead of moving focus
-  editor.addEventListener("keydown", (e) => {
-    if (e.key === "Tab") {
-      e.preventDefault();
-      const start = editor.selectionStart;
-      const end = editor.selectionEnd;
-      editor.value = editor.value.substring(0, start) + "  " + editor.value.substring(end);
-      editor.selectionStart = editor.selectionEnd = start + 2;
-    }
-  });
 
   // Resizer
   resizer.addEventListener("mousedown", (e) => {
@@ -802,6 +479,39 @@ document.addEventListener("DOMContentLoaded", () => {
     restoreOutput.style.display = "none";
   });
 
+  // Width control functionality
+  const widthSlider = document.getElementById("width-slider");
+  const widthInput = document.getElementById("width-input");
+  let currentWidth = 800; // Default width
+
+  function updateWidth(value) {
+    // Clamp value to valid range
+    value = Math.min(900, Math.max(250, parseInt(value) || 800));
+    currentWidth = value;
+    widthSlider.value = value;
+    widthInput.value = value;
+
+    // Apply width directly to all prompt containers via inline style
+    const containers = output.querySelectorAll('.prompt-container');
+    containers.forEach(el => {
+      el.style.maxWidth = value + 'px';
+    });
+  }
+
+  widthSlider.addEventListener("input", (e) => updateWidth(e.target.value));
+  widthInput.addEventListener("change", (e) => updateWidth(e.target.value));
+  widthInput.addEventListener("keyup", (e) => {
+    if (e.key === "Enter") updateWidth(e.target.value);
+  });
+
+  // +/- buttons for width adjustment
+  const widthDecrease = document.getElementById("width-decrease");
+  const widthIncrease = document.getElementById("width-increase");
+  const STEP = 10; // Width change per click
+
+  widthDecrease.addEventListener("click", () => updateWidth(currentWidth - STEP));
+  widthIncrease.addEventListener("click", () => updateWidth(currentWidth + STEP));
+
   // Export functionality
   const exportBtn = document.getElementById("export-btn");
   const exportMenu = document.getElementById("export-menu");
@@ -818,11 +528,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // Helper to find the widest line of content (excluding comments)
   function findWidestLineWidth(container) {
     const lineElements = [];
-
-    // Prompt titles
     container.querySelectorAll('.prompt-title h1').forEach(el => lineElements.push(el));
-
-    // Role body blocks - each child is a line
     container.querySelectorAll('.role-body-block').forEach(block => {
       Array.from(block.children).forEach(child => {
         if (child.classList.contains('block-with-comment')) {
@@ -833,215 +539,19 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       });
     });
-
-    // Control flow headers
     container.querySelectorAll('.loop-block-outside-role-header, .loop-block-inside-role-header, .conditional-block-outside-role-header, .conditional-section-header, .switch-block-outside-role-header, .switch-block-inside-role-header, .switch-case-header, .switch-default-header').forEach(el => lineElements.push(el));
-
-    // Name definitions, End blocks, Label starts/ends
     container.querySelectorAll('.name-def').forEach(el => lineElements.push(el));
     container.querySelectorAll('.end-block').forEach(el => lineElements.push(el));
     container.querySelectorAll('.label-start, .label-end').forEach(el => lineElements.push(el));
-
     let maxWidth = 0;
     lineElements.forEach(el => {
       const rect = el.getBoundingClientRect();
       if (rect.width > maxWidth) maxWidth = rect.width;
     });
-
     return maxWidth;
   }
 
-  // Helper function to capture full content
-  async function captureFullContent() {
-    if (!output.querySelector(".prompt-container")) return null;
-
-    const content = output;
-
-    const originalOutputStyle = output.style.cssText;
-    const originalContentStyle = content.style.cssText;
-    const originalWrapperStyle = outputWrapper.style.cssText;
-    const originalBodyStyle = document.body.style.cssText;
-
-    output.style.overflow = "visible";
-    output.style.height = "auto";
-    output.style.maxHeight = "none";
-    output.style.position = "relative";
-    outputWrapper.style.overflow = "visible";
-    outputWrapper.style.height = "auto";
-    document.body.style.overflow = "visible";
-
-    const inlineFlexEls = content.querySelectorAll(".context-var, .template-block, .func-block, .expr-context-var");
-    const savedDisplays = [];
-    inlineFlexEls.forEach(el => {
-      savedDisplays.push(el.style.display);
-      el.style.display = "inline-block";
-    });
-
-    // Fix mark blocks
-    const markBlocks = content.querySelectorAll(".mark-block");
-    const savedMarkBlockStyles = [];
-    markBlocks.forEach(el => {
-      savedMarkBlockStyles.push(el.style.cssText);
-      el.style.display = "flex";
-      el.style.alignItems = "stretch";
-      el.style.paddingRight = "0";
-    });
-
-    const markBrackets = content.querySelectorAll(".mark-block-bracket");
-    const savedMarkBracketStyles = [];
-    markBrackets.forEach(el => {
-      savedMarkBracketStyles.push(el.style.cssText);
-      el.style.position = "relative";
-      el.style.right = "auto";
-      el.style.top = "auto";
-      el.style.bottom = "auto";
-      el.style.marginLeft = "8px";
-    });
-
-    const markContents = content.querySelectorAll(".mark-block-content");
-    const savedMarkContentStyles = [];
-    markContents.forEach(el => {
-      savedMarkContentStyles.push(el.style.cssText);
-      el.style.flex = "1";
-    });
-
-    const timeIndexEls = content.querySelectorAll(".time-index, .other-index");
-    const savedTimeIndexStyles = [];
-    timeIndexEls.forEach(el => {
-      savedTimeIndexStyles.push(el.style.cssText);
-      el.style.display = "inline";
-      el.style.color = "#0969da";
-      el.style.fontWeight = "700";
-      el.style.fontFamily = "'JetBrains Mono', 'SF Mono', monospace";
-    });
-
-    const titleH1s = content.querySelectorAll(".prompt-title h1");
-    const savedTitleStyles = [];
-    titleH1s.forEach(el => {
-      savedTitleStyles.push(el.style.cssText);
-      el.style.whiteSpace = "nowrap";
-    });
-
-    const exportFixStyle = document.createElement("style");
-    exportFixStyle.textContent = '.template-block::before { vertical-align: middle; line-height: 1; position: relative; top: -1px; }';
-    document.head.appendChild(exportFixStyle);
-
-    const containers = content.querySelectorAll('.prompt-container');
-    const savedContainerStyles = [];
-    containers.forEach(el => {
-      savedContainerStyles.push(el.style.cssText);
-      el.style.maxWidth = 'none';
-      el.style.width = 'auto';
-    });
-
-    // Hide comments and measure natural line widths
-    const comments = content.querySelectorAll('.comment, .inline-comment');
-    comments.forEach(c => c.style.display = 'none');
-    content.offsetHeight;
-
-    const widestLineWidth = findWidestLineWidth(content);
-    const contentWidthWithoutComments = Math.ceil(widestLineWidth) + 60;
-
-    // Restore comments and constrain width
-    comments.forEach(c => c.style.display = '');
-    const constrainedWidth = Math.min(Math.max(contentWidthWithoutComments, 200), 450);
-
-    containers.forEach(el => {
-      el.style.width = (constrainedWidth - 40) + 'px';
-      el.style.maxWidth = (constrainedWidth - 40) + 'px';
-    });
-    content.style.width = constrainedWidth + 'px';
-    content.style.minWidth = "200px";
-
-    // Calculate available width for comments
-    const blockWithComments = content.querySelectorAll('.block-with-comment');
-    const savedBlockStyles = [];
-    const savedCommentStyles = [];
-    blockWithComments.forEach(el => {
-      savedBlockStyles.push({ el, style: el.style.cssText, hadClass: el.classList.contains('comment-wrapped') });
-      const mainContent = el.firstElementChild;
-      const comment = el.querySelector('.inline-comment, .comment');
-      if (mainContent && comment) {
-        savedCommentStyles.push({ el: comment, style: comment.style.cssText });
-        const mainWidth = mainContent.getBoundingClientRect().width;
-        const gap = 8;
-        const availableForComment = constrainedWidth - 40 - mainWidth - gap;
-        const commentMaxWidth = Math.max(80, availableForComment);
-        comment.style.maxWidth = commentMaxWidth + 'px';
-        comment.style.minWidth = '0';
-        comment.style.flex = '0 1 auto';
-        comment.style.whiteSpace = 'normal';
-        comment.style.overflowWrap = 'break-word';
-      }
-    });
-
-    content.offsetHeight;
-
-    // Detect wrapped comments
-    blockWithComments.forEach(el => {
-      const comment = el.querySelector('.inline-comment, .comment');
-      if (comment) {
-        const lineHeight = parseFloat(getComputedStyle(comment).lineHeight) || 16;
-        if (comment.offsetHeight > lineHeight * 1.5) {
-          el.classList.add('comment-wrapped');
-        } else {
-          el.classList.remove('comment-wrapped');
-        }
-      }
-    });
-
-    const fullWidth = Math.max(content.scrollWidth, content.offsetWidth, content.getBoundingClientRect().width);
-    const fullHeight = Math.max(content.scrollHeight, content.offsetHeight, content.getBoundingClientRect().height);
-    const captureWidth = Math.ceil(fullWidth) + 40;
-    const captureHeight = Math.ceil(fullHeight) + 60;
-
-    try {
-      const canvas = await html2canvas(content, {
-        backgroundColor: "#ffffff",
-        scale: window.devicePixelRatio * 2 || 3,
-        useCORS: true,
-        logging: false,
-        width: captureWidth,
-        height: captureHeight,
-        windowWidth: captureWidth,
-        windowHeight: captureHeight,
-        scrollX: 0,
-        scrollY: 0,
-        x: 0,
-        y: 0,
-        allowTaint: true,
-        imageTimeout: 0,
-        onclone: (clonedDoc) => {
-          const styles = document.querySelectorAll('link[rel="stylesheet"], style');
-          styles.forEach(style => {
-            clonedDoc.head.appendChild(style.cloneNode(true));
-          });
-        }
-      });
-      return canvas;
-    } finally {
-      inlineFlexEls.forEach((el, i) => { el.style.display = savedDisplays[i]; });
-      markBlocks.forEach((el, i) => { el.style.cssText = savedMarkBlockStyles[i]; });
-      markBrackets.forEach((el, i) => { el.style.cssText = savedMarkBracketStyles[i]; });
-      markContents.forEach((el, i) => { el.style.cssText = savedMarkContentStyles[i]; });
-      savedBlockStyles.forEach(({ el, style, hadClass }) => {
-        el.style.cssText = style;
-        if (hadClass) el.classList.add('comment-wrapped');
-        else el.classList.remove('comment-wrapped');
-      });
-      savedCommentStyles.forEach(({ el, style }) => { el.style.cssText = style; });
-      timeIndexEls.forEach((el, i) => { el.style.cssText = savedTimeIndexStyles[i]; });
-      titleH1s.forEach((el, i) => { el.style.cssText = savedTitleStyles[i]; });
-      containers.forEach((el, i) => { el.style.cssText = savedContainerStyles[i]; });
-      exportFixStyle.remove();
-      output.style.cssText = originalOutputStyle;
-      content.style.cssText = originalContentStyle;
-      outputWrapper.style.cssText = originalWrapperStyle;
-      document.body.style.cssText = originalBodyStyle;
-    }
-  }
-
-  // Helper to capture all content (entire output with multiple prompts)
+  // Helper to capture all content for export
   async function captureAllContent() {
     if (!output.querySelector(".prompt-container")) return null;
 
@@ -1128,13 +638,22 @@ document.addEventListener("DOMContentLoaded", () => {
     const contentWidthWithoutComments = Math.ceil(widestLineWidth) + 60;
 
     comments.forEach(c => c.style.display = '');
-    const constrainedWidth = Math.min(Math.max(contentWidthWithoutComments, 200), 450);
+    // Use the slider width for export
+    const constrainedWidth = currentWidth;
+    console.log('Export using width:', constrainedWidth, 'px');
 
+    // Add a style element to FORCE the width with !important
+    const widthOverrideStyle = document.createElement('style');
+    widthOverrideStyle.id = 'export-width-override';
+    widthOverrideStyle.textContent = '.prompt-container { width: ' + constrainedWidth + 'px !important; max-width: ' + constrainedWidth + 'px !important; }';
+    document.head.appendChild(widthOverrideStyle);
+
+    // Also set inline styles as backup
     containers.forEach(el => {
-      el.style.width = (constrainedWidth - 40) + 'px';
-      el.style.maxWidth = (constrainedWidth - 40) + 'px';
+      el.style.width = constrainedWidth + 'px';
+      el.style.maxWidth = constrainedWidth + 'px';
     });
-    output.style.width = constrainedWidth + 'px';
+    output.style.setProperty('--prompt-width', constrainedWidth + 'px');
 
     const blockWithComments = output.querySelectorAll('.block-with-comment');
     const savedBlockStyles = [];
@@ -1173,8 +692,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const fullWidth = Math.max(output.scrollWidth, output.offsetWidth, output.getBoundingClientRect().width);
     const fullHeight = Math.max(output.scrollHeight, output.offsetHeight, output.getBoundingClientRect().height);
-    const captureWidth = Math.ceil(fullWidth) + 40;
-    const captureHeight = Math.ceil(fullHeight) + 60;
+    // Minimal padding to avoid cropping
+    const captureWidth = Math.ceil(fullWidth) + 10;
+    const captureHeight = Math.ceil(fullHeight) + 10;
 
     try {
       const canvas = await html2canvas(output, {
@@ -1191,7 +711,20 @@ document.addEventListener("DOMContentLoaded", () => {
         x: 0,
         y: 0,
         allowTaint: true,
-        imageTimeout: 0
+        imageTimeout: 0,
+        onclone: (clonedDoc) => {
+          // Copy all stylesheets to the cloned document
+          const styles = document.querySelectorAll('link[rel="stylesheet"], style');
+          styles.forEach(style => {
+            clonedDoc.head.appendChild(style.cloneNode(true));
+          });
+          // Re-apply width to cloned containers to FORCE the slider width
+          const clonedContainers = clonedDoc.querySelectorAll('.prompt-container');
+          clonedContainers.forEach(el => {
+            el.style.width = constrainedWidth + 'px';
+            el.style.maxWidth = constrainedWidth + 'px';
+          });
+        }
       });
       return canvas;
     } finally {
@@ -1205,6 +738,7 @@ document.addEventListener("DOMContentLoaded", () => {
       savedBlockStyles.forEach(({ el, style, hadClass }) => { el.style.cssText = style; if (hadClass) el.classList.add('comment-wrapped'); else el.classList.remove('comment-wrapped'); });
       savedCommentStyles.forEach(({ el, style }) => { el.style.cssText = style; });
       exportFixStyle.remove();
+      widthOverrideStyle.remove();
       output.style.cssText = originalOutputStyle;
       outputWrapper.style.cssText = originalWrapperStyle;
       document.body.style.cssText = originalBodyStyle;
@@ -1263,10 +797,7 @@ document.addEventListener("DOMContentLoaded", () => {
       exportBtn.classList.remove("loading");
     }
   });
-});
-  </script>
-</body>
-</html>`;
+});`;
 }
 
 // Run the build

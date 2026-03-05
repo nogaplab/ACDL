@@ -49,7 +49,7 @@ async function main() {
         }
     });
 
-    const cssContent = fs.existsSync('./styles.css') ? fs.readFileSync('./styles.css', 'utf-8') : '';
+    const cssContent = fs.existsSync('./src/styles.css') ? fs.readFileSync('./src/styles.css', 'utf-8') : '';
 
     const fullHtml = `
 <!DOCTYPE html>

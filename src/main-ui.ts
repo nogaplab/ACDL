@@ -6,6 +6,23 @@ import { createEditor } from "./editor/setup.js";
 
 let editorView: EditorView;
 
+/**
+ * Returns the CodeMirror editor view instance.
+ */
+export function getEditorView(): EditorView | null {
+  return editorView || null;
+}
+
+/**
+ * Renders the current editor content.
+ */
+export function doRender(): void {
+  const output = document.getElementById("output");
+  if (output && editorView) {
+    processAndRender(editorView.state.doc.toString(), output);
+  }
+}
+
 export function initFileHandlers() {
   const dropZone = document.getElementById("drop-zone");
   const fileInput = document.getElementById("acdl-upload") as HTMLInputElement;

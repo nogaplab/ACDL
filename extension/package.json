@@ -53,10 +53,10 @@
     }
   },
   "scripts": {
-    "sync-css": "node -e \"require('fs').copyFileSync('../styles.css', 'media/preview.css')\"",
+    "sync-css": "node -e \"require('fs').copyFileSync('../src/styles.css', 'media/preview.css')\"",
     "build": "npm run sync-css && node esbuild.mjs",
     "watch": "npm run sync-css && node esbuild.mjs --watch",
-    "package": "npm run sync-css && npx vsce package"
+    "package": "npm run sync-css && npx vsce package -o ../dist/extension/"
   },
   "devDependencies": {
     "@types/vscode": "^1.80.0",

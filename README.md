@@ -65,7 +65,7 @@ bun run cli -- comparison.html prompt_v1 prompt_v2 --style compact
 bun run cli -- result.html "C:/path/to/my_logic.acdl"
 ```
 
-The `--style` flag applies a rendering style. Define new styles by adding `.style-[name]` classes to `styles.css`.
+The `--style` flag applies a rendering style. Define new styles by adding `.style-[name]` classes to `src/styles.css`.
 
 | Style | Description |
 | :--- | :--- |
@@ -87,6 +87,8 @@ src/
   main-ui.ts          Browser viewer entry point
   main-cli.ts         CLI generator entry point
   ui.ts               Collapsible block behavior
+  styles.css          Shared stylesheet for all rendering modes
+  index.html          Browser viewer shell
   editor/
     setup.ts           CodeMirror initialization
     acdl-language.ts   ACDL language mode for CodeMirror
@@ -94,8 +96,6 @@ src/
     acdl-lint.ts       Live parse-error linting
 
 Prompts/              Default home for .acdl source files
-styles.css            Shared stylesheet for all rendering modes
-index.html            Browser viewer shell
 ConceptualGuide.md    Language design and concepts
 SyntaxReference.MD    Language syntax reference
 ```
@@ -117,10 +117,10 @@ A VSCode extension is included that provides full language support for `.acdl` f
 ### Install from the repo
 
 ```bash
-code --install-extension extension/acdl-language-0.1.0.vsix
+code --install-extension dist/extension/acdl-language-0.1.0.vsix
 ```
 
-Or in VSCode: `Ctrl+Shift+P` → **Extensions: Install from VSIX...** → select `extension/acdl-language-0.1.0.vsix`.
+Or in VSCode: `Ctrl+Shift+P` → **Extensions: Install from VSIX...** → select `dist/extension/acdl-language-0.1.0.vsix`.
 
 After installing, reload VSCode (`Ctrl+Shift+P` → **Developer: Reload Window**).
 
