@@ -21,7 +21,9 @@ export type ControlKeyword =
   | "in"
   | "MARK"
   | "when"
-  | "not";
+  | "not"
+  | "and"
+  | "or";
 
 export type Keyword = NamespaceKeyword | ControlKeyword;
 

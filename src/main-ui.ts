@@ -101,6 +101,7 @@ function processAndRender(text: string, output: HTMLElement) {
     output.innerHTML = renderPrompts(prompts);
     enableCollapsibleBlocks();
     detectWrappedComments(output);
+    detectOverflow(output);
   } catch (err: any) {
     output.innerHTML = `<div class="error-msg"><strong>Parsing Error:</strong> ${err.message}</div>`;
   }
@@ -124,4 +125,12 @@ function detectWrappedComments(container: HTMLElement) {
       }
     }
   });
+}
+
+/**
+ * Detect if content overflows the container and show/hide the warning.
+ * TODO: Implement proper detection
+ */
+export function detectOverflow(_container: HTMLElement) {
+  // Left for future implementation
 }

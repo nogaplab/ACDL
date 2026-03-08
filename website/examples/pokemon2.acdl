@@ -23,12 +23,12 @@ Pokemon[@T]: {
                     }  
                 }
                 If @T>99 {
-                    ForEach(i: max(100, @T-(@T%100)-800), @T-(@T%100), 100) {  
+                    ForEach(i: range(max(100, @T-(@T%100)-800), @T-(@T%100), 100)) {  
                         sys.summary[@i]
                     }
                     
                     If @T>999 and @T%1000!=0 {
-                        ForEach(i: range(max(1000, @T-@T%1000-900), @T-(@T%1000), 1000)) { 
+                        ForEach(i: range(max(1000, @T-(@T%1000)-900), @T-(@T%1000), 1000)) { 
                             sys.compressed_summary[@i]
                         } 
                     }

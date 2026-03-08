@@ -677,6 +677,9 @@
           </button>
         </div>
       </div>
+      <div id="overflow-warning" class="overflow-warning">
+        Content does not fit within the chosen width and is therefore cropped. Increase width to fit the content in the visualization.
+      </div>
       <main id="output" class="compact">
         <div class="info-msg">
           Select an example prompt from the dropdown or enter ACDL code, then click "Render Visualization"
@@ -690,7 +693,7 @@
   <button class="restore-btn" id="restore-output" title="Show visualization">Viz</button>
 
   <script type="module">
-    import { initFileHandlers, getEditorView, doRender } from "./main-ui.ts";
+    import { initFileHandlers, getEditorView, doRender, detectOverflow } from "./main-ui.ts";
 
     // Map dropdown values to file paths (absolute paths resolved by Vite alias)
     const PROMPT_PATHS = {
@@ -824,6 +827,9 @@
         containers.forEach(el => {
           el.style.maxWidth = value + 'px';
         });
+
+        // Check for overflow after width change
+        detectOverflow(output);
       }
 
       widthSlider.addEventListener("input", (e) => updateWidth(e.target.value));

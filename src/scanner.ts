@@ -27,6 +27,8 @@ const CONTROL_KEYWORDS = new Set<ControlKeyword>([
   "MARK",
   "when",
   "not",
+  "and",
+  "or",
 ]);
 
 /* ───────────────── operators ───────────────── */

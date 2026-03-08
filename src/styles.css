@@ -95,6 +95,30 @@ body {
   position: relative;
   padding-left: 24px;
   border-left: 2px solid var(--border-medium);
+  overflow: hidden;
+}
+
+/* Warning when content is cropped */
+#overflow-warning {
+  display: none;
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  color: #856404;
+  padding: 8px 12px;
+  margin: 12px 20px;
+  border-radius: 4px;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+#overflow-warning.visible {
+  display: block !important;
+}
+
+.compact #overflow-warning {
+  font-size: 10px;
+  padding: 6px 10px;
 }
 
 /* Divider between multiple prompts in the same file */
@@ -238,6 +262,8 @@ body {
   padding: 2px 12px;
   white-space: normal;
   word-wrap: break-word;
+  overflow-wrap: break-word;
+  max-width: 100%;
 }
 
 /* ======================================================
@@ -248,25 +274,25 @@ body {
   display: inline-flex;
   align-items: center;
   vertical-align: middle;
-  gap: 4px;
   background: var(--accent-template-bg);
   border: 1px solid var(--accent-template);
   color: var(--accent-template);
-  padding: 3px 8px;
+  padding: 4px 8px;
   border-radius: 4px;
   font-family: 'JetBrains Mono', 'SF Mono', monospace;
   font-size: 12px;
   font-weight: 500;
-  line-height: 1;
+  line-height: 1.8;
   max-width: 100%;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .template-block::before {
   content: '◆';
   font-size: 10px;
   opacity: 0.7;
-  line-height: 1;
-  flex-shrink: 0;
+  line-height: 1.8;
 }
 
 .template-name-and-args {
@@ -276,19 +302,20 @@ body {
 }
 
 .func-block {
-  display: inline-flex;
-  align-items: center;
+  display: inline-block;
   vertical-align: middle;
   background: var(--accent-function-bg);
   border: 1px solid var(--accent-function);
   color: var(--accent-function);
-  padding: 2px 8px;
+  padding: 4px 8px;
   border-radius: 4px;
   font-family: 'JetBrains Mono', 'SF Mono', monospace;
   font-size: 12px;
   font-weight: 500;
-  line-height: 1;
+  line-height: 1.8;
   max-width: 100%;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .func-name {
@@ -308,30 +335,49 @@ body {
 }
 
 .context-var {
-  display: inline-flex;
-  align-items: center;
+  display: inline-block;
   vertical-align: middle;
-  gap: 2px;
   background: var(--accent-context-bg);
   border: 1px solid var(--accent-context);
   color: var(--accent-context);
-  padding: 3px 8px;
+  padding: 4px 8px;
   border-radius: 4px;
   font-family: 'JetBrains Mono', 'SF Mono', monospace;
   font-size: 12px;
   font-weight: 500;
-  line-height: 1;
+  line-height: 1.8;
+  white-space: nowrap;
+  overflow: hidden;
+  max-width: 100%;
 }
 
 .context-var .segment {
-  display: inline-flex;
-  align-items: center;
+  display: inline;
   color: var(--accent-context);
-  line-height: 1;
+  white-space: nowrap;
 }
 
 .context-var .segment.base {
   font-weight: 600;
+}
+
+/* Time indices inside context vars need to behave as inline text, not flex containers.
+   Use !important to override .compact .time-index rules that come later. */
+.context-var .time-index,
+.context-var .other-index,
+.compact .context-var .time-index,
+.compact .context-var .other-index {
+  display: inline !important;
+  vertical-align: baseline !important;
+  line-height: inherit;
+  align-items: unset;
+}
+
+/* Ensure children of time-index inside context-var are also inline */
+.context-var .time-index *,
+.context-var .other-index * {
+  display: inline !important;
+  vertical-align: baseline !important;
 }
 
 /* Environment variables (env.*) - teal styling */
@@ -380,6 +426,7 @@ body {
   font-family: 'JetBrains Mono', 'SF Mono', monospace;
   font-size: 12px;
   line-height: 1;
+  padding-right: 2px;
 }
 
 /* Index content - numbers and identifiers inside indices */
@@ -398,11 +445,23 @@ body {
 
 /* Control flow keywords - bold and prominent */
 .keyword {
-  display: inline-flex;
-  align-items: center;
+  display: inline;
   color: #000000;
   font-weight: 800;
   letter-spacing: 0.3px;
+}
+
+/* Keywords inside control flow headers need more space after them */
+.loop-block-outside-role-header .keyword,
+.loop-block-inside-role-header .keyword,
+.conditional-block-outside-role-header .keyword,
+.conditional-block-inside-role-header .keyword,
+.conditional-section-header .keyword,
+.switch-block-outside-role-header .keyword,
+.switch-block-inside-role-header .keyword,
+.switch-case-header .keyword,
+.switch-default-header .keyword {
+  margin-right: 3px;
 }
 
 /* ======================================================
@@ -417,29 +476,41 @@ body {
 .expr-number,
 .expr-keyword,
 .expr-symbol,
+.expr-at,
 .expr-logic-op,
+.expr-connective,
 .expr-arith-op,
-.expr-range,
 .expr-string {
   font-family: 'JetBrains Mono', 'SF Mono', monospace;
   font-size: 12px;
-  padding-left: 2px;
-  padding-right: 2px;
+  padding-right: 2px; 
 }
 
 /* Context vars in expressions (env.foo, sys.bar(x), etc.) - green with box */
 .expr-context-var {
-  display: inline-flex;
-  align-items: center;
+  display: inline-block;
   vertical-align: middle;
-  gap: 2px;
   background: var(--accent-context-bg);
   border: 1px solid var(--accent-context);
   color: var(--accent-context);
-  padding: 3px 8px;
+  padding: 4px 8px;
   border-radius: 4px;
   font-weight: 500;
-  line-height: 1;
+  line-height: 1.8;
+  white-space: nowrap;
+  overflow: hidden;
+  max-width: 100%;
+}
+
+/* Segments inside expr-context-var should not break */
+.expr-context-var .segment {
+  white-space: nowrap;
+}
+
+/* Bracket and paren content should stay together */
+.index-bracket,
+.paren-content {
+  white-space: nowrap;
 }
 
 /* Namespace keywords (env, sys, resp, prompt) - green like context vars */
@@ -458,45 +529,53 @@ body {
 .expr-number {
   color: var(--accent-variable);
   font-weight: 600;
+  vertical-align: middle;
 }
 
-/* Logical keywords in expressions (and, or) */
+/* Logical keywords in expressions (and, or, in) - add spacing around them */
 .expr-keyword {
+  display: inline-block;
   color: var(--text-primary);
   font-weight: 600;
+  padding-left: 2px !important;
+  padding-right: 4px !important;
+  margin: 0;
 }
 
-/* Symbols like . [ ] , */
+/* Symbols like [ ] , */
 .expr-symbol {
   color: var(--text-secondary);
 }
 
-/* @ symbol for time indices - light blue */
-.expr-at {
-  color: var(--accent-variable);
-  font-weight: 700;
+/* Period/dot - no spacing, negative left margin cancels padding-right of previous element */
+.expr-dot {
+  color: var(--text-secondary);
+  padding: 0 !important;
+  margin-left: -2px !important;
 }
 
-/* Logical operators (=, !, <, >, &, |, ^) */
+/* Comparison operators (==, !=, <, >, <=, >=) - no extra spacing */
 .expr-logic-op {
   color: var(--text-primary);
   font-weight: 700;
   font-variant-ligatures: none;
-  padding: 0 2px;
+}
+
+/* Logical connectives (&&, ||, &, |) - add spacing around them */
+.expr-connective {
+  color: var(--text-primary);
+  font-weight: 700;
+  font-variant-ligatures: none;
+  margin: 0 0.35em;
 }
 
 /* Arithmetic operators (+, -, *, /, %) */
 .expr-arith-op {
   color: var(--text-primary);
   font-weight: 600;
-  padding: 0 1px;
-}
-
-/* Range operators (... or …) */
-.expr-range {
-  color: var(--text-secondary);
-  font-weight: 600;
-  padding: 0 2px;
+  padding-right: 1px;
+  padding-left: -1px;
+  vertical-align: middle;
 }
 
 /* String literals */
@@ -517,52 +596,47 @@ body {
 .condition-expr,
 .switch-expr,
 .case-match {
-  display: inline-flex;
-  align-items: center;
+  display: inline;
   font-weight: 700;
-  white-space: nowrap;
+  line-height: 1;
 }
 
 /* Range expressions */
 .range-expr {
-  display: inline-flex;
-  align-items: center;
+  display: inline;
   font-family: 'JetBrains Mono', 'SF Mono', monospace;
   font-size: 12px;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .range-dots {
   color: var(--text-secondary);
   font-weight: 600;
-  padding: 0 1px;
+  padding-right: 3px;
 }
 
 .range-keyword {
-  display: inline-flex;
-  align-items: center;
+  display: inline;
+  vertical-align: middle;
   color: var(--text-primary);
   font-weight: 600;
   font-family: 'JetBrains Mono', 'SF Mono', monospace;
   font-size: 10px;
-  padding: 0 2px;
+  padding-right: 2px;
 }
 
 .range-start,
 .range-end {
-  display: inline-flex;
-  align-items: center;
+  display: inline;
 }
 
 .range-step {
-  display: inline-flex;
-  align-items: center;
-  margin-left: 2px;
+  display: inline;
 }
 
 .range-step-value {
-  display: inline-flex;
-  align-items: center;
-  padding-left: 2px;
+  display: inline;
 }
 
 /* Built-in math functions (min, max) - neutral styling */
@@ -622,12 +696,15 @@ body {
 /* Name definitions: Name $varname := expr */
 .name-def {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 6px;
   padding: 2px 0;
   margin: 2px 0;
   font-family: 'JetBrains Mono', 'SF Mono', monospace;
   font-size: 12px;
+  width: 100%;
+  max-width: 100%;
 }
 
 .name-var {
@@ -652,7 +729,7 @@ body {
 .list-comp-wrapper {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 1px;
 }
 
 .list-comprehension {
@@ -670,7 +747,7 @@ body {
   color: var(--text-primary);
   font-weight: 700;
   font-family: 'JetBrains Mono', 'SF Mono', monospace;
-  padding: 0 4px;
+  padding: 0 2px;
 }
 
 .list-comp-var {
@@ -687,7 +764,7 @@ body {
   color: var(--text-primary);
   font-weight: 600;
   font-family: 'JetBrains Mono', 'SF Mono', monospace;
-  padding: 0 4px;
+  padding: 0 2px;
 }
 
 /* ======================================================
@@ -759,7 +836,6 @@ body {
   border-radius: 4px;
   padding: 6px 12px 6px 16px;
   border-left: 1px solid var(--control-border);
-  overflow: hidden;
 }
 
 .conditional-section {
@@ -769,7 +845,6 @@ body {
   background: var(--bg-primary);
   border: 1px solid var(--border-light);
   border-radius: 4px;
-  overflow: hidden;
 }
 
 /* Style control flow blocks inside role blocks to match outside-role style (border-left only) */
@@ -791,11 +866,11 @@ body {
   font-family: 'JetBrains Mono', 'SF Mono', monospace;
   font-size: 11px;
   font-weight: 600;
+  line-height: 1.4;
   color: var(--control-text);
   display: flex;
   align-items: center;
-  gap: 6px;
-  white-space: nowrap;
+  gap: 8px;
   background: var(--control-header-bg);
 }
 
@@ -804,6 +879,7 @@ body {
   content: '↻';
   font-size: 12px;
   color: var(--control-border);
+  display: flex;
   align-items: center;
 }
 
@@ -815,11 +891,11 @@ body {
   font-family: 'JetBrains Mono', 'SF Mono', monospace;
   font-size: 11px;
   font-weight: 600;
+  line-height: 1.4;
   color: var(--control-text);
   display: flex;
   align-items: center;
-  gap: 6px;
-  white-space: nowrap;
+  gap: 8px;
   background: var(--control-header-bg);
 }
 
@@ -827,6 +903,8 @@ body {
   content: '◇';
   font-size: 10px;
   color: var(--control-border);
+  display: flex;
+  align-items: center;
 }
 
 /* Conditional headers */
@@ -839,11 +917,11 @@ body {
   font-family: 'JetBrains Mono', 'SF Mono', monospace;
   font-size: 11px;
   font-weight: 600;
+  line-height: 1.4;
   color: var(--control-text);
   display: flex;
   align-items: center;
-  gap: 6px;
-  white-space: nowrap;
+  gap: 8px;
   background: var(--control-header-bg);
 }
 
@@ -853,6 +931,8 @@ body {
   content: '◇';
   font-size: 10px;
   color: var(--control-border);
+  display: flex;
+  align-items: center;
 }
 
 /* Switch headers */
@@ -864,11 +944,11 @@ body {
   font-family: 'JetBrains Mono', 'SF Mono', monospace;
   font-size: 11px;
   font-weight: 600;
+  line-height: 1.4;
   color: var(--control-text);
   display: flex;
   align-items: center;
-  gap: 6px;
-  white-space: nowrap;
+  gap: 8px;
   background: var(--control-header-bg);
 }
 
@@ -877,13 +957,14 @@ body {
   content: '⎇';
   font-size: 12px;
   color: var(--control-border);
+  display: flex;
+  align-items: center;
 }
 
 .switch-case,
 .switch-default {
   margin: 3px 0;
   padding: 4px 10px;
-  overflow: hidden;
   background: var(--bg-primary);
   border: 1px solid var(--border-light);
   border-radius: 4px;
@@ -899,6 +980,9 @@ body {
   font-weight: 600;
   color: var(--control-text);
   white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   background: var(--control-header-bg);
 }
 
@@ -953,7 +1037,7 @@ body {
 .mark-block {
   position: relative;
   margin: 8px 0;
-  padding-right: 40px; /* Reserve space for brackets on the right */
+  padding-right: 55px; /* Reserve space for brackets on the right */
   overflow: visible; /* Allow bracket to overflow for nested marks */
 }
 
@@ -992,7 +1076,7 @@ body {
 
 /* Nested mark blocks - all brackets stay at right edge, no negative positioning */
 .mark-block .mark-block {
-  padding-right: 40px; /* Same as parent - all nested blocks get same padding */
+  padding-right: 55px; /* Same as parent - all nested blocks get same padding */
 }
 
 .mark-block .mark-block .mark-block-bracket {
@@ -1246,6 +1330,8 @@ body {
 
 .compact .template-block::before {
   font-size: 7px;
+  display: inline-flex;
+  vertical-align: middle;
   line-height: 1;
 }
 
@@ -1259,7 +1345,6 @@ body {
   padding: 2px 5px;
   border-radius: 3px;
   font-size: 9px;
-  gap: 1px;
 }
 
 .compact .time-index,
@@ -1279,17 +1364,9 @@ body {
   font-size: 9px;
 }
 
-.compact .range-dots {
-  padding: 0;
-}
-
 .compact .range-keyword {
   font-size: 9px;
-  padding: 0 1px;
-}
-
-.compact .range-step {
-  margin-left: 3px;
+  margin: 0 3px;
 }
 
 .compact .keyword {
@@ -1306,6 +1383,7 @@ body {
 .compact .expr-symbol,
 .compact .expr-at,
 .compact .expr-logic-op,
+.compact .expr-connective,
 .compact .expr-arith-op,
 .compact .expr-range,
 .compact .expr-string {
@@ -1503,9 +1581,17 @@ body {
   white-space: nowrap;
 }
 
-/* Compact line height */
+/* Compact line height - but preserve wrapping line-height for inline elements */
 .compact,
 .compact * {
+  line-height: 1;
+}
+
+/* Allow wrapping elements to have proper line-height in compact mode */
+.compact .func-block,
+.compact .template-block,
+.compact .context-var,
+.compact .expr-context-var {
   line-height: 1 !important;
 }
 
@@ -1513,6 +1599,12 @@ body {
 .compact .template-block,
 .compact .func-block,
 .compact .context-var,
+.compact .expr-context-var {
+  margin: 0;
+  display: inline-flex;
+  vertical-align: middle;
+}
+
 .compact .time-index,
 .compact .other-index,
 .compact .text-block {

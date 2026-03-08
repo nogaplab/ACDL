@@ -118,27 +118,8 @@ function renderExpressionTokens(tokens: ExpressionToken[]): string {
   const result: string[] = [];
   let i = 0;
 
-  // Check if expression contains logical connectives (and/or or ||/&&/|/&)
-  // We'll wrap sub-expressions in parens around these operators (but not outer parens)
-  const logicalConnectives = ["and", "or"];
-  const logicalOpSymbols = ["||", "&&", "|", "&"];
-  const hasLogicalOps = tokens.some(t =>
-    (t.type === "IDENT" && logicalConnectives.includes(t.value)) ||
-    (t.type === "LOGIC_OP" && logicalOpSymbols.includes(t.value))
-  );
-
-  // Track if we need to open a paren before the next operand content
-  let needsOpenParen = hasLogicalOps;
-  // Track if we're inside an operand (need to close paren before next logical op)
-  let inOperand = false;
-
-  // Helper to push content with paren tracking
+  // Helper to push content
   const pushContent = (html: string) => {
-    if (needsOpenParen) {
-      result.push("(");
-      needsOpenParen = false;
-      inOperand = true;
-    }
     result.push(html);
   };
 
@@ -163,11 +144,62 @@ function renderExpressionTokens(tokens: ExpressionToken[]): string {
       while (i < tokens.length) {
         const t = tokens[i];
 
-        // Track nesting
-        if (t.value === "(") parenDepth++;
-        if (t.value === ")") parenDepth--;
-        if (t.value === "[") bracketDepth++;
-        if (t.value === "]") bracketDepth--;
+        // Handle opening brackets - wrap content in nowrap span
+        if (t.value === "[") {
+          if (bracketDepth === 0) {
+            contextVarTokens.push('<span class="index-bracket">[');
+          } else {
+            contextVarTokens.push('[');
+          }
+          bracketDepth++;
+          i++;
+          continue;
+        }
+        if (t.value === "]") {
+          bracketDepth--;
+          if (bracketDepth === 0) {
+            contextVarTokens.push(']</span>');
+          } else {
+            contextVarTokens.push(']');
+          }
+          i++;
+          // Check if this closes the expression
+          if (bracketDepth === 0 && parenDepth === 0) {
+            if (i < tokens.length && tokens[i].value === ".") {
+              continue;
+            }
+            break;
+          }
+          continue;
+        }
+        // Handle opening parens - wrap content in nowrap span
+        if (t.value === "(") {
+          if (parenDepth === 0) {
+            contextVarTokens.push('<span class="paren-content">(');
+          } else {
+            contextVarTokens.push('(');
+          }
+          parenDepth++;
+          i++;
+          continue;
+        }
+        if (t.value === ")") {
+          parenDepth--;
+          if (parenDepth === 0) {
+            contextVarTokens.push(')</span>');
+          } else {
+            contextVarTokens.push(')');
+          }
+          i++;
+          // Check if this closes the expression
+          if (bracketDepth === 0 && parenDepth === 0) {
+            if (i < tokens.length && tokens[i].value === ".") {
+              continue;
+            }
+            break;
+          }
+          continue;
+        }
 
         // Check for @ followed by identifier or name reference (time index pattern)
         if (t.value === "@" && i + 1 < tokens.length) {
@@ -229,28 +261,21 @@ function renderExpressionTokens(tokens: ExpressionToken[]): string {
           continue;
         }
 
-        // Continue for path components: . ident ( ) [ ] @
+        // Continue for path components: . ident @
         // Note: KEYWORD is included because words like "name", "for", "in" may appear as path segments
+        // Brackets and parens are handled above
         if (t.value === "." ||
             t.type === "IDENT" ||
             t.type === "KEYWORD" ||
-            t.value === "(" ||
-            t.value === ")" ||
-            t.value === "[" ||
-            t.value === "]" ||
             t.value === "@" ||
             t.type === "NUMBER") {
-          contextVarTokens.push(escapeHtml(t.value));
-          i++;
-
-          // Stop after closing paren/bracket at depth 0
-          if ((t.value === ")" || t.value === "]") && parenDepth === 0 && bracketDepth === 0) {
-            // Check if next token continues the path
-            if (i < tokens.length && tokens[i].value === ".") {
-              continue;
-            }
-            break;
+          // Add word break opportunity after dots at top level (depth 0)
+          if (t.value === "." && parenDepth === 0 && bracketDepth === 0) {
+            contextVarTokens.push(".<wbr>");
+          } else {
+            contextVarTokens.push(escapeHtml(t.value));
           }
+          i++;
           continue;
         }
 
@@ -317,7 +342,8 @@ function renderExpressionTokens(tokens: ExpressionToken[]): string {
         ? `<span class="range-step"><span class="range-keyword">every</span><span class="range-step-value">${renderExpressionTokens(stepTokens)}</span></span>`
         : "";
 
-      pushContent(`<span class="range-expr"><span class="range-start">${startHtml}</span><span class="range-dots">...</span><span class="range-end">${endHtml}</span>${stepHtml}</span>`);
+      // Add <wbr> after range expressions to allow breaking after them
+      pushContent(`<span class="range-expr"><span class="range-start">${startHtml}</span><span class="range-dots">...</span><span class="range-end">${endHtml}</span>${stepHtml}</span><wbr>`);
       continue;
     }
 
@@ -347,16 +373,17 @@ function renderExpressionTokens(tokens: ExpressionToken[]): string {
       const argsHtml = renderExpressionTokens(argTokens);
 
       // Special handling for min/max - render without function coloring
+      // Add <wbr> after function calls to allow breaking after the closing )
       const isBuiltinMath = tok.value === "min" || tok.value === "max";
       if (isBuiltinMath) {
-        pushContent(`<span class="builtin-func">${funcName}(${argsHtml})</span>`);
+        pushContent(`<span class="builtin-func">${funcName}(${argsHtml})</span><wbr>`);
       } else {
-        pushContent(`<span class="func-block"><span class="func-name">${funcName}</span><span class="func-parens">(</span>${argsHtml}<span class="func-parens">)</span></span>`);
+        pushContent(`<span class="func-block"><span class="func-name">${funcName}</span><span class="func-parens">(</span>${argsHtml}<span class="func-parens">)</span></span><wbr>`);
       }
       continue;
     }
 
-    // Combine consecutive logical operators (e.g., !=, <=, >=, ==)
+    // Combine consecutive logical operators (e.g., !=, <=, >=, ==, &&, ||)
     if (tok.type === "LOGIC_OP") {
       let combined = tok.value;
       i++;
@@ -364,18 +391,10 @@ function renderExpressionTokens(tokens: ExpressionToken[]): string {
         combined += tokens[i].value;
         i++;
       }
-      // Check if this is a logical connective (||, &&, |, &) that needs parens around operands
-      if (logicalOpSymbols.includes(combined)) {
-        // Close the current operand paren, push the operator, prepare to open next operand
-        if (inOperand) {
-          result.push(")");
-          inOperand = false;
-        }
-        result.push(`<span class="expr-logic-op">${escapeHtml(combined)}</span>`);
-        needsOpenParen = true;
-      } else {
-        pushContent(`<span class="expr-logic-op">${escapeHtml(combined)}</span>`);
-      }
+      // Use different class for connectives (&&, ||, &, |) vs comparison ops
+      const isConnective = combined === '&&' || combined === '||' || combined === '&' || combined === '|';
+      const className = isConnective ? 'expr-connective' : 'expr-logic-op';
+      pushContent(`<span class="${className}">${escapeHtml(combined)}</span>`);
       continue;
     }
 
@@ -437,21 +456,16 @@ function renderExpressionTokens(tokens: ExpressionToken[]): string {
 
     switch (tok.type) {
       case "KEYWORD":
-        pushContent(`<span class="keyword">${escaped}</span>`);
+        // Handle logical keywords (and, or) with special spacing
+        if (tok.value === "and" || tok.value === "or") {
+          pushContent(`<span class="expr-keyword">${escaped}</span>`);
+        } else {
+          pushContent(`<span class="keyword">${escaped}</span>`);
+        }
         break;
 
       case "IDENT":
-        // Handle logical keywords (and, or) - close current operand, push operator, prepare for next
-        if (tok.value === "and" || tok.value === "or") {
-          if (inOperand) {
-            result.push(")");
-            inOperand = false;
-          }
-          result.push(`<span class="expr-keyword">${escaped}</span>`);
-          needsOpenParen = true;
-        } else {
-          pushContent(`<span class="expr-ident">${escaped}</span>`);
-        }
+        pushContent(`<span class="expr-ident">${escaped}</span>`);
         break;
 
       case "NUMBER":
@@ -462,6 +476,12 @@ function renderExpressionTokens(tokens: ExpressionToken[]): string {
         if (tok.value === "@") {
           // Standalone @ without following identifier
           pushContent(`<span class="expr-at">@</span>`);
+        } else if (tok.value === ".") {
+          // Period/dot - no spacing
+          pushContent(`<span class="expr-dot">.</span>`);
+        } else if (tok.value === ",") {
+          // Allow break before comma for natural wrapping
+          pushContent(`<wbr><span class="expr-symbol">,</span>`);
         } else {
           pushContent(`<span class="expr-symbol">${escaped}</span>`);
         }
@@ -485,56 +505,8 @@ function renderExpressionTokens(tokens: ExpressionToken[]): string {
     i++;
   }
 
-  // Close the final sub-expression paren if we're still in an operand
-  if (inOperand) {
-    result.push(")");
-  }
-
-  // Join with spaces between tokens, but handle special cases
-  // We need to be smart about spacing: no space after ( [ . @ or before ) ] . ,
-  // Also no space within compound operators like !=, <=, >=, ==
-  let output = "";
-  for (let j = 0; j < result.length; j++) {
-    const part = result[j];
-    const prevPart = j > 0 ? result[j - 1] : "";
-
-    // Helper to check if a string ends with a specific plain character (not inside HTML)
-    const endsWithChar = (s: string, chars: string[]) => {
-      // Check for plain character at end, or character at end of a span (before </span>)
-      for (const c of chars) {
-        if (s.endsWith(c)) return true;
-        if (s.endsWith(`${c}</span>`)) return true;
-        if (s.endsWith(`">${c}`)) return true;
-      }
-      return false;
-    };
-
-    // Helper to check if a string starts with a specific plain character (not HTML tag)
-    const startsWithChar = (s: string, chars: string[]) => {
-      for (const c of chars) {
-        if (s.startsWith(c)) return true;
-        // Also check if it's a span containing just this character
-        if (s.startsWith(`<span`) && s.includes(`">${c}</span>`)) return true;
-      }
-      return false;
-    };
-
-    // Determine if we need a space before this part
-    const needsSpace = j > 0 &&
-      // Don't add space after opening brackets/parens or dots or @
-      !endsWithChar(prevPart, ["(", "[", ".", "@"]) &&
-      // Don't add space before closing brackets/parens, dots, or commas
-      !startsWithChar(part, [")", "]", ".", ","]) &&
-      // Don't add space within compound operators (!=, <=, >=, ==, etc.)
-      !(endsWithChar(prevPart, ["!", "<", ">", "="]) && startsWithChar(part, ["="]));
-
-    if (needsSpace) {
-      output += " ";
-    }
-    output += part;
-  }
-
-  return output;
+  // Join tokens without spaces - CSS margins add spacing where needed
+  return result.join("");
 }
 
 function renderPromptTitle(title: PromptTitle): string {
@@ -588,8 +560,8 @@ function renderIndexValue(index: Index): string {
 
 function renderIndexList(indices: Index[]): string {
   if (indices.length === 0) return "";
-  // Render all indices in a single bracket set with commas: [idx1, idx2]
-  return `[${indices.map(idx => renderIndexValue(idx)).join(", ")}]`;
+  // Render all indices with minimal comma spacing: [idx1,idx2]
+  return `[${indices.map(idx => renderIndexValue(idx)).join(",")}]`;
 }
 
 
@@ -815,12 +787,12 @@ function renderMarkBlockInsideRole(block: MarkBlockInsideRole): string {
 }
 
 /**
- * Render an EndBlock: PromptEndsHere when (condition)
+ * Render an EndBlock: PromptEndsHere when condition
  * Conditional early termination that can appear anywhere.
  */
 function renderEndBlock(block: EndBlock): string {
   const conditionHtml = renderExpressionTokens(block.condition);
-  return `<div class="end-block"><span class="end-dashed-line"></span><span class="end-text"><span class="end-keyword">PromptEndsHere</span> <span class="keyword">when</span> (<span class="condition-expr">${conditionHtml}</span>)</span></div>`;
+  return `<div class="end-block"><span class="end-dashed-line"></span><span class="end-text"><span class="end-keyword">PromptEndsHere</span> <span class="keyword">when</span> <span class="condition-expr">${conditionHtml}</span></span></div>`;
 }
 
 /**
