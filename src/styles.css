@@ -318,6 +318,7 @@ body {
 
 .func-block {
   display: inline-flex;
+  align-items: center;
   vertical-align: middle;
   background: var(--accent-function-bg);
   border: 1px solid var(--accent-function);
@@ -625,8 +626,6 @@ body {
   font-weight: 700;
   line-height: 1;
   font-size: 9px;
-  white-space: nowrap;
-  flex-shrink: 0;
 }
 
 /* Range expressions */
@@ -645,7 +644,7 @@ body {
 }
 
 .range-keyword {
-  display: inline;
+  display: inline-block;
   vertical-align: middle;
   color: var(--text-primary);
   font-weight: 600;
@@ -657,6 +656,7 @@ body {
 .range-start,
 .range-end {
   display: inline;
+  white-space: nowrap;
 }
 
 .range-step {
@@ -665,6 +665,7 @@ body {
 
 .range-step-value {
   display: inline;
+  white-space: nowrap;
 }
 
 /* Built-in math functions (min, max) - neutral styling */
@@ -903,11 +904,10 @@ body {
   line-height: 1.4;
   color: var(--control-text);
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   align-items: center;
   gap: 3px;
   background: var(--control-header-bg);
-  white-space: nowrap;
 }
 
 .loop-block-outside-role-header::before,
@@ -1071,12 +1071,25 @@ body {
 .mark-block {
   position: relative;
   margin: 4px 0;
-  padding-right: 25px; /* Reserve space for brackets on the right */
-  overflow: visible; /* Allow bracket to overflow for nested marks */
+  overflow: hidden;
 }
 
 .mark-block-content {
-  min-width: 0;
+  width: fit-content;
+  position: relative;
+  z-index: 1;
+  background: var(--bg-primary);
+}
+
+/* Extend a cover to the right to hide bracket when content is wide */
+.mark-block-content::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 100%;
+  width: 50px;
+  background: inherit;
 }
 
 .mark-block-bracket {
@@ -1086,6 +1099,7 @@ body {
   bottom: 0;
   display: flex;
   align-items: center;
+  z-index: 0;
 }
 
 .mark-bracket-line {
@@ -1108,22 +1122,6 @@ body {
   white-space: nowrap;
 }
 
-/* Nested mark blocks - all brackets stay at right edge, no negative positioning */
-.mark-block .mark-block {
-  padding-right: 25px; /* Same as parent - all nested blocks get same padding */
-}
-
-.mark-block .mark-block .mark-block-bracket {
-  right: 0; /* Keep bracket at right edge of its container, no overflow needed */
-}
-
-.mark-block .mark-block .mark-block .mark-block-bracket {
-  right: 0;
-}
-
-.mark-block .mark-block .mark-block .mark-block .mark-block-bracket {
-  right: 0;
-}
 
 /* ======================================================
    COLLAPSIBLE BEHAVIOR
