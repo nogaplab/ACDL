@@ -232,7 +232,7 @@ export class Parser {
         case "ForEach": return this.parseLoopOutside();
         case "Switch": return this.parseSwitchOutside();
         case "Name": return this.parseNameDef();
-        case "MARK": return this.parseMarkBlock();
+        case "Mark": return this.parseMarkBlock();
       }
     }
 
@@ -289,7 +289,7 @@ export class Parser {
    * Mark blocks are like label blocks but rendered with a bracket on the right.
    */
   private parseMarkBlock(): AST.MarkBlock {
-    this.consume("KEYWORD", "MARK");
+    this.consume("KEYWORD", "Mark");
     const numberTok = this.consume("NUMBER");
     const markNumber = parseInt(numberTok.value as string, 10);
 
@@ -321,7 +321,7 @@ export class Parser {
    * Mark blocks inside roles contain role building blocks.
    */
   private parseMarkBlockInside(): AST.MarkBlockInsideRole {
-    this.consume("KEYWORD", "MARK");
+    this.consume("KEYWORD", "Mark");
     const numberTok = this.consume("NUMBER");
     const markNumber = parseInt(numberTok.value as string, 10);
 
@@ -442,7 +442,7 @@ export class Parser {
       if (val === "If") return this.parseConditionalInside();
       if (val === "ForEach") return this.parseLoopInside();
       if (val === "Switch") return this.parseSwitchInside();
-      if (val === "MARK") return this.parseMarkBlockInside();
+      if (val === "Mark") return this.parseMarkBlockInside();
 
       // 2. Check for Name definition
       if (val === "Name") return this.parseNameDef();
@@ -596,11 +596,11 @@ export class Parser {
     const tok = this.peek();
     console.log(`parsePathDesc: tok=${tok.type}:${tok.value} at ${tok.line}:${tok.col}`);
 
-    if (tok.type !== "IDENT" && tok.type !== "KEYWORD") {
-        throw new Error(`[${tok.line}:${tok.col}] Expected identifier in path, got ${tok.type}`);
+    if (tok.type !== "IDENT" && tok.type !== "KEYWORD" && tok.type !== "NUMBER") {
+        throw new Error(`[${tok.line}:${tok.col}] Expected identifier or number in path, got ${tok.type}`);
     }
 
-    // Consume base identifier only (arithmetic is handled by parseIndexValue)
+    // Consume base identifier or number (arithmetic is handled by parseIndexValue)
     const base = this.consume().value as string;
 
     console.log(`parsePathDesc: base=${base}, about to parse indices`);
@@ -705,8 +705,13 @@ export class Parser {
     }
 
     if (tok.type === "NUMBER") {
-      // Plain number - treat as Identifier
-      return Create.identifier({ name: this.consume("NUMBER").value as string });
+      // Number with optional path (e.g., 3.2)
+      const name = this.consume("NUMBER").value as string;
+      let path: AST.PathDesc | undefined;
+      if (this.match("SYMBOL", ".")) {
+        path = this.parsePathDesc();
+      }
+      return Create.identifier({ name, path });
     }
 
     if (tok.type === "IDENT") {
@@ -796,9 +801,17 @@ export class Parser {
       return this.parseContextVar();
     }
 
-    // Number: just a numeric value
+    // Number: numeric value with optional path (e.g., 3.2)
     if (tok.type === "NUMBER") {
-      return Create.identifier({ name: this.consume("NUMBER").value as string });
+      const name = this.consume("NUMBER").value as string;
+
+      // Path: number.something (e.g., 3.2 or T.3)
+      let path: AST.PathDesc | undefined;
+      if (this.match("SYMBOL", ".")) {
+        path = this.parsePathDesc();
+      }
+
+      return Create.identifier({ name, path });
     }
 
     // Identifier: could be simple name, function call, or path

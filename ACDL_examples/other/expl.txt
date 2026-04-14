@@ -1,0 +1,15 @@
+agent loop:
+CreateRoutine() -- llm call, used foo T1
+changefoo()
+changefoo()
+MakePlan() -- used the current foo T2
+mainprompt(resp.)
+
+
+sys.foo[@T1]
+sys.foo[@T2]
+
+CreateRoutine(@T) - prompt who's content is sys.foo[@T]
+MakePlan(@T) - prompt who's content is sys.foo[@T]
+
+

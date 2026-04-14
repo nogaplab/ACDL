@@ -1,0 +1,30 @@
+name with parameters
+it translates itself to a sequence of messages that can go into the prompt
+in a way, replace this row with the sequence that it defines
+
+it allows us to use the same block in different places, where what the block is, is what matters, 
+and the inside of it is less interesting to look at every time
+
+if my history is dynamic and recursive, and the depth isnt known ahead of time we dont have a way of describing it at the moment
+
+fragment returns a sequence of messages, not a string.
+returns a json object
+
+option- role fragment and text fragment
+
+text 
+text
+function
+text
+
+s:  [<string> , <string>, ...]   --> valid --> s: func(sys.foo)
+s: {
+    <string>
+    <string>
+}
+
+frag(sfsdfs) {
+    s: <string>
+    s: _func()
+    frag(sfsdfs)
+}

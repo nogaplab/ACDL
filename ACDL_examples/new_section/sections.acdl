@@ -1,0 +1,32 @@
+Prompt[@T]: {
+    Tools: {
+        ForEach(tool: env.tools[@T]) {
+            tool.name
+            tool.usage
+            if tool.name == search {
+                tool.instructions
+            }
+        },
+    }
+
+    SystemPrompt: {
+        ROLE
+        TASK
+        ENV_DESCRIPTION
+    }
+
+    Messages: {
+        U: {
+            env.map_description[@T]
+            env.player_locations[@T]
+            env.available_items[@T]
+            env.available_moves[@T]
+        }
+        S: INTRO_HISTORY
+        
+        ForEach(@t: range(1, @T)){
+            A: resp.chosen_move[@t]
+            U: resp.observation[@t]
+        }
+    }
+}

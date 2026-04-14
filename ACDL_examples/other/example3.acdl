@@ -1,0 +1,21 @@
+AgentPrompt[@T.I.J]: {
+    A: {
+        resp.CreateRoutine[@T.I-2].def
+        resp.MakePlan[@T.I-1].abc
+    }
+
+    A: resp.react[@T.3.J]
+}
+
+
+CreateRoutine[@T.I]: {
+    S: INSTRUCTIONS
+    U: sys.foo[@T.I]
+}
+
+
+MakePlan[@T.I]: {
+    S: INSTRUCTIONS
+    U: sys.foo[@T.I-1]
+    A: resp.CreateRoutine[@T.I-1]
+}

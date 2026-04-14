@@ -1,0 +1,24 @@
+AgentPrompt[@T]: {
+    A: {
+        resp.CreateRoutine[@T].def
+        resp.MakePlan[@T].abc
+    }
+}
+
+
+CreateRoutine[@T]: {
+    S: INSTRUCTIONS
+}
+
+
+MakePlan[@T]: {
+    S: INSTRUCTIONS
+    A: resp.CreateRoutine[@T]
+}
+
+
+// write sub system calls in side prompt in different scenarios, 
+// when there is a memory update in these calls
+
+// Try the memory time as a solution and see what that looks like
+// every function has a clock, and it returns it

@@ -1,4 +1,4 @@
-Prompt[@T]: {
+Prompt[@T.I]: {
     U: {
         TASK_DESCRIPTION(sys.max_total_steps)
         env.tool_desc
@@ -16,7 +16,7 @@ Prompt[@T]: {
     }
 
     // all the tool calls and reponses from the current turn
-    ForEach(i: range(1, sys.steps[@T])){
+    ForEach(i: range(1, I-1)){
         A: { 
             sys.tool_used[@T.i]
             sys.tool_used[@T.i].tool_response

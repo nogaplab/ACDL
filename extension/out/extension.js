@@ -59,7 +59,10 @@ var CONTROL_KEYWORDS = /* @__PURE__ */ new Set([
   "for",
   "in",
   "MARK",
-  "when"
+  "when",
+  "not",
+  "and",
+  "or"
 ]);
 var LOGIC_OP = /* @__PURE__ */ new Set([
   "=",
@@ -100,24 +103,22 @@ var Scanner = class {
   line = 1;
   col = 1;
   input;
-  hadWhitespace = false;
-  // tracks if whitespace was skipped before current token
   constructor(input) {
     this.input = input;
   }
   nextToken() {
-    const spaceBefore = this.skipWhitespace();
+    this.skipWhitespace();
     if (this.isEOF()) {
-      return { type: "EOF", value: null, line: this.line, col: this.col, spaceBefore };
+      return { type: "EOF", value: null, line: this.line, col: this.col };
     }
     const ch = this.peek();
     if (ch === "/" && this.peekNext() === "/") {
-      return this.readComment(spaceBefore);
+      return this.readComment();
     }
     if (ch === "\u2026") {
       const col = this.col;
       this.advance();
-      return { type: "RANGE", value: "\u2026", line: this.line, col, spaceBefore };
+      return { type: "RANGE", value: "\u2026", line: this.line, col };
     }
     if (ch === ".") {
       if (this.peekNext() === "." && this.input[this.pos + 2] === ".") {
@@ -125,7 +126,7 @@ var Scanner = class {
         this.advance();
         this.advance();
         this.advance();
-        return { type: "RANGE", value: "...", line: this.line, col, spaceBefore };
+        return { type: "RANGE", value: "...", line: this.line, col };
       }
     }
     if (LOGIC_OP.has(ch)) {
@@ -135,8 +136,7 @@ var Scanner = class {
         type: "LOGIC_OP",
         value,
         line: this.line,
-        col,
-        spaceBefore
+        col
       };
     }
     if (ARITH_OP.has(ch)) {
@@ -146,26 +146,25 @@ var Scanner = class {
         type: "ARITH_OP",
         value,
         line: this.line,
-        col,
-        spaceBefore
+        col
       };
     }
     if (ch === '"') {
-      return this.readString(spaceBefore);
+      return this.readString();
     }
     if (SYMBOLS.has(ch)) {
-      return this.readSymbol(spaceBefore);
+      return this.readSymbol();
     }
     if (this.isDigit(ch)) {
-      return this.readNumber(spaceBefore);
+      return this.readNumber();
     }
     if (this.isIdentStart(ch)) {
-      return this.readIdentifier(spaceBefore);
+      return this.readIdentifier();
     }
     throw this.error(`Unexpected character '${ch}'`);
   }
   /* ───────────── token readers ───────────── */
-  readComment(spaceBefore) {
+  readComment() {
     const startCol = this.col;
     this.advance();
     this.advance();
@@ -177,8 +176,7 @@ var Scanner = class {
       type: "COMMENT",
       value: value.trim(),
       line: this.line,
-      col: startCol,
-      spaceBefore
+      col: startCol
     };
   }
   readString() {
@@ -878,8 +876,8 @@ var Parser = class {
   parsePathDesc() {
     const tok = this.peek();
     console.log(`parsePathDesc: tok=${tok.type}:${tok.value} at ${tok.line}:${tok.col}`);
-    if (tok.type !== "IDENT" && tok.type !== "KEYWORD") {
-      throw new Error(`[${tok.line}:${tok.col}] Expected identifier in path, got ${tok.type}`);
+    if (tok.type !== "IDENT" && tok.type !== "KEYWORD" && tok.type !== "NUMBER") {
+      throw new Error(`[${tok.line}:${tok.col}] Expected identifier or number in path, got ${tok.type}`);
     }
     const base = this.consume().value;
     console.log(`parsePathDesc: base=${base}, about to parse indices`);
@@ -956,7 +954,12 @@ var Parser = class {
       return this.parseContextVar();
     }
     if (tok.type === "NUMBER") {
-      return identifier({ name: this.consume("NUMBER").value });
+      const name = this.consume("NUMBER").value;
+      let path2;
+      if (this.match("SYMBOL", ".")) {
+        path2 = this.parsePathDesc();
+      }
+      return identifier({ name, path: path2 });
     }
     if (tok.type === "IDENT") {
       if (this.peekNext().value === "(") {
@@ -1027,7 +1030,12 @@ var Parser = class {
       return this.parseContextVar();
     }
     if (tok.type === "NUMBER") {
-      return identifier({ name: this.consume("NUMBER").value });
+      const name = this.consume("NUMBER").value;
+      let path2;
+      if (this.match("SYMBOL", ".")) {
+        path2 = this.parsePathDesc();
+      }
+      return identifier({ name, path: path2 });
     }
     if (tok.type === "IDENT") {
       const name = this.consume("IDENT").value;
@@ -1452,10 +1460,9 @@ function escapeHtml(text) {
 function renderExpressionTokens(tokens) {
   const result = [];
   let i = 0;
-  const hasLogicalOps = tokens.some((t) => t.type === "IDENT" && (t.value === "and" || t.value === "or"));
-  if (hasLogicalOps) {
-    result.push("(");
-  }
+  const pushContent = (html) => {
+    result.push(html);
+  };
   while (i < tokens.length) {
     const tok = tokens[i];
     if (tok.type === "KEYWORD" && ["env", "sys", "resp", "prompt"].includes(tok.value) && i + 1 < tokens.length && tokens[i + 1].type === "SYMBOL" && tokens[i + 1].value === ".") {
@@ -1465,14 +1472,58 @@ function renderExpressionTokens(tokens) {
       let bracketDepth = 0;
       while (i < tokens.length) {
         const t = tokens[i];
-        if (t.value === "(")
-          parenDepth++;
-        if (t.value === ")")
-          parenDepth--;
-        if (t.value === "[")
+        if (t.value === "[") {
+          if (bracketDepth === 0) {
+            contextVarTokens.push('<span class="index-bracket">[');
+          } else {
+            contextVarTokens.push("[");
+          }
           bracketDepth++;
-        if (t.value === "]")
+          i++;
+          continue;
+        }
+        if (t.value === "]") {
           bracketDepth--;
+          if (bracketDepth === 0) {
+            contextVarTokens.push("]</span>");
+          } else {
+            contextVarTokens.push("]");
+          }
+          i++;
+          if (bracketDepth === 0 && parenDepth === 0) {
+            if (i < tokens.length && tokens[i].value === ".") {
+              continue;
+            }
+            break;
+          }
+          continue;
+        }
+        if (t.value === "(") {
+          if (parenDepth === 0) {
+            contextVarTokens.push('<span class="paren-content">(');
+          } else {
+            contextVarTokens.push("(");
+          }
+          parenDepth++;
+          i++;
+          continue;
+        }
+        if (t.value === ")") {
+          parenDepth--;
+          if (parenDepth === 0) {
+            contextVarTokens.push(")</span>");
+          } else {
+            contextVarTokens.push(")");
+          }
+          i++;
+          if (bracketDepth === 0 && parenDepth === 0) {
+            if (i < tokens.length && tokens[i].value === ".") {
+              continue;
+            }
+            break;
+          }
+          continue;
+        }
         if (t.value === "@" && i + 1 < tokens.length) {
           const nextTok = tokens[i + 1];
           if (nextTok.type === "SYMBOL" && nextTok.value === "$" && i + 2 < tokens.length) {
@@ -1517,20 +1568,18 @@ function renderExpressionTokens(tokens) {
           i++;
           continue;
         }
-        if (t.value === "." || t.type === "IDENT" || t.type === "KEYWORD" || t.value === "(" || t.value === ")" || t.value === "[" || t.value === "]" || t.value === "@" || t.type === "NUMBER") {
-          contextVarTokens.push(escapeHtml(t.value));
-          i++;
-          if ((t.value === ")" || t.value === "]") && parenDepth === 0 && bracketDepth === 0) {
-            if (i < tokens.length && tokens[i].value === ".") {
-              continue;
-            }
-            break;
+        if (t.value === "." || t.type === "IDENT" || t.type === "KEYWORD" || t.value === "@" || t.type === "NUMBER") {
+          if (t.value === "." && parenDepth === 0 && bracketDepth === 0) {
+            contextVarTokens.push(".<wbr>");
+          } else {
+            contextVarTokens.push(escapeHtml(t.value));
           }
+          i++;
           continue;
         }
         break;
       }
-      result.push(`<span class="expr-context-var">${contextVarTokens.join("")}</span>`);
+      pushContent(`<span class="expr-context-var">${contextVarTokens.join("")}</span>`);
       continue;
     }
     if (tok.type === "IDENT" && tok.value === "range" && i + 1 < tokens.length && tokens[i + 1].value === "(") {
@@ -1578,7 +1627,7 @@ function renderExpressionTokens(tokens) {
       const startHtml = renderExpressionTokens(startTokens);
       const endHtml = renderExpressionTokens(endTokens);
       const stepHtml = stepTokens ? `<span class="range-step"><span class="range-keyword">every</span><span class="range-step-value">${renderExpressionTokens(stepTokens)}</span></span>` : "";
-      result.push(`<span class="range-expr"><span class="range-start">${startHtml}</span><span class="range-dots">...</span><span class="range-end">${endHtml}</span>${stepHtml}</span>`);
+      pushContent(`<span class="range-expr"><span class="range-start">${startHtml}</span><span class="range-dots">...</span><span class="range-end">${endHtml}</span>${stepHtml}</span><wbr>`);
       continue;
     }
     if (tok.type === "IDENT" && i + 1 < tokens.length && tokens[i + 1].value === "(") {
@@ -1601,9 +1650,9 @@ function renderExpressionTokens(tokens) {
       const argsHtml = renderExpressionTokens(argTokens);
       const isBuiltinMath = tok.value === "min" || tok.value === "max";
       if (isBuiltinMath) {
-        result.push(`<span class="builtin-func">${funcName}(${argsHtml})</span>`);
+        pushContent(`<span class="builtin-func">${funcName}(${argsHtml})</span><wbr>`);
       } else {
-        result.push(`<span class="func-block"><span class="func-name">${funcName}</span><span class="func-parens">(</span>${argsHtml}<span class="func-parens">)</span></span>`);
+        pushContent(`<span class="func-block"><span class="func-name">${funcName}</span><span class="func-parens">(</span>${argsHtml}<span class="func-parens">)</span></span><wbr>`);
       }
       continue;
     }
@@ -1614,7 +1663,9 @@ function renderExpressionTokens(tokens) {
         combined += tokens[i].value;
         i++;
       }
-      result.push(`<span class="expr-logic-op">${escapeHtml(combined)}</span>`);
+      const isConnective = combined === "&&" || combined === "||" || combined === "&" || combined === "|";
+      const className = isConnective ? "expr-connective" : "expr-logic-op";
+      pushContent(`<span class="${className}">${escapeHtml(combined)}</span>`);
       continue;
     }
     if (tok.type === "SYMBOL" && tok.value === "@" && i + 1 < tokens.length) {
@@ -1623,7 +1674,7 @@ function renderExpressionTokens(tokens) {
         const varNameTok = tokens[i + 2];
         if (varNameTok.type === "IDENT") {
           const varName = escapeHtml(varNameTok.value);
-          result.push(`<span class="time-index"><span class="at-symbol">@</span><span class="name-ref">${varName}</span></span>`);
+          pushContent(`<span class="time-index"><span class="at-symbol">@</span><span class="name-ref">${varName}</span></span>`);
           i += 3;
           continue;
         }
@@ -1643,7 +1694,7 @@ function renderExpressionTokens(tokens) {
             i++;
           }
         }
-        result.push(`<span class="time-index"><span class="at-symbol">@</span>${timeIndexName}</span>`);
+        pushContent(`<span class="time-index"><span class="at-symbol">@</span>${timeIndexName}</span>`);
         continue;
       }
     }
@@ -1651,7 +1702,7 @@ function renderExpressionTokens(tokens) {
       const nextTok = tokens[i + 1];
       if (nextTok.type === "IDENT") {
         const varName = escapeHtml(nextTok.value);
-        result.push(`<span class="name-ref">${varName}</span>`);
+        pushContent(`<span class="name-ref">${varName}</span>`);
         i += 2;
         continue;
       }
@@ -1659,79 +1710,46 @@ function renderExpressionTokens(tokens) {
     const escaped = escapeHtml(tok.value);
     switch (tok.type) {
       case "KEYWORD":
-        result.push(`<span class="keyword">${escaped}</span>`);
-        break;
-      case "IDENT":
         if (tok.value === "and" || tok.value === "or") {
-          result.push(`) <span class="expr-keyword">${escaped}</span> (`);
+          pushContent(`<span class="expr-keyword">${escaped}</span>`);
         } else {
-          result.push(`<span class="expr-ident">${escaped}</span>`);
+          pushContent(`<span class="keyword">${escaped}</span>`);
         }
         break;
+      case "IDENT":
+        pushContent(`<span class="expr-ident">${escaped}</span>`);
+        break;
       case "NUMBER":
-        result.push(`<span class="expr-number">${escaped}</span>`);
+        pushContent(`<span class="expr-number">${escaped}</span>`);
         break;
       case "SYMBOL":
         if (tok.value === "@") {
-          result.push(`<span class="expr-at">@</span>`);
+          pushContent(`<span class="expr-at">@</span>`);
+        } else if (tok.value === ".") {
+          pushContent(`<span class="expr-dot">.</span>`);
+        } else if (tok.value === ",") {
+          pushContent(`<wbr><span class="expr-symbol">,</span>`);
         } else {
-          result.push(`<span class="expr-symbol">${escaped}</span>`);
+          pushContent(`<span class="expr-symbol">${escaped}</span>`);
         }
         break;
       case "ARITH_OP":
-        result.push(`<span class="expr-arith-op">${escaped}</span>`);
+        pushContent(`<span class="expr-arith-op">${escaped}</span>`);
         break;
       case "RANGE":
-        result.push(`<span class="expr-range">${escaped}</span>`);
+        pushContent(`<span class="expr-range">${escaped}</span>`);
         break;
       case "STRING":
-        result.push(`<span class="expr-string">"${escaped}"</span>`);
+        pushContent(`<span class="expr-string">"${escaped}"</span>`);
         break;
       default:
-        result.push(escaped);
+        pushContent(escaped);
     }
     i++;
   }
-  if (hasLogicalOps) {
-    result.push(")");
-  }
-  let output = "";
-  for (let j = 0; j < result.length; j++) {
-    const part = result[j];
-    const prevPart = j > 0 ? result[j - 1] : "";
-    const endsWithChar = (s, chars) => {
-      for (const c of chars) {
-        if (s.endsWith(c))
-          return true;
-        if (s.endsWith(`${c}</span>`))
-          return true;
-        if (s.endsWith(`">${c}`))
-          return true;
-      }
-      return false;
-    };
-    const startsWithChar = (s, chars) => {
-      for (const c of chars) {
-        if (s.startsWith(c))
-          return true;
-        if (s.startsWith(`<span`) && s.includes(`">${c}</span>`))
-          return true;
-      }
-      return false;
-    };
-    const needsSpace = j > 0 && // Don't add space after opening brackets/parens or dots or @
-    !endsWithChar(prevPart, ["(", "[", ".", "@"]) && // Don't add space before closing brackets/parens, dots, or commas
-    !startsWithChar(part, [")", "]", ".", ","]) && // Don't add space within compound operators (!=, <=, >=, ==, etc.)
-    !(endsWithChar(prevPart, ["!", "<", ">", "="]) && startsWithChar(part, ["="]));
-    if (needsSpace) {
-      output += " ";
-    }
-    output += part;
-  }
-  return output;
+  return result.join("");
 }
 function renderPromptTitle(title) {
-  const indices = title.indices;
   const indexSuffix = renderIndexList(title.indices);
   return `<div class="prompt-title"><h1>${escapeHtml(title.name)}${indexSuffix}</h1></div>`;
 }
@@ -1775,7 +1793,7 @@ function renderIndexValue(index) {
 function renderIndexList(indices) {
   if (indices.length === 0)
     return "";
-  return indices.map((idx) => `[${renderIndexValue(idx)}]`).join("");
+  return `[${indices.map((idx) => renderIndexValue(idx)).join(",")}]`;
 }
 function renderPromptBody(body) {
   if (body.kind === "chat-prompt-body") {
@@ -1859,11 +1877,11 @@ function renderNameRef(block) {
     const segIndices = current.indices;
     const segIndexText = segIndices.length > 0 ? renderIndexList(current.indices) : "";
     segments.push(
-      `<span class="segment">${escapeHtml(current.base)}${segIndexText}</span>`
+      `<span class="segment">.${escapeHtml(current.base)}${segIndexText}</span>`
     );
     current = current.next;
   }
-  const joined = segments.join(".");
+  const joined = segments.join("");
   return `<span class="name-ref">${joined}</span>`;
 }
 function renderLabelBlock(block) {
@@ -1910,7 +1928,7 @@ function renderMarkBlockInsideRole(block) {
 }
 function renderEndBlock(block) {
   const conditionHtml = renderExpressionTokens(block.condition);
-  return `<div class="end-block"><span class="end-dashed-line"></span><span class="end-text"><span class="end-keyword">PromptEndsHere</span> <span class="keyword">when</span> (<span class="condition-expr">${conditionHtml}</span>)</span></div>`;
+  return `<div class="end-block"><span class="end-dashed-line"></span><span class="end-text"><span class="end-keyword">PromptEndsHere</span> <span class="keyword">when</span> <span class="condition-expr">${conditionHtml}</span></span></div>`;
 }
 function renderRoleMessage(msg) {
   const roleClass = escapeHtml(msg.role);
@@ -2019,11 +2037,11 @@ function renderContextVarBlock(block) {
     const segIndices = current.indices;
     const segIndexText = segIndices.length > 0 ? renderIndexList(current.indices) : "";
     segments.push(
-      `<span class="segment">${escapeHtml(current.base)}${segIndexText}</span>`
+      `<span class="segment">.${escapeHtml(current.base)}${segIndexText}</span>`
     );
     current = current.next;
   }
-  const joined = segments.join(".");
+  const joined = segments.join("");
   const namespaceClass = `context-var-${block.base.toLowerCase()}`;
   if (block.comment) {
     return `<span class="block-with-comment"><span class="context-var ${namespaceClass}">${joined}</span><span class="inline-comment"> // ${escapeHtml(block.comment)}</span></span>`;
@@ -2127,10 +2145,10 @@ function renderConditionalInsideRole(block) {
   const renderBody = (body) => body.map(
     (child) => `<div class="role-condition-child">${renderRoleBuildingBlock(child)}</div>`
   ).join("\n");
-  const ifHeader = `<span class="keyword">If</span> (<span class="condition-expr">${renderExpressionTokens(block.Ifcondition)}</span>):`;
+  const ifHeader = `<span class="keyword">If</span> <span class="condition-expr">${renderExpressionTokens(block.Ifcondition)}</span>:`;
   let result = wrapBlock("conditional-block-inside-role", ifHeader, renderBody(block.IfBody));
   for (let i = 0; i < block.elseif.length; i++) {
-    const elseifHeader = `<span class="keyword">ElseIf</span> (<span class="condition-expr">${renderExpressionTokens(block.elseif[i])}</span>):`;
+    const elseifHeader = `<span class="keyword">ElseIf</span> <span class="condition-expr">${renderExpressionTokens(block.elseif[i])}</span>:`;
     result += wrapBlock("conditional-block-inside-role", elseifHeader, renderBody(block.elseifBody[i]));
   }
   if (block.elseBody && block.elseBody.length > 0) {
@@ -2143,10 +2161,10 @@ function renderConditionalOutsideRole(block) {
   const renderBody = (body) => body.map(
     (child) => `<div class="conditional-child">${renderTopLevelBlock(child)}</div>`
   ).join("\n");
-  const ifHeader = `<span class="keyword">If</span> (<span class="condition-expr">${renderExpressionTokens(block.Ifcondition)}</span>):`;
+  const ifHeader = `<span class="keyword">If</span> <span class="condition-expr">${renderExpressionTokens(block.Ifcondition)}</span>:`;
   let result = wrapBlock("conditional-block-outside-role", ifHeader, renderBody(block.IfBody));
   for (let i = 0; i < block.elseif.length; i++) {
-    const elseifHeader = `<span class="keyword">ElseIf</span> (<span class="condition-expr">${renderExpressionTokens(block.elseif[i])}</span>):`;
+    const elseifHeader = `<span class="keyword">ElseIf</span> <span class="condition-expr">${renderExpressionTokens(block.elseif[i])}</span>:`;
     result += wrapBlock("conditional-block-outside-role", elseifHeader, renderBody(block.elseifBody[i]));
   }
   if (block.elseBody && block.elseBody.length > 0) {

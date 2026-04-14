@@ -1,0 +1,14 @@
+Prompt[@T]: {
+    Name val[i] := calc(val[i], t) for i in range(1, sys.len), for t in range(1, sys.time, 2)
+    // how does i grow here? we need some while scenario here 
+    // for the iterate until when the end is unknown at the beginning. 
+    // while can work, or something else
+
+    S: INSTRUCTIONS
+    A: {
+        ForEach(i: range(1, sys.len)) {
+            $val[i]
+        }
+    }
+
+}

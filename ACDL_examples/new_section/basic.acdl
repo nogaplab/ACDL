@@ -1,0 +1,25 @@
+AgentPrompt[@T]:{
+    Name routine, foo1, bar := create_routine(sys.foo[@T]) Using {CreateRoutine} 
+    Name bla := do_something(routine, bar)
+    Name plan, foo2 := make_plan(routine, foo1) Using {MakePlan}
+    
+    Expand CreateRoutine[@T-1]
+    
+    A: $routine
+    U: $foo1
+    A: $plan
+    U: $foo2
+}
+
+CreateRoutine[@T]: {
+    S: INSTRUCTIONS
+    U: sys.foo[@T]
+}
+
+MakePlan[@T, routine, foo1]: {
+    S: INSTRUCTIONS
+    U: foo1
+    A: routine
+    U: sys.blueberry[@T]
+}
+

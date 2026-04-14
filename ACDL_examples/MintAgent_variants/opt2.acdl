@@ -21,7 +21,7 @@ Mint2[@T]: {
         U: env.feedback[@t] // response if the answer was right or wrong, remaining tries if failed
     } 
     
-    ForEach(k: range(1, sys.substeps[@T])){
+    ForEach(k: range(1, I-1)){
         A: {
             sys.tool_used[@T.k]
             sys.tool_used[@T.k].tool_response

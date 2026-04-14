@@ -1,4 +1,4 @@
-MintOriginal[@T]: {
+MintOriginal[@T.I]: {
     U: {
         TASK_DESCRIPTION(sys.max_total_steps)
         env.tool_descriptions // description of each tool, how to use them, and when to use them

@@ -352,8 +352,7 @@ body {
 }
 
 .context-var {
-  display: inline-flex;
-  flex-wrap: nowrap;
+  display: inline-block;
   vertical-align: middle;
   background: var(--accent-context-bg);
   border: 1px solid var(--accent-context);
@@ -364,14 +363,23 @@ body {
   font-size: 9px;
   font-weight: 500;
   line-height: 1;
-  white-space: nowrap;
+  white-space: nowrap !important;
+  word-break: keep-all;
+  overflow-wrap: normal;
+  overflow: hidden;
+  text-overflow: clip;
+  max-width: 100%;
   margin: 0;
+}
+
+.context-var * {
+  white-space: nowrap !important;
+  word-break: keep-all !important;
 }
 
 .context-var .segment {
   display: inline;
   color: var(--accent-context);
-  white-space: nowrap;
 }
 
 .context-var .segment.base {
@@ -513,8 +521,7 @@ body {
 
 /* Context vars in expressions (env.foo, sys.bar(x), etc.) - green with box */
 .expr-context-var {
-  display: inline-flex;
-  flex-wrap: nowrap;
+  display: inline-block;
   vertical-align: middle;
   background: var(--accent-context-bg);
   border: 1px solid var(--accent-context);
@@ -523,8 +530,18 @@ body {
   border-radius: 3px;
   font-weight: 500;
   line-height: 1;
-  white-space: nowrap;
+  white-space: nowrap !important;
+  word-break: keep-all;
+  overflow-wrap: normal;
+  overflow: hidden;
+  text-overflow: clip;
+  max-width: 100%;
   margin: 0;
+}
+
+.expr-context-var * {
+  white-space: nowrap !important;
+  word-break: keep-all !important;
 }
 
 /* Segments inside expr-context-var should not break */
@@ -981,6 +998,7 @@ body {
   line-height: 1.4;
   color: var(--control-text);
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 3px;
   background: var(--control-header-bg);
@@ -1015,6 +1033,7 @@ body {
   color: var(--control-text);
   white-space: nowrap;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   background: var(--control-header-bg);
@@ -1069,37 +1088,21 @@ body {
    ====================================================== */
 
 .mark-block {
-  position: relative;
+  display: flex;
+  align-items: stretch;
   margin: 4px 0;
-  overflow: hidden;
 }
 
 .mark-block-content {
-  width: fit-content;
-  position: relative;
-  z-index: 1;
-  background: var(--bg-primary);
-}
-
-/* Extend a cover to the right to hide bracket when content is wide */
-.mark-block-content::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 100%;
-  width: 50px;
-  background: inherit;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .mark-block-bracket {
-  position: absolute;
-  right: 0;
-  top: 0;
-  bottom: 0;
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
-  z-index: 0;
+  margin-left: 4px;
 }
 
 .mark-bracket-line {

@@ -24,7 +24,7 @@ const CONTROL_KEYWORDS = new Set<ControlKeyword>([
   "Name",
   "for",
   "in",
-  "MARK",
+  "Mark",
   "when",
   "not",
   "and",

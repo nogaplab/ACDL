@@ -19,7 +19,7 @@ export type ControlKeyword =
   | "Name"
   | "for"
   | "in"
-  | "MARK"
+  | "Mark"
   | "when"
   | "not"
   | "and"

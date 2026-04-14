@@ -699,6 +699,7 @@ function renderNameRef(block: NameRef): string {
   );
 
   // 2. Render every segment in the PathDesc chain if it exists
+  //    Include the dot INSIDE the span to prevent line breaks between segments.
   let current: PathDesc | undefined = block.path;
   while (current) {
     const segIndices = current.indices;
@@ -707,14 +708,14 @@ function renderNameRef(block: NameRef): string {
         ? renderIndexList(current.indices) : "";
 
     segments.push(
-      `<span class="segment">${escapeHtml(current.base)}${segIndexText}</span>`
+      `<span class="segment">.${escapeHtml(current.base)}${segIndexText}</span>`
     );
 
     current = current.next;
   }
 
-  // 3. Join segments with dots
-  const joined = segments.join(".");
+  // 3. Join segments (dots are now inside the spans).
+  const joined = segments.join("");
 
   return `<span class="name-ref">${joined}</span>`;
 }
@@ -1038,6 +1039,7 @@ function renderContextVarBlock(block: ContextVar): string {
   );
 
   // 2. Render every segment in the PathDesc chain.
+  //    Include the dot INSIDE the span to prevent line breaks between segments.
   let current: PathDesc | undefined = block.path;
   while (current) {
     const segIndices = current.indices;
@@ -1046,14 +1048,14 @@ function renderContextVarBlock(block: ContextVar): string {
         ? renderIndexList(current.indices): "";
 
     segments.push(
-      `<span class="segment">${escapeHtml(current.base)}${segIndexText}</span>`
+      `<span class="segment">.${escapeHtml(current.base)}${segIndexText}</span>`
     );
 
     current = current.next;
   }
 
-  // 3. Join segments with dots.
-  const joined = segments.join(".");
+  // 3. Join segments (dots are now inside the spans).
+  const joined = segments.join("");
 
   // Add namespace-specific class for different styling (env, sys, resp)
   const namespaceClass = `context-var-${block.base.toLowerCase()}`;

@@ -1,0 +1,11 @@
+Prompt[@T]:{
+    If (sys.foo[@T] >= 5) {
+        S: DONE
+    }
+    PromptEndsHere when (sys.foo[@T] >= 5)  
+        
+    S: INSTRUCTIONS
+    A: resp.Prompt2[@T]
+    U: sys.foo[@T]
+}
+

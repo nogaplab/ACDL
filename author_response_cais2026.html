@@ -1,0 +1,283 @@
+
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--font-sans); }
+  .wrap { max-width: 780px; margin: 0 auto; padding: 1.5rem 1rem; }
+  .section-label {
+    font-size: 11px; font-weight: 500; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--color-text-secondary);
+    margin-bottom: 6px;
+  }
+  .section-box {
+    border: 0.5px solid var(--color-border-tertiary);
+    border-radius: var(--border-radius-lg);
+    background: var(--color-background-primary);
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1.25rem;
+  }
+  .section-title {
+    font-size: 15px; font-weight: 500;
+    color: var(--color-text-primary);
+    margin-bottom: 0.9rem;
+    padding-bottom: 0.6rem;
+    border-bottom: 0.5px solid var(--color-border-tertiary);
+  }
+  p { font-size: 14px; line-height: 1.75; color: var(--color-text-primary); margin-bottom: 0.85rem; }
+  p:last-child { margin-bottom: 0; }
+  ul { padding-left: 1.2rem; margin-bottom: 0.85rem; }
+  li { font-size: 14px; line-height: 1.75; color: var(--color-text-primary); margin-bottom: 0.4rem; }
+  li:last-child { margin-bottom: 0; }
+  .reviewer-block { margin-bottom: 1.5rem; }
+  .reviewer-title {
+    font-size: 13px; font-weight: 500;
+    color: var(--color-text-info);
+    background: var(--color-background-info);
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: var(--border-radius-md);
+    margin-bottom: 0.8rem;
+  }
+  .qa-block {
+    border-left: 2px solid var(--color-border-secondary);
+    padding-left: 1rem;
+    margin-bottom: 1.1rem;
+  }
+  .q-label {
+    font-size: 12px; font-weight: 500; letter-spacing: 0.05em;
+    color: var(--color-text-secondary); text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .q-text {
+    font-size: 13px; font-style: italic;
+    color: var(--color-text-secondary);
+    margin-bottom: 8px;
+    line-height: 1.6;
+  }
+  .a-text {
+    font-size: 14px; line-height: 1.75;
+    color: var(--color-text-primary);
+  }
+  .todo {
+    background: var(--color-background-warning);
+    border: 0.5px solid var(--color-border-warning);
+    border-radius: var(--border-radius-md);
+    padding: 8px 12px;
+    font-size: 13px;
+    color: var(--color-text-warning);
+    margin-top: 6px;
+  }
+  .word-count {
+    font-size: 12px; color: var(--color-text-secondary);
+    text-align: right; margin-top: 0.5rem;
+  }
+  .divider {
+    border: none; border-top: 0.5px solid var(--color-border-tertiary);
+    margin: 1.5rem 0;
+  }
+  .collapse-toggle {
+    font-size: 13px; color: var(--color-text-info);
+    cursor: pointer; background: none; border: none;
+    padding: 6px 0; display: flex; align-items: center; gap: 6px;
+    margin-bottom: 1rem;
+  }
+  .arrow { transition: transform 0.2s; display: inline-block; font-size: 10px; }
+  .arrow.open { transform: rotate(90deg); }
+  .collapsible { display: none; }
+  .collapsible.open { display: block; }
+  .soft-limit-bar {
+    display: flex; align-items: center; gap: 8px;
+    margin: 1rem 0 1.5rem;
+    font-size: 12px; color: var(--color-text-secondary);
+  }
+  .soft-limit-line {
+    flex: 1; border-top: 1.5px dashed var(--color-border-warning);
+  }
+  .soft-limit-badge {
+    background: var(--color-background-warning);
+    color: var(--color-text-warning);
+    border-radius: var(--border-radius-md);
+    padding: 2px 8px; font-size: 11px; font-weight: 500;
+  }
+</style>
+
+<div class="wrap">
+
+  <div class="section-label">Section 1 · Overview</div>
+  <div class="section-box">
+    <div class="section-title">Overview</div>
+
+    <p>We thank all three reviewers for their careful reading and constructive feedback. There is broad agreement that formalizing agentic context construction addresses a genuine and important gap in the field, and that the case studies demonstrate ACDL's ability to capture meaningful structural distinctions in real-world systems. The two main concerns raised — limited empirical validation of our claims, and insufficient discussion of the language's scope and limitations — are both actionable, and we address them directly in the planned changes and per-reviewer responses below.</p>
+
+    <p>On empirical evaluation: we acknowledge that the paper's claims about performance consequences of context design choices are currently under-supported. Our primary goal with this work is to provide the community with a shared vocabulary for describing and comparing agentic contexts — analogous to UML for software architecture or plate notation for probabilistic models — rather than to argue for a specific context configuration. That said, reviewer C is right that even the descriptive contribution is stronger when accompanied by concrete evidence that the distinctions ACDL surfaces are practically consequential. We will expand the MINT ablation discussion with full experimental details in the revision (see Planned Changes).</p>
+
+    <p>On limitations and scope: the paper currently understates two important constraints. First, ACDL assumes a clear step structure; ... not yet cleanly handled. Second, multi-agent scenarios where agents share mutable state are not fully supported. We will add an explicit limitations section covering these.</p>
+
+  </div>
+
+  <div class="section-label">Section 2 · Planned Changes</div>
+  <div class="section-box">
+    <div class="section-title">Planned changes</div>
+
+    <ul>
+      <li><strong>Expand the MINT ablation</strong> with full experimental details: model, benchmark, number of runs, and a results table. <span class="todo">⚠ To fill in: confirm which results you have and whether they can be included.</span></li>
+      <li><strong>Add an explicit limitations section</strong> covering (a) systems without a clean step structure, and (b) multi-agent scenarios with shared mutable state.</li>
+      <li><strong>Move the Gemini Plays Pokémon figure</strong> from the appendix into the main text, as suggested by reviewer A. Space permitting, we aim to include all of Appendix A in the main body.</li>
+      <li><strong>Add a ReAct citation and brief explanation</strong> in the introduction, as suggested by reviewer B.</li>
+      <li><strong>Expand the multi-agent section</strong> to describe more concretely how ACDL represents the prompts, inputs, and outputs of multiple agents within a single agent's context.</li>
+      <li><strong>Clarify the role of LLM-based ACDL generation</strong> (e.g., extracting an ACDL spec from an existing codebase) as a future work direction.</li>
+    </ul>
+  </div>
+
+  <p style="font-size:12px; color: var(--color-text-secondary); margin-bottom: 1.5rem; text-align: center;">Sections below are hidden by default in HotCRP. Reviewers click to expand.</p>
+
+  <div class="section-label">Section 3 · Detailed Per-Reviewer Responses</div>
+
+  <button class="collapse-toggle" onclick="toggle('r35a')">
+    <span class="arrow" id="arrow-r35a">▶</span> Review #35A — Accept (high confidence)
+  </button>
+  <div class="collapsible" id="r35a">
+    <div class="section-box">
+
+      <div class="qa-block">
+        <div class="q-label">Comment</div>
+        <div class="q-text">Similarities between ACDL and the React framework with state rendering.</div>
+        <div class="a-text">Yoav</div>
+      </div>
+
+      <div class="qa-block">
+        <div class="q-label">Question</div>
+        <div class="q-text">Why are <code>sys</code> and <code>env</code> two separate objects?</div>
+        <div class="a-text"><code>sys</code> holds values that originate from the agent's internal state — configuration parameters, values computed during a run (e.g., generated summaries), the current time, etc. <code>env</code> holds values that originate from the environment the agent is interacting with — observations from a game, a user's message in a chat interface, sensor readings, and so on. The separation reflects a meaningful architectural boundary: internal bookkeeping versus external input. This distinction is often important when reasoning about an agent's information access, and we will clarify it in the paper.</div>
+      </div>
+
+      <div class="qa-block">
+        <div class="q-label">Question</div>
+        <div class="q-text">The DSL has <code>ForEach</code> but seems to lack <code>filter</code>, <code>find</code>, etc. Are list comprehensions also supported?</div>
+        <div class="a-text">Filtering and find-style operations are supported via user-defined functions, which can be called within a <code>ForEach</code> or in an inline expression. The appendix does also show Python-style list comprehensions as syntactic sugar for common patterns.</div>
+      </div>
+
+      <div class="qa-block">
+        <div class="q-label">Question</div>
+        <div class="q-text">The dotted "." counter variables seem to wedge nested iteration into a flat model.</div>
+        <div class="a-text">This is by design, and it reflects a fundamental tension that ACDL is trying to surface rather than hide. LLM contexts are inherently flat and linear, yet the semantic structures they encode — multi-turn conversations, nested tool call results, hierarchical observations — are often deeply nested. The dotted counter notation (e.g., <code>i.j</code>) makes this linearization explicit: a nested structure in the world is being flattened into a linear sequence in the context. We believe making this transformation visible is useful precisely because it is often a source of bugs and design confusion in practice. We will add a paragraph explaining this rationale in the language design section.</div>
+      </div>
+
+      <div class="qa-block">
+        <div class="q-label">Question</div>
+        <div class="q-text"><code>PromptEndsHere</code> feels like a <code>break</code>-ish operation; would be natural in the context of more nested loops.</div>
+        <div class="a-text">The language does support <code>break</code> and <code>continue</code> for loop control. <code>PromptEndsHere</code> is semantically distinct: it is closer to a <code>return</code> — it exits the entire context construction process, not just a loop.</div>
+      </div>
+
+      <div class="qa-block">
+        <div class="q-label">Comment</div>
+        <div class="q-text">The Gemini Plays Pokémon figure should be in the main text, not the appendix.</div>
+        <div class="a-text">Agreed. The figure was placed in the appendix due to space constraints, but we recognize this makes the section feel incomplete. We will move the figure (and ideally the full Appendix A content) into the main text in the revision.</div>
+      </div>
+
+    </div>
+  </div>
+
+  <button class="collapse-toggle" onclick="toggle('r35b')">
+    <span class="arrow" id="arrow-r35b">▶</span> Review #35B — Reject (moderate confidence)
+  </button>
+  <div class="collapsible" id="r35b">
+    <div class="section-box">
+
+      <div class="qa-block">
+        <div class="q-label">Concern</div>
+        <div class="q-text">No evaluation comparing ACDL to writing an agentic loop in pseudocode or LaTeX. No user study.</div>
+        <div class="a-text">We appreciate this concern and acknowledge it is a real limitation. That said, we note that the baseline the reviewer proposes — informal pseudocode or LaTeX — does not currently exist in practice: to our knowledge, there is no established convention for describing agentic context construction at all. ACDL's immediate contribution is to provide a starting point — a shared, structured vocabulary — that makes such descriptions possible in a consistent and machine-readable way. A user study comparing ACDL against informal alternatives is a clear and valuable direction for future work, which we will acknowledge explicitly.</div>
+      </div>
+
+      <div class="qa-block">
+        <div class="q-label">Concern</div>
+        <div class="q-text">The paper does not discuss out-of-scope systems or general limitations.</div>
+        <div class="a-text">This is fair. We will add an explicit limitations section. The two most significant current limitations are: (1) ACDL assumes a clear, discrete step structure — systems where sub-steps are themselves prompt-driven (i.e., the context construction process is itself agentic) are not yet cleanly handled; (2) multi-agent scenarios where agents share mutable state are not fully supported in the current formalism.</div>
+      </div>
+
+      <div class="qa-block">
+        <div class="q-label">Concern</div>
+        <div class="q-text">The paper mentions that an LLM could implement a system from its ACDL spec, but provides no data.</div>
+        <div class="a-text">This is noted as an anecdotal observation rather than a validated claim, and we agree it needs to be framed more carefully. We will reposition this as a promising direction for future work rather than an empirical finding, and remove any language that implies it has been systematically validated.</div>
+      </div>
+
+      <div class="qa-block">
+        <div class="q-label">Question</div>
+        <div class="q-text">Have you tried automatically generating ACDL from an existing system using an LLM?</div>
+        <div class="a-text">We have experimented with this anecdotally, and our experience suggests the difficulty depends heavily on how the system is written. When a codebase cleanly separates context construction logic from execution logic, an LLM can extract a reasonable ACDL spec. When the context logic is diffuse or implied, the task becomes very hard — analogous to extracting a state chart from a large software system where the state machine is implicit. We see this as a promising and practically important research direction and will frame it as such in the paper.</div>
+      </div>
+
+      <div class="qa-block">
+        <div class="q-label">Question</div>
+        <div class="q-text">Have you considered tooling use cases — e.g., an automatic context manager analogous to a garbage collector?</div>
+        <div class="a-text">Yes, and we agree this is one of the more exciting downstream applications of a formal context specification. The structured, data-flow-like representation in ACDL makes it possible in principle to identify dead context — portions of the context that are never referenced by subsequent steps — and to reason about caching or compression strategies. This is a compelling direction we intend to highlight as future work in the revision.</div>
+      </div>
+
+      <div class="qa-block">
+        <div class="q-label">Comment</div>
+        <div class="q-text">Missing ReAct citation and explanation in the introduction.</div>
+        <div class="a-text">We will add a brief explanation of ReAct (Reasoning and Acting) and the appropriate citation to the introduction.</div>
+      </div>
+
+    </div>
+  </div>
+
+  <button class="collapse-toggle" onclick="toggle('r35c')">
+    <span class="arrow" id="arrow-r35c">▶</span> Review #35C — Weak Accept (moderate confidence)
+  </button>
+  <div class="collapsible" id="r35c">
+    <div class="section-box">
+
+      <div class="qa-block">
+        <div class="q-label">Concern</div>
+        <div class="q-text">The empirical claim that ACDL-surfaced distinctions are practically consequential is under-supported. The MINT ablation is too brief.</div>
+        <div class="a-text">We agree this is the paper's most significant weakness in its current form. We will expand the MINT ablation to include the full experimental setup — model, benchmark, number of runs, and a results table.
+          <div class="todo">⚠ fill in the specific numbers and experimental details here before submission.</div>
+        </div>
+      </div>
+
+      <div class="qa-block">
+        <div class="q-label">Question</div>
+        <div class="q-text">Can you provide the full experimental setup for the reasoning-trace ablation?</div>
+        <div class="a-text">The experiment was conducted on the MINT benchmark (excluding the alfworld dataset) using GPT4-turbo, ran once on each prompt configuration. For each task, the agent is allowed to interact with the environment up to 5 times (interaction steps include tool use (inlcluding failed attempts) and solution proposals) and up to 2 solution proposals.</div>
+        </div>
+      </div>
+
+      <div class="qa-block">
+        <div class="q-label">Concern</div>
+        <div class="q-text">Key language specification details are deferred to the appendix, making the language difficult to evaluate as a formal contribution.</div>
+        <div class="a-text">We acknowledge this tension. The full language grammar and formal semantics could not fit in the main body under the page limit. We tried to include what we believed to be the most important aspects of the language, but we are open to suggestions from the reviewer about which specific aspects should be prioritized for the main text.</div>
+      </div>
+
+      <div class="qa-block">
+        <div class="q-label">Concern</div>
+        <div class="q-text">The paper overlooks the challenge of adoption — it is not obvious how ACDL will become part of standard workflows.</div>
+        <div class="a-text">The reviewer raises a fair point. The indeed does not address this challenge explicitly, but our research does. We have built tooling to support adoption (including a public website) and we believe the best path to adoption is demonstrating utility through case studies and community engagement rather than arguing for it in the paper. We agree, however, that a brief acknowledgment of this challenge — and the steps we are taking to address it — belongs in the paper, and we will add it.</div>
+      </div>
+
+      <div class="qa-block">
+        <div class="q-label">Concern</div>
+        <div class="q-text">The multi-agent setting feels lightly treated compared to the single-agent setting.</div>
+        <div class="a-text">Agreed. We will expand this section to describe concretely how ACDL represents the inputs, outputs, and prompts of multiple agents within a single agent's context, and to clarify the boundary of what is and is not currently expressible in the multi-agent setting.</div>
+      </div>
+
+      <div class="qa-block">
+        <div class="q-label">Question</div>
+        <div class="q-text">What known context patterns does ACDL currently not support or express poorly?</div>
+        <div class="a-text">The two main limitations are: (1) systems where context construction is itself prompt-driven (i.e., there is no clean, discrete step structure); and (2) multi-agent systems where agents share mutable state. We will add a dedicated limitations section covering these cases, which should also address reviewer B's related concern.</div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<script>
+function toggle(id) {
+  const el = document.getElementById(id);
+  const arrow = document.getElementById('arrow-' + id);
+  const isOpen = el.classList.contains('open');
+  el.classList.toggle('open', !isOpen);
+  arrow.classList.toggle('open', !isOpen);
+}
+</script>

@@ -1,0 +1,32 @@
+AgentPrompt[@T]: {
+    A: {
+        resp.CreateRoutine[@T.1].def
+        resp.MakePlan[@T.2].abc
+    }
+
+    A: sys.react
+    A: resp.CreateRoutine[@T.3]
+    S: INSTRUCTIONS
+    A: sys.react[@T.5]
+    A: resp.MakePlan[@T.6]
+}
+
+
+CreateRoutine[@T1.I]: {
+    S: INSTRUCTIONS
+    U: sys.foo[@T1.I]
+}
+
+
+MakePlan[@T2.I]: {
+    S: INSTRUCTIONS
+    U: sys.foo[@T2.I]
+    U: sys.foo[@T2.I-1]
+    A: resp.CreateRoutine[@T2.I] // has to be something else, because sys.foo is not at time T2.I but at T2.I-1
+}
+
+// how do i access a previous response
+// how do i access a previous memory address
+// how do i make the dependcies for each prompt very clear
+// how do i determine the order of the substeps in the prompt
+// how do i allow prompt reuse
