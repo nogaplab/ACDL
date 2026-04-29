@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Claude Code Skill - ACDL</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{BASE}}shared/styles.css">
+  <style>
+    .hero {
+      padding: 120px 24px 60px;
+    }
+
+    .hero h1 {
+      font-size: clamp(2rem, 5vw, 3rem);
+      margin-bottom: 16px;
+    }
+
+    .hero p {
+      font-size: 1.1rem;
+      color: rgba(255,255,255,0.6);
+      max-width: 700px;
+      margin: 0 auto 32px;
+      line-height: 1.7;
+    }
+
+    /* Skill content section */
+    .skill-section {
+      background: #0a0a0a;
+      padding: 60px 24px 80px;
+    }
+
+    .skill-container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .skill-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .skill-header h2 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: #fff;
+      margin: 0;
+    }
+
+    .skill-actions {
+      display: flex;
+      gap: 12px;
+    }
+
+    .btn-icon {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      color: #fff;
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+
+    .btn-icon:hover {
+      background: rgba(255,255,255,0.1);
+      border-color: rgba(255,255,255,0.2);
+    }
+
+    .btn-icon.copied {
+      background: rgba(16, 185, 129, 0.2);
+      border-color: rgba(16, 185, 129, 0.4);
+      color: #10b981;
+    }
+
+    .btn-icon svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    .skill-box {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .skill-content {
+      padding: 24px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      line-height: 1.6;
+      color: rgba(255,255,255,0.8);
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      max-height: 600px;
+      overflow-y: auto;
+    }
+
+    .skill-content::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .skill-content::-webkit-scrollbar-track {
+      background: rgba(255,255,255,0.03);
+    }
+
+    .skill-content::-webkit-scrollbar-thumb {
+      background: rgba(255,255,255,0.1);
+      border-radius: 4px;
+    }
+
+    /* Instructions section */
+    .instructions-section {
+      background: #f8f9fa;
+    }
+
+    .instructions-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 32px;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .instruction-card {
+      background: #fff;
+      border: 1px solid rgba(0,0,0,0.08);
+      border-radius: 16px;
+      padding: 32px;
+    }
+
+    .instruction-card h3 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 20px;
+      color: #0a0a0a;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .instruction-card h3 svg {
+      width: 24px;
+      height: 24px;
+      color: #7877c6;
+    }
+
+    .instruction-steps {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .instruction-steps li {
+      display: flex;
+      gap: 16px;
+      padding: 12px 0;
+      border-bottom: 1px solid rgba(0,0,0,0.06);
+      color: rgba(10,10,10,0.7);
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
+
+    .instruction-steps li:last-child {
+      border-bottom: none;
+    }
+
+    .step-num {
+      width: 24px;
+      height: 24px;
+      background: #7877c6;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #fff;
+      flex-shrink: 0;
+    }
+
+    .code-inline {
+      background: rgba(120, 119, 198, 0.1);
+      border: 1px solid rgba(120, 119, 198, 0.2);
+      border-radius: 4px;
+      padding: 2px 6px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      color: #7877c6;
+    }
+
+    /* Use cases section */
+    .use-cases-section {
+      background: #0a0a0a;
+    }
+
+    .use-cases-section .section-header h2,
+    .use-cases-section .section-header p {
+      color: #fff;
+    }
+
+    .use-cases-section .section-header p {
+      color: rgba(255,255,255,0.5);
+    }
+
+    .use-cases-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    .use-case-card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+      padding: 28px;
+    }
+
+    .use-case-card h4 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 12px;
+      color: #fff;
+    }
+
+    .use-case-card p {
+      color: rgba(255,255,255,0.5);
+      font-size: 0.9rem;
+      line-height: 1.6;
+      margin: 0;
+    }
+
+    @media (max-width: 900px) {
+      .instructions-grid {
+        grid-template-columns: 1fr;
+      }
+      .use-cases-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .skill-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  {{NAV}}
+
+  <section class="hero">
+    <h1>Generate Code from ACDL</h1>
+    <p>Use this skill file to teach Claude Code how to implement LLM agent systems from your ACDL specifications. Write the ACDL, get the code skeleton.</p>
+    <div class="hero-buttons">
+      <a href="acdl-skill.md" download="acdl-skill.md" class="btn btn-primary">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="7 10 12 15 17 10"></polyline>
+          <line x1="12" y1="15" x2="12" y2="3"></line>
+        </svg>
+        Download Skill File
+      </a>
+      <a href="visualizer.html" class="btn btn-secondary">Try Live Editor</a>
+    </div>
+  </section>
+
+  <section class="skill-section">
+    <div class="skill-container">
+      <div class="skill-header">
+        <h2>acdl-skill.md</h2>
+        <div class="skill-actions">
+          <button class="btn-icon" id="copyBtn" onclick="copySkillContent()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+            <span id="copyText">Copy</span>
+          </button>
+          <a href="acdl-skill.md" download="acdl-skill.md" class="btn-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            Download
+          </a>
+        </div>
+      </div>
+      <div class="skill-box">
+        <pre class="skill-content" id="skillContent">Loading skill content...</pre>
+      </div>
+    </div>
+  </section>
+
+  <section class="section instructions-section">
+    <div class="container">
+      <div class="section-header">
+        <h2>How to Use</h2>
+        <p>Two ways to use this skill with Claude Code</p>
+      </div>
+
+      <div class="instructions-grid">
+        <div class="instruction-card">
+          <h3>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+              <polyline points="10 9 9 9 8 9"></polyline>
+            </svg>
+            Option 1: Attach the File
+          </h3>
+          <ol class="instruction-steps">
+            <li>
+              <span class="step-num">1</span>
+              <span>Download <span class="code-inline">acdl-skill.md</span> to your project</span>
+            </li>
+            <li>
+              <span class="step-num">2</span>
+              <span>In Claude Code, use <span class="code-inline">@acdl-skill.md</span> to attach the file</span>
+            </li>
+            <li>
+              <span class="step-num">3</span>
+              <span>Ask Claude to generate ACDL for your system</span>
+            </li>
+          </ol>
+        </div>
+        <div class="instruction-card">
+          <h3>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+            Option 2: Paste Directly
+          </h3>
+          <ol class="instruction-steps">
+            <li>
+              <span class="step-num">1</span>
+              <span>Click the <strong>Copy</strong> button above</span>
+            </li>
+            <li>
+              <span class="step-num">2</span>
+              <span>Paste the skill content into your Claude Code prompt</span>
+            </li>
+            <li>
+              <span class="step-num">3</span>
+              <span>Follow with your request to generate ACDL</span>
+            </li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section use-cases-section">
+    <div class="container">
+      <div class="section-header">
+        <h2>Example Prompts</h2>
+        <p>Ways to use the skill after attaching it</p>
+      </div>
+
+      <div class="use-cases-grid">
+        <div class="use-case-card">
+          <h4>Implement a Chat Agent</h4>
+          <p>"Here's my ACDL for a multi-turn chat agent. Generate the Python code to build the messages array."</p>
+        </div>
+        <div class="use-case-card">
+          <h4>Build a ReAct Agent</h4>
+          <p>"Implement this ReAct agent ACDL spec with tool call handling and response parsing."</p>
+        </div>
+        <div class="use-case-card">
+          <h4>Create a RAG System</h4>
+          <p>"Generate the code skeleton for this RAG agent, including the retrieval function stubs."</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {{FOOTER}}
+
+  <script id="skillTemplate" type="text/template"># ACDL Generation Skill
+
+You are an expert at analyzing LLM-based systems and describing their context structures using ACDL (Agentic Context Description Language).
+
+## Your Task
+
+When asked to generate ACDL for a system, analyze the codebase or description provided and produce a formal ACDL specification that captures:
+
+1. **The prompt structure** - What messages are sent to the LLM and in what order
+2. **Role assignments** - Which parts are System, User, Assistant, or Tool messages
+3. **Dynamic content** - What content changes between calls (context variables)
+4. **Control flow** - Loops, conditionals, and branching logic
+5. **Time evolution** - How the context grows over multiple turns
+
+## ACDL Syntax Reference
+
+### Specification Structure
+Every ACDL specification has this form:
+```acdl
+PromptName[@T]: {
+    <prompt-blocks>
+}
+```
+The name should be descriptive (e.g., `CodingAssistant`, `RAGBot`). The index `[@T]` indicates the current time step. Use `[@T.I]` if the system has sub-steps within turns.
+
+### Roles
+- `S:` - System message (instructions, persona, tool descriptions)
+- `U:` - User message (external input, observations)
+- `A:` - Assistant message (prior model outputs, reasoning)
+- `T:` - Tool message (tool call results)
+- `N:` - Completion format (for non-chat completions, only one allowed per spec)
+
+Role messages can be single-line or multi-line:
+```acdl
+U: env.user_input[@t]           // Single-line form
+
+S: {                             // Multi-line form
+    INSTRUCTIONS
+    AVAILABLE_TOOLS
+}
+```
+
+### Time Indices
+- `@T` - Current turn/step
+- `@t` - Loop variable for iterating over turns
+- `@T.I` - Current sub-step within current turn
+- `@t.i` - Sub-step i of turn t (in loops)
+- `@t.substeps` - Count of sub-steps in turn t
+- `@1`, `@2` - Specific turn numbers (indices start at 1)
+- `@T-1` - Previous turn (arithmetic allowed)
+
+### Context Variables
+Use dotted notation with these namespaces:
+- `env.*` - Environment/external data (e.g., `env.user_input[@t]`, `env.search_results[@t]`)
+- `sys.*` - System state (e.g., `sys.tool_responses[@t]`, `sys.memory`)
+- `resp.*` - LLM response data (e.g., `resp.reasoning[@t]`, `resp.answer[@t]`)
+
+Variables can have nested paths and multiple indices:
+```acdl
+sys.tool[@t].tool_response
+env.bomb_location[@t, bomb]
+```
+
+### Templates
+Use ALL_CAPS for static/semi-static text blocks:
+- `SYSTEM_PROMPT` - Main system instructions
+- `AVAILABLE_TOOLS` - Tool descriptions
+- `TASK_INSTRUCTIONS` - Task-specific guidance
+
+Templates can accept arguments:
+```acdl
+QUERY(sys.agent_name)
+ENV_INFO(env.working_dir, env.platform)
+```
+
+### Control Flow
+
+**ForEach** - Iterate over ranges or collections:
+```acdl
+ForEach(@t: range(1, @T)) {
+    U: env.user_input[@t]
+    A: resp.answer[@t]
+}
+
+ForEach(doc: $docs) {
+    doc.source
+    doc.content
+}
+```
+
+**If/ElseIf/Else** - Conditional content:
+```acdl
+If sys.has_history[@T] {
+    // Include history
+} ElseIf @T > 1 {
+    // Alternative
+} Else {
+    // Default case
+}
+```
+
+**Switch/Case/Default** - Multi-way branching:
+```acdl
+Switch sys.action_type[@t] {
+    Case "search": { U: env.search_results[@t] }
+    Case "calculate": { U: env.calculation[@t] }
+    Default: { U: env.fallback[@t] }
+}
+```
+
+### Named Variables
+Bind expressions to reusable names with `$` prefix:
+```acdl
+Name docs := k_relevant_docs(env.query[@T], 5)
+ForEach(i: range(1, $docs.len)) {
+    $docs[i].source
+    $docs[i].content
+}
+```
+
+List comprehensions:
+```acdl
+Name summaries := [sys.summary[@t] for t in range(@T-100, @T, 10)]
+```
+
+### Functions
+Named functions for computed content (use camelCase):
+```acdl
+k_relevant_docs(query, k)       // Retrieve k relevant documents
+summarize(content)              // Summarize content
+range(start, stop)              // Generate sequence (inclusive)
+range(start, stop, step)        // With step size
+```
+
+### Mark Blocks
+Annotate sections for visual emphasis:
+```acdl
+Mark 1 {
+    S: INSTRUCTIONS
+}
+Mark 2 {
+    U: env.user_input[@T]
+}
+```
+
+### Early Termination
+End prompt conditionally:
+```acdl
+PromptEndsHere when (@T == 1)
+```
+
+### Comments
+```acdl
+// Standalone comment
+S: INSTRUCTIONS  // Inline comment
+```
+
+## Example Patterns
+
+### Basic ReAct Agent
+```acdl
+ReactAgent[@T]: {
+    S: {
+        INSTRUCTIONS
+        AVAILABLE_TOOLS
+    }
+    U: env.user_input[@1]
+    ForEach(@t: range(1, @T)) {
+        A: {
+            resp.reasoning[@t]
+            sys.tool_call[@t]
+        }
+        T: sys.tool_call[@t].response
+    }
+    S: SOLVE_TASK
+}
+```
+
+### RAG Pattern
+```acdl
+RAGAgent[@T]: {
+    S: INSTRUCTIONS
+    U: {
+        Name docs := k_relevant_docs(env.user_input[@T], 5)
+        ForEach(doc: $docs) {
+            doc.source
+            doc.content
+        }
+        ANSWER_FROM_DOCS
+        env.user_input[@T]
+    }
+}
+```
+
+### Multi-Turn Conversation
+```acdl
+ChatAgent[@T]: {
+    S: SYSTEM_PROMPT
+    ForEach(@t: range(1, @T)) {
+        U: env.user_input[@t]
+        A: resp.response[@t]
+    }
+    U: env.user_input[@T]
+}
+```
+
+### Tool Agent with Sub-steps
+```acdl
+ToolAgent[@T.I]: {
+    S: SYSTEM_PROMPT
+    ForEach(@t: range(1, @T)) {
+        U: env.user_input[@t]
+        ForEach(@i: range(1, @t.substeps)) {
+            A: sys.tool_requests[@t.i]
+            T: sys.tool_responses[@t.i]
+        }
+        A: sys.response[@t]
+    }
+    U: env.user_input[@T]
+}
+```
+
+### Agent with Context Compaction
+```acdl
+CompactingAgent[@T]: {
+    S: SYSTEM_PROMPT
+
+    Name C := sys.last_compaction_time[@T]
+    If @$C > 1 {
+        U: SUMMARY_REQUEST
+        A: sys.conversation_summary[@$C]
+    }
+
+    ForEach(@t: range(@$C, @T)) {
+        U: env.user_input[@t]
+        A: resp.response[@t]
+    }
+}
+```
+
+### Conditional Tool Handling
+```acdl
+ConditionalAgent[@T]: {
+    S: INSTRUCTIONS
+    ForEach(@t: range(1, @T)) {
+        Switch sys.tool[@t].type {
+            Case "clarify": {
+                U: env.user_clarification[@t]
+            }
+            Case "search": {
+                T: sys.search_results[@t]
+            }
+            Default: {
+                A: sys.tool[@t].response
+            }
+        }
+    }
+}
+```
+
+## Implementing Code from ACDL
+
+When given an ACDL specification, here's how to translate it to actual code:
+
+### Message Array Construction
+The ACDL specification describes how to build the `messages` array for an LLM API call:
+
+```python
+# ACDL:
+# ChatAgent[@T]: {
+#     S: SYSTEM_PROMPT
+#     ForEach(@t: range(1, @T)) {
+#         U: env.user_input[@t]
+#         A: resp.response[@t]
+#     }
+#     U: env.user_input[@T]
+# }
+
+# Implementation:
+def build_messages(turn: int, history: list, system_prompt: str, current_input: str):
+    messages = []
+
+    # S: SYSTEM_PROMPT
+    messages.append({"role": "system", "content": system_prompt})
+
+    # ForEach(@t: range(1, @T)) - iterate over previous turns
+    for t in range(1, turn):  # 1 to T-1 (previous turns)
+        # U: env.user_input[@t]
+        messages.append({"role": "user", "content": history[t].user_input})
+        # A: resp.response[@t]
+        messages.append({"role": "assistant", "content": history[t].response})
+
+    # U: env.user_input[@T] - current turn
+    messages.append({"role": "user", "content": current_input})
+
+    return messages
+```
+
+### Mapping ACDL Elements to Code
+
+| ACDL Element | Code Implementation |
+|--------------|---------------------|
+| `S:` | `{"role": "system", "content": ...}` |
+| `U:` | `{"role": "user", "content": ...}` |
+| `A:` | `{"role": "assistant", "content": ...}` |
+| `T:` | `{"role": "tool", "content": ..., "tool_call_id": ...}` |
+| `TEMPLATE` | String constant or function returning string |
+| `env.x[@t]` | External data lookup: `get_env_data("x", t)` |
+| `sys.x[@t]` | Internal state lookup: `state.get("x", t)` |
+| `resp.x[@t]` | Previous LLM response: `history[t].x` |
+| `ForEach(@t: range(1, @T))` | `for t in range(1, current_turn):` |
+| `If condition` | `if evaluate(condition):` |
+| `Name x := expr` | `x = evaluate(expr)` |
+| `@T` | Current turn number (function parameter) |
+| `@T.I` | Current sub-step within turn |
+
+### Tool Calls with Sub-steps
+
+```python
+# ACDL:
+# ToolAgent[@T.I]: {
+#     S: SYSTEM_PROMPT
+#     ForEach(@t: range(1, @T)) {
+#         U: env.user_input[@t]
+#         ForEach(@i: range(1, @t.substeps)) {
+#             A: sys.tool_requests[@t.i]
+#             T: sys.tool_responses[@t.i]
+#         }
+#         A: sys.response[@t]
+#     }
+#     U: env.user_input[@T]
+# }
+
+def build_messages(turn: int, substep: int, history: list, system_prompt: str, current_input: str):
+    messages = [{"role": "system", "content": system_prompt}]
+
+    for t in range(1, turn):
+        messages.append({"role": "user", "content": history[t].user_input})
+
+        # Inner loop over sub-steps (tool calls within turn t)
+        for i in range(1, len(history[t].tool_calls) + 1):
+            messages.append({
+                "role": "assistant",
+                "content": None,
+                "tool_calls": [history[t].tool_calls[i-1]]
+            })
+            messages.append({
+                "role": "tool",
+                "tool_call_id": history[t].tool_calls[i-1].id,
+                "content": history[t].tool_responses[i-1]
+            })
+
+        messages.append({"role": "assistant", "content": history[t].final_response})
+
+    messages.append({"role": "user", "content": current_input})
+    return messages
+```
+
+### Conditional Logic
+
+```python
+# ACDL:
+# If sys.has_summary[@T] {
+#     U: SUMMARY_HEADER
+#     A: sys.summary[@T]
+# }
+
+if state.has_summary(turn):
+    messages.append({"role": "user", "content": SUMMARY_HEADER})
+    messages.append({"role": "assistant", "content": state.get_summary(turn)})
+```
+
+### Context Compaction Pattern
+
+```python
+# ACDL:
+# Name C := sys.last_compaction_time[@T]
+# ForEach(@t: range(@$C, @T)) { ... }
+
+compaction_time = state.last_compaction_time  # Start from compacted point
+for t in range(compaction_time, turn):
+    # Only include history after compaction
+    ...
+```
+
+### Key Implementation Principles
+
+1. **Time index `@T`** = current turn number, passed as parameter
+2. **Time index `@t`** = loop variable iterating over previous turns
+3. **`range(1, @T)`** = Python `range(1, turn)` (excludes current turn)
+4. **`range(1, @T+1)`** or `range(1, @T]` = includes current turn
+5. **Context variables** = data lookups from your state/history objects
+6. **Templates** = string constants or template functions
+7. **Sub-steps `@t.i`** = nested loop over tool calls within a turn
+8. **Order matters** = messages must be appended in ACDL order
+
+## Output Format
+
+When generating ACDL, provide:
+
+1. **The ACDL specification** in a code block with `acdl` language tag
+2. **Brief explanation** of the key design decisions
+3. **Notes** on any assumptions made about the system
+
+When implementing from ACDL, provide:
+
+1. **The message-building function** that constructs the API call
+2. **Data structures** needed to store history/state
+3. **Notes** on how templates and context variables should be populated
+
+## Guidelines for Generating ACDL
+
+1. **Identify the core loop** - Most agents have a main loop over turns or steps
+2. **Map message roles** - Determine which content goes in S/U/A/T messages
+3. **Find dynamic vs static content** - Use templates for static text, context variables for dynamic
+4. **Model time correctly** - Use `@T` for current step, `@t` for iteration
+5. **Handle sub-steps** - If tool calls happen within turns, use `@T.I` notation
+6. **Use meaningful names** - `CodingAssistant` not `Agent1`
+7. **Keep it minimal** - Only include what's actually in the prompt structure
+8. **Comment non-obvious parts** - Explain unusual control flow or conditions
+
+## Guidelines for Implementing from ACDL
+
+1. **Build messages array** - Each role block becomes a message dict
+2. **Translate loops** - `ForEach(@t: range(a, b))` becomes `for t in range(a, b)`
+3. **Handle state** - Context variables need backing data structures
+4. **Preserve order** - Message order in ACDL = order in messages array
+5. **Track sub-steps** - Tool calls need their own iteration within turns
+6. **Implement templates** - Define string constants or template functions
+</script>
+
+  <script>
+    // Load embedded skill content
+    document.getElementById('skillContent').textContent =
+      document.getElementById('skillTemplate').textContent.trim();
+
+    function copySkillContent() {
+      const content = document.getElementById('skillContent').textContent;
+      navigator.clipboard.writeText(content).then(() => {
+        const btn = document.getElementById('copyBtn');
+        const text = document.getElementById('copyText');
+        btn.classList.add('copied');
+        text.textContent = 'Copied!';
+        setTimeout(() => {
+          btn.classList.remove('copied');
+          text.textContent = 'Copy';
+        }, 2000);
+      });
+    }
+  </script>
+</body>
+</html>

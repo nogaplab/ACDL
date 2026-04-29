@@ -7,16 +7,16 @@ S: {
 // summarized early conversation (if exists)
 Mark 2 {
 Name C := sys.last_compaction_time[@T] 
-If (@C > 1) {
+If (@$C > 1) {
 	U: { 
 		THIS_IS_A_SUMMARY
-		sys.conversation_summary[@C]
+		sys.conversation_summary[@$C]
 	}
-	A: resp.response[@C]
+	A: resp.response[@$C]
 }
 }
 // conversation history
-ForEach(t: range(@C + 1, @T)) {
+ForEach(t: range(@$C + 1, @T)) {
 	U: {
                 Mark 6 {
 		// The pending_messages list is often empty
@@ -46,13 +46,13 @@ ForEach(t: range(@C + 1, @T)) {
             // multiple requests in one assistant message
         A: {
          ForEach(tool: sys.tool_requests[@t.i]) {
-           $tool.id_name_and_arg 
+           tool.id_name_and_arg 
          }
        }
    // Loop of tool responses, each in own tool msg
    ForEach(tool: sys.tool_requests[@t.i]) {
 T: { 
-     $tool.id_and_response 
+     tool.id_and_response 
    }
    }
           }
