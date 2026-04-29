@@ -1,4 +1,4 @@
-Mint3[@T]: {
+Var3[@T]: {
     U: {
         TASK_DESCRIPTION(sys.max_total_steps)
         env.tool_desc

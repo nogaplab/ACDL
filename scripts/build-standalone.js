@@ -24,20 +24,21 @@ const rootDir = path.resolve(__dirname, '..');
 // Example configuration: maps keys to file paths and display info
 // Edit this to change which examples are included in the standalone build
 const EXAMPLE_CONFIG = {
-  // React Variants
-  fig1_base: { file: 'ACDL_examples/React_variants/fig1-base.acdl', label: 'ReAct Base', group: 'React Variants' },
-  fig1_left: { file: 'ACDL_examples/React_variants/fig1-left.acdl', label: 'ReAct Left', group: 'React Variants' },
-  fig1_right: { file: 'ACDL_examples/React_variants/fig1-right.acdl', label: 'ReAct Right', group: 'React Variants' },
+  // Basic Patterns
+  basic: { file: 'ACDL_examples/other/basic-context.acdl', label: 'Basic Context', group: 'Basic Patterns' },
+  rag: { file: 'ACDL_examples/other/basic-rag.acdl', label: 'Basic RAG', group: 'Basic Patterns' },
 
-  // Examples
-  rag: { file: 'ACDL_examples/other/basic-rag.acdl', label: 'RAG', group: 'Examples' },
-  mintagent: { file: 'ACDL_examples/MintAgent_variants/mint-original.acdl', label: 'MintAgent', group: 'Examples' },
-  multiagent: { file: 'ACDL_examples/complex_examples/MultiAgent.acdl', label: 'MultiAgent', group: 'Examples' },
+  // ReAct Patterns
+  fig1_base: { file: 'ACDL_examples/React_variants/fig1-base.acdl', label: 'ReAct Base', group: 'ReAct Patterns' },
+  fig1_left: { file: 'ACDL_examples/React_variants/fig1-left.acdl', label: 'ReAct No Reasoning in History', group: 'ReAct Patterns' },
+  fig1_right: { file: 'ACDL_examples/React_variants/fig1-right.acdl', label: 'ReAct with Tool-RAG', group: 'ReAct Patterns' },
 
-  // Advanced
-  openclaw: { file: 'ACDL_examples/complex_examples/OpenClaw.acdl', label: 'OpenClaw', group: 'Advanced' },
-  opencode: { file: 'ACDL_examples/complex_examples/OpenCode.acdl', label: 'OpenCode', group: 'Advanced' },
-  pokemon: { file: 'ACDL_examples/complex_examples/pokemon.acdl', label: 'Pokemon', group: 'Advanced' },
+  // Real-World Systems
+  opencode: { file: 'ACDL_examples/complex_examples/OpenCode.acdl', label: 'OpenCode (Claude Code-like)', group: 'Real-World Systems' },
+  openclaw: { file: 'ACDL_examples/complex_examples/OpenClaw.acdl', label: 'OpenClaw (Letta-like)', group: 'Real-World Systems' },
+  pokemon: { file: 'ACDL_examples/complex_examples/pokemon.acdl', label: 'Pokemon Agent', group: 'Real-World Systems' },
+  multiagent: { file: 'ACDL_examples/complex_examples/MultiAgent.acdl', label: 'Multi-Agent Simulation', group: 'Real-World Systems' },
+  mintagent: { file: 'ACDL_examples/MintAgent_variants/mint-original.acdl', label: 'MintAgent', group: 'Real-World Systems' },
 };
 
 // Load prompts from files
@@ -70,6 +71,7 @@ async function buildStandalone() {
 export { Scanner } from './scanner';
 export { Parser } from './parser';
 export { renderPrompt, renderPrompts } from './renderPrompt';
+export { renderPromptsSvg } from './renderPromptSvg';
 `;
 
   const tempEntryPath = path.join(rootDir, 'src', '_standalone_entry.ts');
@@ -286,8 +288,8 @@ ${getStandaloneUILogic()}
  * initialization than the Vite development version.
  */
 function getStandaloneUILogic() {
-  return `// Extract Parser and renderPrompt from the bundle
-const { Parser, renderPrompts } = ACDL;
+  return `// Extract Parser and renderPrompts/renderPromptsSvg from the bundle
+const { Parser, renderPrompts, renderPromptsSvg } = ACDL;
 const { createEditor } = ACDLEditor;
 
 let editorView = null;
@@ -769,20 +771,58 @@ document.addEventListener("DOMContentLoaded", () => {
 
   exportPdf.addEventListener("click", async () => {
     exportMenu.classList.remove("show");
-    if (!output.querySelector(".prompt-container")) {
-      alert("No visualization to export. Please render a prompt first.");
+    if (!editorView) {
+      alert("Editor not initialized.");
+      return;
+    }
+    const input = editorView.state.doc.toString();
+    if (!input.trim()) {
+      alert("No ACDL code to export. Please enter some code first.");
       return;
     }
     exportBtn.classList.add("loading");
     try {
-      const canvas = await captureAllContent();
-      if (!canvas) throw new Error("Failed to capture content");
+      // Parse and render to SVG with width from slider
+      const widthSlider = document.getElementById("width-slider");
+      const maxWidth = widthSlider ? parseInt(widthSlider.value, 10) : undefined;
+      const parser = new Parser(input);
+      const ast = parser.parseFile();
+      const svgContent = renderPromptsSvg(ast, maxWidth);
+
+      // Create a temporary SVG element to get dimensions
+      const tempDiv = document.createElement("div");
+      tempDiv.innerHTML = svgContent;
+      const svgEl = tempDiv.querySelector("svg");
+      const svgWidth = parseFloat(svgEl.getAttribute("width")) || 800;
+      const svgHeight = parseFloat(svgEl.getAttribute("height")) || 600;
+
+      // Create an image from SVG
+      const svgBlob = new Blob([svgContent], { type: "image/svg+xml;charset=utf-8" });
+      const svgUrl = URL.createObjectURL(svgBlob);
+      const img = new Image();
+
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+        img.src = svgUrl;
+      });
+
+      // Draw to canvas at high resolution
+      const scale = 2;
+      const canvas = document.createElement("canvas");
+      canvas.width = svgWidth * scale;
+      canvas.height = svgHeight * scale;
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(svgUrl);
+
+      // Create PDF
       const { jsPDF } = window.jspdf;
       const imgData = canvas.toDataURL("image/png");
-      const imgWidth = canvas.width;
-      const imgHeight = canvas.height;
-      const pdfWidth = Math.max(210, (imgWidth / 2) * 0.264583);
-      const pdfHeight = (imgHeight / imgWidth) * pdfWidth;
+      const pdfWidth = Math.max(210, svgWidth * 0.264583); // px to mm at 96dpi
+      const pdfHeight = (svgHeight / svgWidth) * pdfWidth;
       const pdf = new jsPDF({
         orientation: pdfWidth > pdfHeight ? "landscape" : "portrait",
         unit: "mm",
@@ -792,11 +832,42 @@ document.addEventListener("DOMContentLoaded", () => {
       pdf.save("acdl-visualization.pdf");
     } catch (error) {
       console.error("Export failed:", error);
-      alert("Failed to export PDF. Please try again.");
+      alert("Failed to export PDF: " + error.message);
     } finally {
       exportBtn.classList.remove("loading");
     }
   });
+
+  // URL parameter handling for loading examples from links
+  // Map example page parameter names to PROMPTS keys
+  const EXAMPLE_MAP = {
+    "basic": "basic",
+    "basic_rag": "rag",
+    "react_base": "fig1_base",
+    "react_no_reasoning": "fig1_left",
+    "react_tool_rag": "fig1_right",
+    "opencode": "opencode",
+    "openclaw": "openclaw",
+    "pokemon": "pokemon",
+    "multiagent": "multiagent",
+    "rag": "rag",
+    "mintagent": "mintagent",
+    // Direct keys also work
+    "fig1_base": "fig1_base",
+    "fig1_left": "fig1_left",
+    "fig1_right": "fig1_right"
+  };
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const exampleParam = urlParams.get("example");
+  if (exampleParam) {
+    const promptKey = EXAMPLE_MAP[exampleParam] || exampleParam;
+    if (PROMPTS[promptKey]) {
+      setEditorContent(PROMPTS[promptKey]);
+      promptSelect.value = promptKey;
+      doRender();
+    }
+  }
 });`;
 }
 

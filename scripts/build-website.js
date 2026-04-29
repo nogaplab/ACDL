@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { execSync } from 'child_process';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -86,4 +87,18 @@ const sharedDest = path.join(DIST_WEBSITE, 'shared');
 ensureDir(sharedDest);
 copyFile(path.join(WEBSITE_SHARED, 'styles.css'), path.join(sharedDest, 'styles.css'));
 
-console.log('\nWebsite build complete!');
+console.log('\nWebsite pages complete!\n');
+
+// Build the standalone visualizer
+console.log('Building standalone visualizer...\n');
+try {
+  execSync('node scripts/build-standalone.js', {
+    cwd: path.join(__dirname, '..'),
+    stdio: 'inherit'
+  });
+} catch (error) {
+  console.error('Failed to build standalone visualizer:', error.message);
+  process.exit(1);
+}
+
+console.log('\nFull website build complete!');

@@ -9,12 +9,12 @@ MintOriginal[@T.I]: {
     ForEach(@t: range(1,@T-1)) {
         ForEach(i: range(1,@t.substeps)) {
             A: {
-                MARK 1 {
+                Mark 1 {
                 resp.tool_reasoning[@t.i]
                 }
                 sys.tool_used[@t.i]
             }
-            MARK 2 {
+            Mark 2 {
             U: sys.tool_used[@t.i].tool_response
             }
     
@@ -31,7 +31,7 @@ MintOriginal[@T.I]: {
             resp.tool_reasoning[@T.k]
             resp.tool_used[@T.k]
         }
-        MARK 2 {
+        Mark 2 {
         U: sys.tool_used[@T.k].tool_response
         }
     }

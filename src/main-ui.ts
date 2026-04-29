@@ -1,8 +1,12 @@
 import { EditorView } from "@codemirror/view";
 import { Parser } from "./parser";
 import { renderPrompts } from "./renderPrompt";
+import { renderPromptsSvg } from "./renderPromptSvg";
 import { enableCollapsibleBlocks } from "./ui";
 import { createEditor } from "./editor/setup.js";
+
+// Re-export for PDF export functionality
+export { Parser, renderPromptsSvg };
 
 let editorView: EditorView;
 

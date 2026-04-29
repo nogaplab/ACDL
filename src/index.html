@@ -598,20 +598,21 @@
       <label for="prompt-select">Examples:</label>
       <select id="prompt-select">
         <option value="">-- Select --</option>
-        <optgroup label="React Variants">
+        <optgroup label="Basic Patterns">
+          <option value="basic">Basic Context</option>
+          <option value="rag">Basic RAG</option>
+        </optgroup>
+        <optgroup label="ReAct Patterns">
           <option value="fig1_base">ReAct Base</option>
-          <option value="fig1_left">ReAct Left</option>
-          <option value="fig1_right">ReAct Right</option>
+          <option value="fig1_left">ReAct No Reasoning in History</option>
+          <option value="fig1_right">ReAct with Tool-RAG</option>
         </optgroup>
-        <optgroup label="Examples">
-          <option value="rag">RAG</option>
+        <optgroup label="Real-World Systems">
+          <option value="opencode">OpenCode (Claude Code-like)</option>
+          <option value="openclaw">OpenClaw (Letta-like)</option>
+          <option value="pokemon">Pokemon Agent</option>
+          <option value="multiagent">Multi-Agent Simulation</option>
           <option value="mintagent">MintAgent</option>
-          <option value="multiagent">MultiAgent</option>
-        </optgroup>
-        <optgroup label="Advanced">
-          <option value="openclaw">OpenClaw</option>
-          <option value="opencode">OpenCode</option>
-          <option value="pokemon">Pokemon</option>
         </optgroup>
       </select>
     </div>
@@ -693,7 +694,11 @@
   <button class="restore-btn" id="restore-output" title="Show visualization">Viz</button>
 
   <script type="module">
-    import { initFileHandlers, getEditorView, doRender, detectOverflow } from "./main-ui.ts";
+    import { initFileHandlers, getEditorView, doRender, detectOverflow, Parser, renderPromptsSvg } from "./main-ui.ts";
+    // Expose for PDF export in non-module script
+    window.ACDLParser = Parser;
+    window.ACDLRenderSvg = renderPromptsSvg;
+    window.ACDLGetEditorView = getEditorView;
 
     // Map dropdown values to file paths (absolute paths resolved by Vite alias)
     const PROMPT_PATHS = {
@@ -1077,19 +1082,12 @@
         const captureY = contentMinTop !== Infinity ? contentMinTop - 4 : 0;
 
         try {
-          const canvas = await html2canvas(content, {
+          // Render the full content area first
+          const fullCanvas = await html2canvas(content, {
             backgroundColor: "#ffffff",
             scale: window.devicePixelRatio * 2 || 3,
             useCORS: true,
             logging: false,
-            width: captureWidth,
-            height: captureHeight,
-            windowWidth: captureWidth + captureX,
-            windowHeight: captureHeight + captureY,
-            scrollX: 0,
-            scrollY: 0,
-            x: captureX,
-            y: captureY,
             allowTaint: true,
             imageTimeout: 0,
             // Ensure styles are cloned properly
@@ -1101,6 +1099,23 @@
               });
             }
           });
+
+          // Now crop the canvas to the content bounds
+          const scale = window.devicePixelRatio * 2 || 3;
+          const cropX = Math.max(0, Math.floor(captureX * scale));
+          const cropY = Math.max(0, Math.floor(captureY * scale));
+          const cropWidth = Math.ceil(captureWidth * scale);
+          const cropHeight = Math.ceil(captureHeight * scale);
+
+          // Create a new canvas with just the cropped region
+          const canvas = document.createElement('canvas');
+          canvas.width = cropWidth;
+          canvas.height = cropHeight;
+          const ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, cropWidth, cropHeight);
+          ctx.drawImage(fullCanvas, cropX, cropY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
+
           return canvas;
         } finally {
           // Restore inline-flex display on captured elements
@@ -1489,6 +1504,18 @@
           el.style.whiteSpace = "nowrap";
         });
 
+        // Fix end-dashed-line - html2canvas doesn't render repeating-linear-gradient
+        // Convert to border-bottom dashed style
+        const endDashedLines = output.querySelectorAll(".end-dashed-line");
+        const savedEndDashedLineStyles = [];
+        endDashedLines.forEach(el => {
+          savedEndDashedLineStyles.push(el.style.cssText);
+          el.style.background = "none";
+          el.style.height = "0";
+          el.style.borderBottom = "1px dashed #6e7781";
+          el.style.alignSelf = "center";
+        });
+
         // Add export fix style
         const exportFixStyle = document.createElement("style");
         exportFixStyle.textContent = `
@@ -1625,19 +1652,12 @@
         const captureY = contentMinTop !== Infinity ? contentMinTop - 4 : 0;
 
         try {
-          const canvas = await html2canvas(output, {
+          // Render the full output area first
+          const fullCanvas = await html2canvas(output, {
             backgroundColor: "#ffffff",
             scale: window.devicePixelRatio * 2 || 3,
             useCORS: true,
             logging: false,
-            width: captureWidth,
-            height: captureHeight,
-            windowWidth: captureWidth + captureX,
-            windowHeight: captureHeight + captureY,
-            scrollX: 0,
-            scrollY: 0,
-            x: captureX,
-            y: captureY,
             allowTaint: true,
             imageTimeout: 0,
             onclone: (clonedDoc) => {
@@ -1650,10 +1670,27 @@
               const clonedContainers = clonedDoc.querySelectorAll('.prompt-container');
               clonedContainers.forEach(el => {
                 el.style.width = constrainedWidth + 'px';
-            el.style.maxWidth = constrainedWidth + 'px';
+                el.style.maxWidth = constrainedWidth + 'px';
               });
             }
           });
+
+          // Now crop the canvas to the content bounds
+          const scale = window.devicePixelRatio * 2 || 3;
+          const cropX = Math.max(0, Math.floor(captureX * scale));
+          const cropY = Math.max(0, Math.floor(captureY * scale));
+          const cropWidth = Math.ceil(captureWidth * scale);
+          const cropHeight = Math.ceil(captureHeight * scale);
+
+          // Create a new canvas with just the cropped region
+          const canvas = document.createElement('canvas');
+          canvas.width = cropWidth;
+          canvas.height = cropHeight;
+          const ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, cropWidth, cropHeight);
+          ctx.drawImage(fullCanvas, cropX, cropY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
+
           return canvas;
         } finally {
           // Restore all styles
@@ -1663,6 +1700,7 @@
           markContents.forEach((el, i) => { el.style.cssText = savedMarkContentStyles[i]; });
           timeIndexEls.forEach((el, i) => { el.style.cssText = savedTimeIndexStyles[i]; });
           titleH1s.forEach((el, i) => { el.style.cssText = savedTitleStyles[i]; });
+          endDashedLines.forEach((el, i) => { el.style.cssText = savedEndDashedLineStyles[i]; });
           containers.forEach((el, i) => { el.style.cssText = savedContainerStyles[i]; });
           savedBlockStyles.forEach(({ el, style, hadClass }) => { el.style.cssText = style; if (hadClass) el.classList.add('comment-wrapped'); else el.classList.remove('comment-wrapped'); });
           savedCommentStyles.forEach(({ el, style }) => { el.style.cssText = style; });
@@ -1703,43 +1741,79 @@
         }
       });
 
-      // Export as PDF
+      // Export as PDF using SVG rendering
       exportPdf.addEventListener("click", async () => {
         exportMenu.classList.remove("show");
 
-        if (!output.querySelector(".prompt-container")) {
-          alert("No visualization to export. Please render a prompt first.");
+        const editorView = window.ACDLGetEditorView ? window.ACDLGetEditorView() : null;
+        if (!editorView) {
+          alert("Editor not initialized.");
+          return;
+        }
+        const input = editorView.state.doc.toString();
+        if (!input.trim()) {
+          alert("No ACDL code to export. Please enter some code first.");
           return;
         }
 
         exportBtn.classList.add("loading");
 
         try {
-          const canvas = await captureAllContent();
-          if (!canvas) throw new Error("Failed to capture content");
+          // Parse and render to SVG with width from slider
+          const Parser = window.ACDLParser;
+          const renderPromptsSvg = window.ACDLRenderSvg;
+          const widthSlider = document.getElementById("width-slider");
+          const maxWidth = widthSlider ? parseInt(widthSlider.value, 10) : undefined;
+          const parser = new Parser(input);
+          const ast = parser.parseFile();
+          const svgContent = renderPromptsSvg(ast, maxWidth);
 
+          // Create a temporary SVG element to get dimensions
+          const tempDiv = document.createElement("div");
+          tempDiv.innerHTML = svgContent;
+          const svgEl = tempDiv.querySelector("svg");
+          const svgWidth = parseFloat(svgEl.getAttribute("width")) || 800;
+          const svgHeight = parseFloat(svgEl.getAttribute("height")) || 600;
+
+          // Create an image from SVG
+          const svgBlob = new Blob([svgContent], { type: "image/svg+xml;charset=utf-8" });
+          const svgUrl = URL.createObjectURL(svgBlob);
+          const img = new Image();
+
+          await new Promise((resolve, reject) => {
+            img.onload = resolve;
+            img.onerror = reject;
+            img.src = svgUrl;
+          });
+
+          // Draw to canvas at high resolution for sharp PDF
+          const scale = 4;
+          const canvas = document.createElement("canvas");
+          canvas.width = svgWidth * scale;
+          canvas.height = svgHeight * scale;
+          const ctx = canvas.getContext("2d");
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = "high";
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          URL.revokeObjectURL(svgUrl);
+
+          // Create PDF
           const { jsPDF } = window.jspdf;
           const imgData = canvas.toDataURL("image/png");
-
-          // Calculate dimensions to fit the content
-          const imgWidth = canvas.width;
-          const imgHeight = canvas.height;
-
-          // Use A4 as base, but adjust if content is wider
-          const pdfWidth = Math.max(210, (imgWidth / 2) * 0.264583); // Convert px to mm at scale 2
-          const pdfHeight = (imgHeight / imgWidth) * pdfWidth;
-
+          const pdfWidth = Math.max(210, svgWidth * 0.264583); // px to mm at 96dpi
+          const pdfHeight = (svgHeight / svgWidth) * pdfWidth;
           const pdf = new jsPDF({
             orientation: pdfWidth > pdfHeight ? "landscape" : "portrait",
             unit: "mm",
             format: [pdfWidth, pdfHeight]
           });
-
           pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
           pdf.save("acdl-visualization.pdf");
         } catch (error) {
           console.error("Export failed:", error);
-          alert("Failed to export PDF. Please try again.");
+          alert("Failed to export PDF: " + error.message);
         } finally {
           exportBtn.classList.remove("loading");
         }

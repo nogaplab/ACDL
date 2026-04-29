@@ -1,132 +1,177 @@
-# ACDL Prompt Renderer
+# Supabase CLI
 
-A TypeScript compiler and interactive visualizer for the **Agentic Context Description Language (ACDL)** — a declarative language for specifying, documenting, and reasoning about LLM prompt structures.
+[![Coverage Status](https://coveralls.io/repos/github/supabase/cli/badge.svg?branch=develop)](https://coveralls.io/github/supabase/cli?branch=develop) [![Bitbucket Pipelines](https://img.shields.io/bitbucket/pipelines/supabase-cli/setup-cli/master?style=flat-square&label=Bitbucket%20Canary)](https://bitbucket.org/supabase-cli/setup-cli/pipelines) [![Gitlab Pipeline Status](https://img.shields.io/gitlab/pipeline-status/sweatybridge%2Fsetup-cli?label=Gitlab%20Canary)
+](https://gitlab.com/sweatybridge/setup-cli/-/pipelines)
 
-ACDL captures the architecture of prompts: which role messages exist, what dynamic content they contain, how they evolve over time, and under what conditions sections appear or repeat. This tool parses `.acdl` files and renders them as interactive HTML visualizations.
+[Supabase](https://supabase.io) is an open source Firebase alternative. We're building the features of Firebase using enterprise-grade open source tools.
 
----
+This repository contains all the functionality for Supabase CLI.
 
-## Features
+- [x] Running Supabase locally
+- [x] Managing database migrations
+- [x] Creating and deploying Supabase Functions
+- [x] Generating types directly from your database schema
+- [x] Making authenticated HTTP requests to [Management API](https://supabase.com/docs/reference/api/introduction)
 
-- **Compiler pipeline**: Scanner, recursive descent parser, and AST-based renderer (`src/scanner.ts` -> `src/parser.ts` -> `src/renderPrompt.ts`)
-- **Semantic highlighting**: Distinct visual treatments for Templates (all-caps), Functions, and Context Variables (`env`, `sys`, `resp`, `prompt`)
-- **Role partitioning**: Color-coded containment for `system`, `user`, `assistant`, `tool`, and `none` (completion) messages
-- **Control flow visualization**: Indented block-wrapping for `If/ElseIf/Else`, `ForEach`, and `Switch/Case/Default`
-- **Label blocks**: Named grouping sections for organizing related prompt blocks
-- **Collapsible blocks**: Click any block header to collapse/expand it
-- **CodeMirror editor**: In-browser editing with syntax highlighting, bracket matching, and live linting
-- **Compact mode**: Toggle a paper-friendly dense layout for research publications
-- **Export**: Save visualizations as PNG or PDF directly from the browser
-- **CLI export**: Generate standalone HTML files with bundled CSS via Bun
+## Getting started
 
----
+### Install the CLI
 
-## Getting Started
-
-### Prerequisites
-- **Node.js** (v18+)
-- **Bun** (required for the CLI generator)
-
-### Installation
-```bash
-npm install
-```
-
----
-
-## Usage
-
-### Browser Viewer (Vite)
+Available via [NPM](https://www.npmjs.com) as dev dependency. To install:
 
 ```bash
-npm run dev
+npm i supabase --save-dev
 ```
 
-Open the URL provided (usually http://localhost:5173). You can:
-- Write or paste ACDL directly in the editor panel
-- Drag and drop a `.acdl` file onto the header bar
-- Browse for a file using the upload button
-- Click **Render Flowchart** to visualize
-- Toggle **Compact** mode for paper-ready output
-- Export the visualization as PNG or PDF
+When installing with yarn 4, you need to disable experimental fetch with the following nodejs config.
 
-### Static HTML Generator (CLI)
+```
+NODE_OPTIONS=--no-experimental-fetch yarn add supabase
+```
 
-Generates portable, self-contained HTML files with all CSS inlined.
+> **Note**
+For Bun versions below v1.0.17, you must add `supabase` as a [trusted dependency](https://bun.sh/guides/install/trusted) before running `bun add -D supabase`.
+
+<details>
+  <summary><b>macOS</b></summary>
+
+  Available via [Homebrew](https://brew.sh). To install:
+
+  ```sh
+  brew install supabase/tap/supabase
+  ```
+
+  To install the beta release channel:
+  
+  ```sh
+  brew install supabase/tap/supabase-beta
+  brew link --overwrite supabase-beta
+  ```
+  
+  To upgrade:
+
+  ```sh
+  brew upgrade supabase
+  ```
+</details>
+
+<details>
+  <summary><b>Windows</b></summary>
+
+  Available via [Scoop](https://scoop.sh). To install:
+
+  ```powershell
+  scoop bucket add supabase https://github.com/supabase/scoop-bucket.git
+  scoop install supabase
+  ```
+
+  To upgrade:
+
+  ```powershell
+  scoop update supabase
+  ```
+</details>
+
+<details>
+  <summary><b>Linux</b></summary>
+
+  Available via [Homebrew](https://brew.sh) and Linux packages.
+
+  #### via Homebrew
+
+  To install:
+
+  ```sh
+  brew install supabase/tap/supabase
+  ```
+
+  To upgrade:
+
+  ```sh
+  brew upgrade supabase
+  ```
+
+  #### via Linux packages
+
+  Linux packages are provided in [Releases](https://github.com/supabase/cli/releases). To install, download the `.apk`/`.deb`/`.rpm`/`.pkg.tar.zst` file depending on your package manager and run the respective commands.
+
+  ```sh
+  sudo apk add --allow-untrusted <...>.apk
+  ```
+
+  ```sh
+  sudo dpkg -i <...>.deb
+  ```
+
+  ```sh
+  sudo rpm -i <...>.rpm
+  ```
+
+  ```sh
+  sudo pacman -U <...>.pkg.tar.zst
+  ```
+</details>
+
+<details>
+  <summary><b>Other Platforms</b></summary>
+
+  You can also install the CLI via [go modules](https://go.dev/ref/mod#go-install) without the help of package managers.
+
+  ```sh
+  go install github.com/supabase/cli@latest
+  ```
+
+  Add a symlink to the binary in `$PATH` for easier access:
+
+  ```sh
+  ln -s "$(go env GOPATH)/bin/cli" /usr/bin/supabase
+  ```
+
+  This works on other non-standard Linux distros.
+</details>
+
+<details>
+  <summary><b>Community Maintained Packages</b></summary>
+
+  Available via [pkgx](https://pkgx.sh/). Package script [here](https://github.com/pkgxdev/pantry/blob/main/projects/supabase.com/cli/package.yml).
+  To install in your working directory:
+
+  ```bash
+  pkgx install supabase
+  ```
+
+  Available via [Nixpkgs](https://nixos.org/). Package script [here](https://github.com/NixOS/nixpkgs/blob/master/pkgs/development/tools/supabase-cli/default.nix).
+</details>
+
+### Run the CLI
 
 ```bash
-# Looks up the file in the Prompts/ folder by default
-bun run cli -- output.html my_prompt_name
-
-# Render multiple files with a specific style
-bun run cli -- comparison.html prompt_v1 prompt_v2 --style compact
-
-# Render from an absolute path
-bun run cli -- result.html "C:/path/to/my_logic.acdl"
+supabase bootstrap
 ```
 
-The `--style` flag applies a rendering style. Define new styles by adding `.style-[name]` classes to `src/styles.css`.
-
-| Style | Description |
-| :--- | :--- |
-| **default** | Balanced spacing with clear role headers |
-| **compact** | Minimalist layout for dense, complex prompts |
-
----
-
-## Project Structure
-
-```
-src/
-  scanner.ts          Lexical tokenizer
-  tokens.ts           Token type definitions
-  parser.ts           Recursive descent parser
-  types.ts            AST type definitions
-  constructors.ts     AST node factory functions
-  renderPrompt.ts     AST -> HTML renderer
-  main-ui.ts          Browser viewer entry point
-  main-cli.ts         CLI generator entry point
-  ui.ts               Collapsible block behavior
-  styles.css          Shared stylesheet for all rendering modes
-  index.html          Browser viewer shell
-  editor/
-    setup.ts           CodeMirror initialization
-    acdl-language.ts   ACDL language mode for CodeMirror
-    acdl-theme.ts      Editor syntax highlighting theme
-    acdl-lint.ts       Live parse-error linting
-
-Prompts/              Default home for .acdl source files
-ConceptualGuide.md    Language design and concepts
-SyntaxReference.MD    Language syntax reference
-```
-
----
-
-## VSCode Extension
-
-A VSCode extension is included that provides full language support for `.acdl` files:
-
-- **Syntax highlighting** — color-coded keywords, roles, templates, context variables, strings, comments
-- **Bracket matching** and **auto-closing** pairs
-- **Comment toggling** (`Ctrl+/`)
-- **Code folding** for `{ }` blocks
-- **Live diagnostics** — parse errors shown as red underlines in real time
-- **Preview panel** — `Ctrl+Shift+P` → "ACDL: Show Preview" renders the visualization alongside the editor
-- **Go-to-definition** — click on `prompt.X` references to jump to label definitions
-
-### Install from the repo
+Or using npx:
 
 ```bash
-code --install-extension dist/extension/acdl-language-0.1.0.vsix
+npx supabase bootstrap
 ```
 
-Or in VSCode: `Ctrl+Shift+P` → **Extensions: Install from VSIX...** → select `dist/extension/acdl-language-0.1.0.vsix`.
+The bootstrap command will guide you through the process of setting up a Supabase project using one of the [starter](https://github.com/supabase-community/supabase-samples/blob/main/samples.json) templates.
 
-After installing, reload VSCode (`Ctrl+Shift+P` → **Developer: Reload Window**).
+## Docs
 
----
+Command & config reference can be found [here](https://supabase.com/docs/reference/cli/about).
 
-## Language Documentation
+## Breaking changes
 
-- **[ConceptualGuide.md](ConceptualGuide.md)** — Design principles, the core model of prompts as role message sequences, context variable namespaces, time indexing, and control flow semantics.
-- **[SyntaxReference.MD](SyntaxReference.MD)** — Formal syntax reference covering file structure, scoping rules, role messages, context variables, templates, functions, and all control flow constructs.
+We follow semantic versioning for changes that directly impact CLI commands, flags, and configurations.
+
+However, due to dependencies on other service images, we cannot guarantee that schema migrations, seed.sql, and generated types will always work for the same CLI major version. If you need such guarantees, we encourage you to pin a specific version of CLI in package.json.
+
+## Developing
+
+To run from source:
+
+```sh
+# Go >= 1.22
+go run . help
+```

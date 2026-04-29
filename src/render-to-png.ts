@@ -68,13 +68,14 @@ async function renderToPng(htmlContent: string, outputPath: string): Promise<voi
         });
 
         // Fix end-dashed-line - html2canvas doesn't render repeating-linear-gradient
-        // Convert to border-top dashed style
+        // Convert to border-bottom dashed style (works better with flex align-items: center)
         const endDashedLines = output.querySelectorAll('.end-dashed-line');
         endDashedLines.forEach(el => {
             const htmlEl = el as HTMLElement;
             htmlEl.style.background = 'none';
-            htmlEl.style.borderTop = '1px dashed #6e7781';
             htmlEl.style.height = '0';
+            htmlEl.style.borderBottom = '1px dashed #6e7781';
+            htmlEl.style.alignSelf = 'center';
         });
 
         // Fix title to prevent wrapping

@@ -7,7 +7,7 @@ ReactBase[@T]: {
   // history
   ForEach(t: range(1,@T-1)) {
     A: {
-      MARK 1 {
+      Mark 1 {
         resp.tool_reasoning[@t] 
       }
       sys.tool_used[@t]

@@ -8,6 +8,7 @@
     "cli": "bun run src/main-cli.ts",
     "render-pdf": "bun run src/render-to-pdf.ts",
     "render-png": "bun run src/render-to-png.ts",
+    "render-svg": "bun run src/render-to-svg.ts",
     "sync-css": "node -e \"require('fs').copyFileSync('src/styles.css', 'extension/media/preview.css')\"",
     "build:extension": " npm run sync-css && cd extension && npm run package",
     "build:standalone": "node scripts/build-standalone.js",
@@ -15,6 +16,7 @@
   },
   "devDependencies": {
     "@types/bun": "^1.1.0",
+    "@types/opentype.js": "^1.3.9",
     "typescript": "^5.0.0",
     "vite": "^5.2.0"
   },
@@ -27,10 +29,15 @@
     "@codemirror/state": "^6.5.4",
     "@codemirror/view": "^6.39.12",
     "@lezer/highlight": "^1.2.3",
+    "@types/jsdom": "^28.0.1",
     "@types/pdfkit": "^0.17.5",
     "dompdf.js": "^1.1.1",
+    "jsdom": "^29.0.2",
+    "jspdf": "^4.2.1",
+    "opentype.js": "^1.3.4",
     "pdf-lib": "^1.17.1",
     "pdfkit": "^0.17.2",
-    "puppeteer": "^24.37.5"
+    "puppeteer": "^24.37.5",
+    "svg2pdf.js": "^2.7.0"
   }
 }
