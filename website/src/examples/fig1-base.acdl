@@ -5,7 +5,7 @@ ReactBase[@T]: {
   }
   U: env.user_input[@1]
   // history
-  ForEach(t: range(1,@T-1)) {
+  ForEach(t: range(1,@T)) {
     A: {
       Mark 1 {
         resp.tool_reasoning[@t] 

@@ -173,6 +173,244 @@
       background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='rgba(10,10,10,0.4)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6'/%3E%3Cpolyline points='15 3 21 3 21 9'/%3E%3Cline x1='10' y1='14' x2='21' y2='3'/%3E%3C/svg%3E");
     }
 
+    /* Expandable code */
+    .example-card-code.expanded {
+      max-height: none;
+    }
+    .example-card-code.expanded::after {
+      display: none;
+    }
+
+    .expand-link {
+      cursor: pointer;
+      user-select: none;
+    }
+
+    /* Modal styles */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+      padding: 24px;
+    }
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal {
+      background: #fff;
+      border-radius: 16px;
+      max-width: 1000px;
+      width: 100%;
+      max-height: 90vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 24px;
+      border-bottom: 1px solid rgba(0,0,0,0.08);
+    }
+
+    .modal-header h3 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: #0a0a0a;
+      margin: 0;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+      color: rgba(0,0,0,0.4);
+      padding: 4px;
+      line-height: 1;
+    }
+    .modal-close:hover {
+      color: #0a0a0a;
+    }
+
+    .modal-tabs {
+      display: flex;
+      border-bottom: 1px solid rgba(0,0,0,0.08);
+      padding: 0 24px;
+    }
+
+    .modal-tab {
+      padding: 12px 20px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: rgba(0,0,0,0.5);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      transition: all 0.2s;
+    }
+    .modal-tab:hover {
+      color: #0a0a0a;
+    }
+    .modal-tab.active {
+      color: #7877c6;
+      border-bottom-color: #7877c6;
+    }
+
+    .modal-content {
+      flex: 1;
+      overflow: auto;
+    }
+
+    .modal-pane {
+      display: none;
+      padding: 24px;
+    }
+    .modal-pane.active {
+      display: block;
+    }
+
+    .modal-pane pre {
+      background: #1a1a1a;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 0;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      line-height: 1.6;
+      color: #d4d4d4;
+      overflow-x: auto;
+    }
+
+    /* Rendered output styles (matching index.html) */
+    .rendered-output {
+      background: #fff;
+      border: 1px solid rgba(0,0,0,0.1);
+      border-radius: 8px;
+      padding: 16px 20px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      line-height: 1.4;
+    }
+
+    .rendered-output .prompt-title {
+      background: #f6f8fa;
+      border: 1px solid #d0d7de;
+      border-radius: 3px;
+      padding: 3px 8px;
+      margin-bottom: 8px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #0a0a0a;
+    }
+
+    .rendered-output .role-msg {
+      border-left: 2px solid #d0d7de;
+      margin: 4px 0;
+    }
+    .rendered-output .role-msg.system { border-left-color: #0969da; }
+    .rendered-output .role-msg.user { border-left-color: #e5990b; }
+    .rendered-output .role-msg.assistant { border-left-color: #1acad1; }
+    .rendered-output .role-msg.tool { border-left-color: #f7660b; }
+
+    .rendered-output .role-badge {
+      display: block;
+      width: fit-content;
+      padding: 1px 4px;
+      font-size: 7px;
+      font-weight: 600;
+      letter-spacing: 0.2px;
+      text-transform: uppercase;
+      border-radius: 0 0 2px 0;
+      color: #fff;
+      line-height: 1;
+    }
+    .rendered-output .role-msg.system .role-badge { background: #0969da; }
+    .rendered-output .role-msg.user .role-badge { background: #e5990b; }
+    .rendered-output .role-msg.assistant .role-badge { background: #1acad1; }
+    .rendered-output .role-msg.tool .role-badge { background: #f7660b; }
+
+    .rendered-output .role-body {
+      padding: 3px 8px;
+    }
+
+    .rendered-output .tpl {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      background: #faf5ff;
+      border: 1px solid #9333ea;
+      color: #9333ea;
+      padding: 1px 4px;
+      border-radius: 3px;
+      font-size: 9px;
+      font-weight: 500;
+      line-height: 1;
+      margin: 1px 0;
+    }
+    .rendered-output .tpl::before {
+      content: '◆';
+      font-size: 6px;
+      opacity: 0.7;
+    }
+
+    .rendered-output .ctx {
+      display: inline-flex;
+      background: #e0ffdd;
+      border: 1px solid #0da66b;
+      color: #0da66b;
+      padding: 1px 4px;
+      border-radius: 3px;
+      font-size: 9px;
+      font-weight: 500;
+      margin: 1px 0;
+    }
+
+    .rendered-output .idx {
+      color: #0969da;
+      font-weight: 600;
+    }
+
+    .rendered-output .ctrl-block {
+      border-left: 1px solid #6e7781;
+      margin: 4px 0;
+      padding: 2px 6px 2px 8px;
+    }
+
+    .rendered-output .ctrl-header {
+      padding: 2px 6px;
+      margin: -2px -6px 4px -8px;
+      border-radius: 0 2px 0 0;
+      font-size: 9px;
+      font-weight: 600;
+      color: #57606a;
+      background: #eaeef2;
+      display: flex;
+      align-items: center;
+      gap: 3px;
+    }
+
+    .rendered-output .cmt {
+      color: #6e7781;
+      font-style: italic;
+      font-size: 9px;
+    }
+
+    /* Hide rendered output in cards - only shown in modal */
+    .example-card-rendered {
+      display: none;
+    }
+
     @media (max-width: 900px) {
       .examples-grid {
         grid-template-columns: 1fr;
@@ -190,6 +428,24 @@
 
   <section class="section section-light">
     <div class="container">
+      <div style="background: rgba(120, 119, 198, 0.06); border: 1px solid rgba(120, 119, 198, 0.15); border-radius: 12px; padding: 20px 24px; margin-bottom: 40px;">
+        <p style="color: rgba(10,10,10,0.7); font-size: 0.9rem; margin-bottom: 12px; font-weight: 500;">Each example includes:</p>
+        <ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px;">
+          <li style="display: flex; align-items: flex-start; gap: 10px; color: rgba(10,10,10,0.6); font-size: 0.85rem;">
+            <span style="color: #7877c6; font-weight: 600;">Show More</span>
+            <span>— Expand the code snippet in place</span>
+          </li>
+          <li style="display: flex; align-items: flex-start; gap: 10px; color: rgba(10,10,10,0.6); font-size: 0.85rem;">
+            <span style="color: #7877c6; font-weight: 600;">Preview</span>
+            <span>— Open a modal with the rendered ACDL visualization</span>
+          </li>
+          <li style="display: flex; align-items: flex-start; gap: 10px; color: rgba(10,10,10,0.6); font-size: 0.85rem;">
+            <span style="color: #7877c6; font-weight: 600;">Open in Live Editor</span>
+            <span>— Go to the interactive editor to modify the code</span>
+          </li>
+        </ul>
+      </div>
+
       <div class="section-header">
         <h2>Basic Patterns</h2>
         <p>Foundational structures for LLM context management</p>
@@ -210,7 +466,21 @@
     <span class="role">S</span>: <span class="template">INSTRUCTIONS</span>
 }</pre>
           </div>
+          <div class="example-card-rendered">
+            <div class="rendered-output">
+              <div class="prompt-title">Context[<span class="idx">@T</span>]:</div>
+              <div class="role-msg system">
+                <span class="role-badge">Role: System</span>
+                <div class="role-body"><span class="tpl">PERSONA</span></div>
+              </div>
+              <div class="role-msg system">
+                <span class="role-badge">Role: System</span>
+                <div class="role-body"><span class="tpl">INSTRUCTIONS</span></div>
+              </div>
+            </div>
+          </div>
           <div class="example-card-footer">
+            <a href="#" onclick="openModal('Basic Context', this, 'basic'); return false;">Preview</a>
             <a href="../visualizer.html?example=basic">Open in Live Editor</a>
           </div>
         </div>
@@ -237,7 +507,30 @@
     }
 }</pre>
           </div>
+          <div class="example-card-rendered">
+            <div class="rendered-output">
+              <div class="prompt-title">BasicRAG[<span class="idx">@T</span>]:</div>
+              <div class="role-msg system">
+                <span class="role-badge">Role: System</span>
+                <div class="role-body"><span class="tpl">INSTRUCTIONS</span></div>
+              </div>
+              <div class="role-msg user">
+                <span class="role-badge">Role: User</span>
+                <div class="role-body">
+                  <div class="ctrl-block">
+                    <div class="ctrl-header">↻ ForEach i : 1 ... $docs.len</div>
+                    <span class="ctx">$docs[i].source</span><br>
+                    <span class="ctx">$docs[i].content</span>
+                  </div>
+                  <span class="tpl">ANSWER_Q_FROM_DOCS</span><br>
+                  <span class="ctx">env.user_input[<span class="idx">@T</span>]</span>
+                </div>
+              </div>
+            </div>
+          </div>
           <div class="example-card-footer">
+            <a href="#" class="expand-link" onclick="toggleExpand(this); return false;">Show More</a>
+            <a href="#" onclick="openModal('Basic RAG', this, 'basic_rag'); return false;">Preview</a>
             <a href="../visualizer.html?example=basic_rag">Open in Live Editor</a>
           </div>
         </div>
@@ -275,7 +568,43 @@
     <span class="role">S</span>: <span class="template">USE_TOOLS_TO_SOLVE_TASK</span>
 }</pre>
           </div>
+          <div class="example-card-rendered">
+            <div class="rendered-output">
+              <div class="prompt-title">ReactBase[<span class="idx">@T</span>]:</div>
+              <div class="role-msg system">
+                <span class="role-badge">Role: System</span>
+                <div class="role-body">
+                  <span class="tpl">INSTRUCTIONS</span><br>
+                  <span class="tpl">AVAILABLE_TOOLS</span>
+                </div>
+              </div>
+              <div class="role-msg user">
+                <span class="role-badge">Role: User</span>
+                <div class="role-body"><span class="ctx">env.user_input[<span class="idx">@1</span>]</span></div>
+              </div>
+              <div class="ctrl-block">
+                <div class="ctrl-header">↻ ForEach <span class="idx">@t</span> : 1 ... <span class="idx">@T</span>-1</div>
+                <div class="role-msg assistant">
+                  <span class="role-badge">Role: Assistant</span>
+                  <div class="role-body">
+                    <span class="ctx">resp.tool_reasoning[<span class="idx">@t</span>]</span><br>
+                    <span class="ctx">sys.tool_used[<span class="idx">@t</span>]</span>
+                  </div>
+                </div>
+                <div class="role-msg tool">
+                  <span class="role-badge">Role: Tool</span>
+                  <div class="role-body"><span class="ctx">sys.tool_used[<span class="idx">@t</span>].tool_response</span></div>
+                </div>
+              </div>
+              <div class="role-msg system">
+                <span class="role-badge">Role: System</span>
+                <div class="role-body"><span class="tpl">USE_TOOLS_TO_SOLVE_TASK</span></div>
+              </div>
+            </div>
+          </div>
           <div class="example-card-footer">
+            <a href="#" class="expand-link" onclick="toggleExpand(this); return false;">Show More</a>
+            <a href="#" onclick="openModal('ReAct Base', this, 'react_base'); return false;">Preview</a>
             <a href="../visualizer.html?example=react_base">Open in Live Editor</a>
           </div>
         </div>
@@ -304,6 +633,8 @@
 }</pre>
           </div>
           <div class="example-card-footer">
+            <a href="#" class="expand-link" onclick="toggleExpand(this); return false;">Show More</a>
+            <a href="#" onclick="openModal('ReAct No Reasoning', this, 'react_no_reasoning'); return false;">Preview</a>
             <a href="../visualizer.html?example=react_no_reasoning">Open in Live Editor</a>
           </div>
         </div>
@@ -336,6 +667,8 @@
 }</pre>
           </div>
           <div class="example-card-footer">
+            <a href="#" class="expand-link" onclick="toggleExpand(this); return false;">Show More</a>
+            <a href="#" onclick="openModal('ReAct Tool-RAG', this, 'react_tool_rag'); return false;">Preview</a>
             <a href="../visualizer.html?example=react_tool_rag">Open in Live Editor</a>
           </div>
         </div>
@@ -371,26 +704,38 @@
   <span class="keyword">ForEach</span>(<span class="context">@t</span>: range(<span class="context">@$C</span>, <span class="context">@T</span>)) {
     <span class="role">U</span>: {
       <span class="context">env.user_input</span>[<span class="context">@t</span>]
-      <span class="keyword">If</span> <span class="context">@T</span> == <span class="context">@t</span> && <span class="context">sys.is_plan_mode</span>[<span class="context">@t</span>] {
+      <span class="keyword">If</span> <span class="context">@T</span> == <span class="context">@t</span> &amp;&amp; <span class="context">sys.is_plan_mode</span>[<span class="context">@t</span>] {
         <span class="template">PLAN_MODE_REMINDER</span>
       }
     }
-    ...
+    <span class="keyword">ForEach</span>(<span class="context">@i</span>: range(1, <span class="context">@t</span>.substeps)) {
+      <span class="role">A</span>: {
+        <span class="keyword">ForEach</span>(tool: <span class="context">sys.tool_requests</span>[<span class="context">@t.i</span>]) {
+          $tool.id_name_and_args
+        }
+      }
+      <span class="keyword">ForEach</span>(tool: <span class="context">sys.tool_requests</span>[<span class="context">@t.i</span>]) {
+        <span class="role">T</span>: $tool.id_and_response
+      }
+    }
+    <span class="role">A</span>: <span class="context">sys.response</span>[<span class="context">@t</span>]
   }
 }</pre>
           </div>
           <div class="example-card-footer">
+            <a href="#" class="expand-link" onclick="toggleExpand(this); return false;">Show More</a>
+            <a href="#" onclick="openModal('OpenCode', this, 'opencode'); return false;">Preview</a>
             <a href="../visualizer.html?example=opencode">Open in Live Editor</a>
           </div>
         </div>
 
         <div class="example-card">
           <div class="example-card-header">
-            <h3>OpenClaw (Letta-like)</h3>
+            <h3>OpenClaw</h3>
             <p>Persistent agent with heartbeat timer, pending messages, and memory</p>
             <div class="example-card-tags">
               <span class="tag tag-react">ReAct</span>
-              <span class="tag tag-multiagent">Persistent</span>
+              <span class="tag tag-multiagent">Persistixent</span>
             </div>
           </div>
           <div class="example-card-code">
@@ -403,17 +748,31 @@
   }
   <span class="keyword">ForEach</span>(t: range(<span class="context">@C</span> + 1, <span class="context">@T</span>)) {
     <span class="role">U</span>: {
-      <span class="keyword">ForEach</span>(m: <span class="context">sys.pending_messages</span>[<span class="context">@t</span>]) {...}
+      <span class="keyword">ForEach</span>(m: <span class="context">sys.pending_messages</span>[<span class="context">@t</span>]) {
+        $m.date_time  $m.message
+      }
       <span class="keyword">Switch</span> <span class="context">env.input_source</span>[<span class="context">@t</span>] {
         <span class="keyword">Case</span> user: { <span class="context">env.user_query</span>[<span class="context">@t</span>] }
-        <span class="keyword">Case</span> heartbeat_timer: { <span class="template">HEARTBEAT</span> }
+        <span class="keyword">Case</span> heartbeat_timer: { <span class="template">HEARTBEAT_INSTRUCTIONS</span> }
       }
     }
-    ...
+    <span class="keyword">ForEach</span>(i: range(1, <span class="context">@t</span>.substeps)) {
+      <span class="role">A</span>: {
+        <span class="keyword">ForEach</span>(tool: <span class="context">sys.tool_requests</span>[<span class="context">@t.i</span>]) {
+          $tool.id_name_and_arg
+        }
+      }
+      <span class="keyword">ForEach</span>(tool: <span class="context">sys.tool_requests</span>[<span class="context">@t.i</span>]) {
+        <span class="role">T</span>: $tool.id_and_response
+      }
+    }
+    <span class="role">A</span>: <span class="context">resp.response</span>[<span class="context">@t</span>]
   }
 }</pre>
           </div>
           <div class="example-card-footer">
+            <a href="#" class="expand-link" onclick="toggleExpand(this); return false;">Show More</a>
+            <a href="#" onclick="openModal('OpenClaw', this, 'openclaw'); return false;">Preview</a>
             <a href="../visualizer.html?example=openclaw">Open in Live Editor</a>
           </div>
         </div>
@@ -451,6 +810,8 @@
 }</pre>
           </div>
           <div class="example-card-footer">
+            <a href="#" class="expand-link" onclick="toggleExpand(this); return false;">Show More</a>
+            <a href="#" onclick="openModal('Pokemon Agent', this, 'pokemon'); return false;">Preview</a>
             <a href="../visualizer.html?example=pokemon">Open in Live Editor</a>
           </div>
         </div>
@@ -479,11 +840,23 @@
       a.name  a.description
       retrieve(<span class="context">sys</span>[agent].memory[<span class="context">@T</span>], a.name)
     }
+    <span class="keyword">If</span> <span class="context">sys</span>[agent].in_conversation[<span class="context">@T</span>] {
+      <span class="keyword">ForEach</span>(convTurn: <span class="context">sys</span>[agent].conversation[<span class="context">@T</span>]) {
+        convTurn.speaker  convTurn.content
+      }
+    }
   }
-  ...
+  <span class="role">S</span>: {
+    <span class="context">sys</span>[agent].available_actions
+    <span class="keyword">If</span> <span class="context">sys</span>[agent].in_conversation[<span class="context">@T</span>] {
+      <span class="template">CONTINUE_THE_CONVERSATION</span>
+    }
+  }
 }</pre>
           </div>
           <div class="example-card-footer">
+            <a href="#" class="expand-link" onclick="toggleExpand(this); return false;">Show More</a>
+            <a href="#" onclick="openModal('Multi-Agent', this, 'multiagent'); return false;">Preview</a>
             <a href="../visualizer.html?example=multiagent">Open in Live Editor</a>
           </div>
         </div>
@@ -496,5 +869,78 @@
   </section>
 
   {{FOOTER}}
+
+  <!-- Modal -->
+  <div class="modal-overlay" id="modal" onclick="closeModal(event)">
+    <div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3 id="modal-title">Example</h3>
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+      </div>
+      <div class="modal-tabs">
+        <div class="modal-tab active" onclick="switchTab('rendered')">Rendered</div>
+        <div class="modal-tab" onclick="switchTab('code')">Code</div>
+      </div>
+      <div class="modal-content">
+        <div class="modal-pane active" id="pane-rendered">
+          <div id="modal-rendered"></div>
+        </div>
+        <div class="modal-pane" id="pane-code">
+          <pre id="modal-code"></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function toggleExpand(link) {
+      const card = link.closest('.example-card');
+      const codeBlock = card.querySelector('.example-card-code');
+      const isExpanded = codeBlock.classList.toggle('expanded');
+      link.textContent = isExpanded ? 'Show Less' : 'Show More';
+    }
+
+    function openModal(title, link, exampleId) {
+      const card = link.closest('.example-card');
+      const codeHtml = card.querySelector('.example-card-code pre').innerHTML;
+      const renderedHtml = card.querySelector('.example-card-rendered');
+
+      document.getElementById('modal-title').textContent = title;
+      document.getElementById('modal-code').innerHTML = codeHtml;
+
+      // Copy rendered output HTML
+      const renderedDiv = document.getElementById('modal-rendered');
+      if (renderedHtml) {
+        renderedDiv.innerHTML = renderedHtml.innerHTML;
+      } else {
+        renderedDiv.innerHTML = '<p style="color: rgba(0,0,0,0.5); font-style: italic;">Rendered output not available for this example.</p>';
+      }
+
+      document.getElementById('modal').classList.add('active');
+      document.body.style.overflow = 'hidden';
+
+      // Default to rendered tab
+      switchTab('rendered');
+    }
+
+    function closeModal(event) {
+      if (event && event.target !== event.currentTarget) return;
+      document.getElementById('modal').classList.remove('active');
+      document.body.style.overflow = '';
+    }
+
+    function switchTab(tab) {
+      document.querySelectorAll('.modal-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.modal-pane').forEach(p => p.classList.remove('active'));
+
+      document.querySelector(`.modal-tab:nth-child(${tab === 'rendered' ? 1 : 2})`).classList.add('active');
+      document.getElementById(`pane-${tab}`).classList.add('active');
+    }
+
+    // Close on Escape key
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeModal();
+    });
+  </script>
 </body>
 </html>

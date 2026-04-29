@@ -6,7 +6,7 @@ MultiAgent[@T, agent]: {
   U: {
     // history
     // NOTE: history does not show substeps
-    ForEach(@t: range(@T-50, @T-1)) {
+    ForEach(@t: range(@T-50, @T)) {
       sys[agent].performed_action[@t]
       sys[agent].performed_action[@t].result
     }

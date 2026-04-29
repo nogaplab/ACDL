@@ -4,7 +4,7 @@ ReactToolRagAtEnd[@T]: {
   }
   U: env.user_input[@1]
   // history
-  ForEach(t: range(1,@T-1)) {
+  ForEach(t: range(1,@T)) {
     A: {
       resp.tool_reasoning[@t] 
       sys.tool_used[@t]

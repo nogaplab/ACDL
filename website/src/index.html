@@ -97,6 +97,168 @@
       background: transparent;
       padding: 0;
       border-radius: 0;
+      text-align: left;
+    }
+
+    /* Side-by-side code and render */
+    .hero-code.code-and-render {
+      display: grid;
+      grid-template-columns: auto auto;
+      gap: 0;
+    }
+
+    .code-and-render .code-panel {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px 0 0 16px;
+      border-right: none;
+      overflow: hidden;
+    }
+
+    .code-and-render .rendered-output {
+      background: #fff;
+      border-radius: 0 16px 16px 0;
+      padding: 16px 20px;
+      color: #0a0a0a;
+      text-align: left;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      line-height: 1.4;
+    }
+
+    .code-and-render .render-label {
+      font-family: 'Inter', sans-serif;
+      font-size: 9px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: rgba(0,0,0,0.4);
+      margin-bottom: 12px;
+    }
+
+    .code-and-render .prompt-title {
+      background: #f6f8fa;
+      border: 1px solid #d0d7de;
+      border-radius: 3px;
+      padding: 3px 8px;
+      margin-bottom: 8px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      font-weight: 600;
+      color: #0a0a0a;
+    }
+
+    .code-and-render .role-msg {
+      border-left: 2px solid #d0d7de;
+      margin: 4px 0;
+      padding: 0;
+      border-radius: 0;
+    }
+    .code-and-render .role-msg.system { border-left-color: #0969da; }
+    .code-and-render .role-msg.user { border-left-color: #e5990b; }
+    .code-and-render .role-msg.assistant { border-left-color: #1acad1; }
+    .code-and-render .role-msg.tool { border-left-color: #f7660b; }
+
+    .code-and-render .role-badge {
+      display: block;
+      width: fit-content;
+      padding: 1px 4px;
+      margin: 0;
+      font-size: 7px;
+      font-weight: 600;
+      letter-spacing: 0.2px;
+      text-transform: uppercase;
+      border-radius: 0 0 2px 0;
+      color: #fff;
+      line-height: 1;
+    }
+    .code-and-render .role-msg.system .role-badge { background: #0969da; }
+    .code-and-render .role-msg.user .role-badge { background: #e5990b; }
+    .code-and-render .role-msg.assistant .role-badge { background: #1acad1; }
+    .code-and-render .role-msg.tool .role-badge { background: #f7660b; }
+
+    .code-and-render .role-body {
+      padding: 3px 8px;
+    }
+
+    .code-and-render .tpl {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      background: #faf5ff;
+      border: 1px solid #9333ea;
+      color: #9333ea;
+      padding: 1px 4px;
+      border-radius: 3px;
+      font-size: 9px;
+      font-weight: 500;
+      line-height: 1;
+      margin: 1px 0;
+    }
+    .code-and-render .tpl::before {
+      content: '◆';
+      font-size: 6px;
+      opacity: 0.7;
+    }
+
+    .code-and-render .ctx {
+      display: inline-flex;
+      align-items: center;
+      background: #e0ffdd;
+      border: 1px solid #0da66b;
+      color: #0da66b;
+      padding: 1px 4px;
+      border-radius: 3px;
+      font-size: 9px;
+      font-weight: 500;
+      margin: 1px 0;
+    }
+
+    .code-and-render .idx {
+      color: #0969da;
+      font-weight: 600;
+    }
+
+    .code-and-render .ctrl-block {
+      border-left: 1px solid #6e7781;
+      margin: 4px 0;
+      padding: 2px 6px 2px 8px;
+      border-radius: 2px;
+    }
+
+    .code-and-render .ctrl-header {
+      padding: 2px 6px;
+      margin: -2px -6px 4px -8px;
+      border-radius: 0 2px 0 0;
+      font-size: 9px;
+      font-weight: 600;
+      color: #57606a;
+      background: #eaeef2;
+      display: flex;
+      align-items: center;
+      gap: 3px;
+    }
+
+    .code-and-render .cmt {
+      color: #6e7781;
+      font-style: italic;
+      font-size: 9px;
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    @media (max-width: 900px) {
+      .hero-code.code-and-render {
+        grid-template-columns: 1fr;
+      }
+      .code-and-render .code-panel {
+        border-radius: 16px 16px 0 0;
+        border-right: 1px solid rgba(255,255,255,0.08);
+        border-bottom: none;
+      }
+      .code-and-render .rendered-output {
+        border-radius: 0 0 16px 16px;
+      }
     }
 
     /* Example Section */
@@ -233,13 +395,13 @@
       Describe, visualize and communicate agentic context structures with precision. ACDL captures the structure and dynamics of agentic LLM contexts in a readable, implementation agnostic format.
     </p>
     <div class="hero-buttons">
-      <a href="visualizer.html" class="btn btn-primary">
+      <a href="visualizer.html?example=react_base" class="btn btn-primary">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
           <polygon points="5 3 19 12 5 21 5 3"></polygon>
         </svg>
         Try the Live Editor
       </a>
-      <a href="https://github.com/acdlang26/acdl" class="btn btn-secondary">
+      <a href="https://github.com/nogaplab/ACDL" class="btn btn-secondary">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
           <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
         </svg>
@@ -247,24 +409,66 @@
       </a>
     </div>
 
-    <div class="hero-code">
-      <div class="code-header">
-        <span class="code-dot"></span>
-        <span class="code-dot"></span>
-        <span class="code-dot"></span>
-        <span class="code-title">react-agent.acdl</span>
-      </div>
-      <div class="code-body">
-        <pre><span class="template">ReactAgent</span>[<span class="context">@T</span>]: {
-    <span class="role">S</span>: { <span class="template">INSTRUCTIONS</span>  <span class="template">AVAILABLE_TOOLS</span> }
+    <div class="hero-code code-and-render">
+      <div class="code-panel">
+        <div class="code-header">
+          <span class="code-dot"></span>
+          <span class="code-dot"></span>
+          <span class="code-dot"></span>
+          <span class="code-title">react-agent.acdl</span>
+        </div>
+        <div class="code-body">
+<pre><span class="template">ReactAgent</span>[<span class="context">@T</span>]: {
+    <span class="role">S</span>: {
+          <span class="template">INSTRUCTIONS</span>
+          <span class="template">AVAILABLE_TOOLS</span>
+    }
     <span class="role">U</span>: <span class="context">env.user_input</span>[<span class="context">@1</span>]
     <span class="comment">// Action history</span>
-    <span class="keyword">ForEach</span>(<span class="context">@t</span>: range(1, <span class="context">@T</span>-1)) {
-        <span class="role">A</span>: { <span class="context">resp.reasoning</span>[<span class="context">@t</span>]  <span class="context">sys.tool_used</span>[<span class="context">@t</span>] }
+    <span class="keyword">ForEach</span>(<span class="context">@t</span>: range(1, <span class="context">@T</span>)) {
+        <span class="role">A</span>: {
+             <span class="context">resp.reasoning</span>[<span class="context">@t</span>]
+             <span class="context">sys.tool_used</span>[<span class="context">@t</span>]
+        }
         <span class="role">T</span>: <span class="context">sys.tool_used</span>[<span class="context">@t</span>].response
     }
     <span class="role">S</span>: <span class="template">SOLVE_TASK</span>
 }</pre>
+        </div>
+      </div>
+      <div class="rendered-output">
+        <div class="render-label">Rendered Output</div>
+        <div class="prompt-title">ReactAgent[<span class="idx">@T</span>]:</div>
+        <div class="role-msg system">
+          <span class="role-badge">Role: System</span>
+          <div class="role-body">
+            <span class="tpl">INSTRUCTIONS</span><br>
+            <span class="tpl">AVAILABLE_TOOLS</span>
+          </div>
+        </div>
+        <div class="role-msg user">
+          <span class="role-badge">Role: User</span>
+          <div class="role-body"><span class="ctx">env.user_input[<span class="idx">@1</span>]</span></div>
+        </div>
+        <div class="ctrl-block">
+          <div class="cmt">// Action history</div>
+          <div class="ctrl-header">↻ ForEach <span class="idx">@t</span> : 1 ... <span class="idx">@T</span></div>
+          <div class="role-msg assistant">
+            <span class="role-badge">Role: Assistant</span>
+            <div class="role-body">
+              <span class="ctx">resp.reasoning[<span class="idx">@t</span>]</span><br>
+              <span class="ctx">sys.tool_used[<span class="idx">@t</span>]</span>
+            </div>
+          </div>
+          <div class="role-msg tool">
+            <span class="role-badge">Role: Tool</span>
+            <div class="role-body"><span class="ctx">sys.tool_used[<span class="idx">@t</span>].response</span></div>
+          </div>
+        </div>
+        <div class="role-msg system">
+          <span class="role-badge">Role: System</span>
+          <div class="role-body"><span class="tpl">SOLVE_TASK</span></div>
+        </div>
       </div>
     </div>
   </section>
@@ -290,7 +494,7 @@
         <div class="feature-card">
           <div class="feature-icon icon-green">env</div>
           <h3>Context Variables</h3>
-          <p>Four namespaces: env (environment), sys (system state), resp (LLM responses), and prompt (labeled sections).</p>
+          <p>Four namespaces: env (environment), sys (system state), and resp (LLM responses).</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon icon-purple">If</div>
@@ -356,7 +560,7 @@
       </div>
 
       <div class="resources-grid">
-        <a href="visualizer.html" class="resource-card">
+        <a href="visualizer.html?example=react_base" class="resource-card">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
             <line x1="3" y1="9" x2="21" y2="9"></line>

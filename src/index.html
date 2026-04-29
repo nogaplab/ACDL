@@ -702,6 +702,8 @@
 
     // Map dropdown values to file paths (absolute paths resolved by Vite alias)
     const PROMPT_PATHS = {
+      react1: '/ACDL_examples/React_variants/react1.acdl',
+      react2: '/ACDL_examples/React_variants/react2.acdl',
       fig1_base: '/ACDL_examples/React_variants/fig1-base.acdl',
       fig1_left: '/ACDL_examples/React_variants/fig1-left.acdl',
       fig1_right: '/ACDL_examples/React_variants/fig1-right.acdl',
@@ -713,9 +715,34 @@
       pokemon: '/ACDL_examples/complex_examples/pokemon.acdl',
     };
 
+    // Load example from URL parameter
+    async function loadExampleFromUrl() {
+      const params = new URLSearchParams(window.location.search);
+      const example = params.get('example');
+      if (example && PROMPT_PATHS[example]) {
+        try {
+          const response = await fetch(PROMPT_PATHS[example]);
+          if (!response.ok) throw new Error(`Failed to load ${example}`);
+          const text = await response.text();
+          const editorView = getEditorView();
+          if (editorView) {
+            editorView.dispatch({
+              changes: { from: 0, to: editorView.state.doc.length, insert: text }
+            });
+            doRender();
+          }
+        } catch (err) {
+          console.error("Failed to load example from URL:", err);
+        }
+      }
+    }
+
     document.addEventListener("DOMContentLoaded", () => {
       try {
         initFileHandlers();
+
+        // Check for example in URL parameter
+        loadExampleFromUrl();
 
         // Set up examples dropdown
         const promptSelect = document.getElementById("prompt-select");

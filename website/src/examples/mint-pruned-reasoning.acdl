@@ -6,7 +6,7 @@ MintPrunedReasoning[@T]: {
         env.task_prompt // the question you need to answer, or task you need to complete
     }
 
-    ForEach(@t: range(1,@T-1)) {
+    ForEach(@t: range(1,@T)) {
         ForEach(i: range(1,@t.substeps)) {
             A: sys.tool_used[@t.i]
             U: sys.tool_used[@t.i].tool_response
