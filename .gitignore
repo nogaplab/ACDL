@@ -7,5 +7,3 @@ node_modules/
 .vscode/
 supabase.exe
 .claude/
-.idea/
-.vscode/

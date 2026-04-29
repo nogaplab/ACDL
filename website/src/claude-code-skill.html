@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Claude Code Skill - ACDL</title>
+  <title>ACDL to Code - Claude Code Skill</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -311,57 +311,54 @@
   <section class="section instructions-section">
     <div class="container">
       <div class="section-header">
-        <h2>How to Use</h2>
-        <p>Two ways to use this skill with Claude Code</p>
+        <h2>Workflow</h2>
+        <p>From ACDL specification to working code</p>
       </div>
 
       <div class="instructions-grid">
         <div class="instruction-card">
           <h3>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-              <polyline points="14 2 14 8 20 8"></polyline>
-              <line x1="16" y1="13" x2="8" y2="13"></line>
-              <line x1="16" y1="17" x2="8" y2="17"></line>
-              <polyline points="10 9 9 9 8 9"></polyline>
+              <path d="M12 20h9"></path>
+              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
             </svg>
-            Option 1: Attach the File
+            Step 1: Write Your ACDL
           </h3>
           <ol class="instruction-steps">
             <li>
               <span class="step-num">1</span>
-              <span>Download <span class="code-inline">acdl-skill.md</span> to your project</span>
+              <span>Use the <a href="visualizer.html" style="color: #7877c6;">Live Editor</a> to write your ACDL spec</span>
             </li>
             <li>
               <span class="step-num">2</span>
-              <span>In Claude Code, use <span class="code-inline">@acdl-skill.md</span> to attach the file</span>
+              <span>Preview the prompt structure visually</span>
             </li>
             <li>
               <span class="step-num">3</span>
-              <span>Ask Claude to generate ACDL for your system</span>
+              <span>Copy your finished ACDL specification</span>
             </li>
           </ol>
         </div>
         <div class="instruction-card">
           <h3>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              <polyline points="16 18 22 12 16 6"></polyline>
+              <polyline points="8 6 2 12 8 18"></polyline>
             </svg>
-            Option 2: Paste Directly
+            Step 2: Generate Code
           </h3>
           <ol class="instruction-steps">
             <li>
               <span class="step-num">1</span>
-              <span>Click the <strong>Copy</strong> button above</span>
+              <span>Download the skill file or copy it above</span>
             </li>
             <li>
               <span class="step-num">2</span>
-              <span>Paste the skill content into your Claude Code prompt</span>
+              <span>In Claude Code, attach with <span class="code-inline">@acdl-skill.md</span></span>
             </li>
             <li>
               <span class="step-num">3</span>
-              <span>Follow with your request to generate ACDL</span>
+              <span>Paste your ACDL and ask for the implementation</span>
             </li>
           </ol>
         </div>
@@ -372,22 +369,15 @@
   <section class="section use-cases-section">
     <div class="container">
       <div class="section-header">
-        <h2>Example Prompts</h2>
-        <p>Ways to use the skill after attaching it</p>
+        <h2>Example Prompt</h2>
+        <p>What to say after attaching the skill and your ACDL</p>
       </div>
 
-      <div class="use-cases-grid">
-        <div class="use-case-card">
-          <h4>Implement a Chat Agent</h4>
-          <p>"Here's my ACDL for a multi-turn chat agent. Generate the Python code to build the messages array."</p>
-        </div>
-        <div class="use-case-card">
-          <h4>Build a ReAct Agent</h4>
-          <p>"Implement this ReAct agent ACDL spec with tool call handling and response parsing."</p>
-        </div>
-        <div class="use-case-card">
-          <h4>Create a RAG System</h4>
-          <p>"Generate the code skeleton for this RAG agent, including the retrieval function stubs."</p>
+      <div class="use-cases-grid" style="grid-template-columns: 1fr;">
+        <div class="use-case-card" style="max-width: 700px; margin: 0 auto;">
+          <p style="font-family: 'JetBrains Mono', monospace; font-size: 0.95rem; line-height: 1.8;">
+            "Generate the Python implementation for this ACDL spec. Include the data structures, template constants, and the build_messages() function."
+          </p>
         </div>
       </div>
     </div>
@@ -395,166 +385,158 @@
 
   {{FOOTER}}
 
-  <script id="skillTemplate" type="text/template"># ACDL Generation Skill
+  <script id="skillTemplate" type="text/template"># ACDL to Code Implementation Skill
 
-You are an expert at analyzing LLM-based systems and describing their context structures using ACDL (Agentic Context Description Language).
+You are an expert at implementing LLM agent systems from ACDL (Agentic Context Description Language) specifications. Given an ACDL spec, you generate the code that builds the prompt/messages array for LLM API calls.
 
 ## Your Task
 
-When asked to generate ACDL for a system, analyze the codebase or description provided and produce a formal ACDL specification that captures:
+When given an ACDL specification, generate:
+1. A `build_messages()` function that constructs the messages array
+2. Data structures for storing conversation history and state
+3. Helper functions for templates and context variable lookups
 
-1. **The prompt structure** - What messages are sent to the LLM and in what order
-2. **Role assignments** - Which parts are System, User, Assistant, or Tool messages
-3. **Dynamic content** - What content changes between calls (context variables)
-4. **Control flow** - Loops, conditionals, and branching logic
-5. **Time evolution** - How the context grows over multiple turns
+## ACDL to Code Mapping
 
-## ACDL Syntax Reference
+### Roles → Message Objects
 
-### Specification Structure
-Every ACDL specification has this form:
-```acdl
-PromptName[@T]: {
-    <prompt-blocks>
-}
-```
-The name should be descriptive (e.g., `CodingAssistant`, `RAGBot`). The index `[@T]` indicates the current time step. Use `[@T.I]` if the system has sub-steps within turns.
+| ACDL | Python Code |
+|------|-------------|
+| `S: content` | `{"role": "system", "content": content}` |
+| `U: content` | `{"role": "user", "content": content}` |
+| `A: content` | `{"role": "assistant", "content": content}` |
+| `T: content` | `{"role": "tool", "content": content, "tool_call_id": id}` |
 
-### Roles
-- `S:` - System message (instructions, persona, tool descriptions)
-- `U:` - User message (external input, observations)
-- `A:` - Assistant message (prior model outputs, reasoning)
-- `T:` - Tool message (tool call results)
-- `N:` - Completion format (for non-chat completions, only one allowed per spec)
+### Time Indices → Parameters/Loops
 
-Role messages can be single-line or multi-line:
-```acdl
-U: env.user_input[@t]           // Single-line form
+| ACDL | Python Code |
+|------|-------------|
+| `@T` | `turn` (current turn parameter) |
+| `@t` | `t` (loop variable) |
+| `@T.I` | `(turn, substep)` tuple |
+| `@t.substeps` | `len(history[t].tool_calls)` |
+| `range(1, @T)` | `range(1, turn)` |
 
-S: {                             // Multi-line form
-    INSTRUCTIONS
-    AVAILABLE_TOOLS
-}
-```
+### Context Variables → Data Lookups
 
-### Time Indices
-- `@T` - Current turn/step
-- `@t` - Loop variable for iterating over turns
-- `@T.I` - Current sub-step within current turn
-- `@t.i` - Sub-step i of turn t (in loops)
-- `@t.substeps` - Count of sub-steps in turn t
-- `@1`, `@2` - Specific turn numbers (indices start at 1)
-- `@T-1` - Previous turn (arithmetic allowed)
+| ACDL | Python Code |
+|------|-------------|
+| `env.user_input[@t]` | `history[t].user_input` |
+| `sys.tool_response[@t]` | `history[t].tool_response` |
+| `resp.reasoning[@t]` | `history[t].assistant_response` |
+| `env.x[@T]` | `current_input.x` or function parameter |
 
-### Context Variables
-Use dotted notation with these namespaces:
-- `env.*` - Environment/external data (e.g., `env.user_input[@t]`, `env.search_results[@t]`)
-- `sys.*` - System state (e.g., `sys.tool_responses[@t]`, `sys.memory`)
-- `resp.*` - LLM response data (e.g., `resp.reasoning[@t]`, `resp.answer[@t]`)
+### Templates → String Constants
 
-Variables can have nested paths and multiple indices:
-```acdl
-sys.tool[@t].tool_response
-env.bomb_location[@t, bomb]
-```
+| ACDL | Python Code |
+|------|-------------|
+| `SYSTEM_PROMPT` | `SYSTEM_PROMPT = """..."""` |
+| `AVAILABLE_TOOLS` | `AVAILABLE_TOOLS = """..."""` |
+| `TEMPLATE(arg)` | `def template(arg): return f"..."` |
 
-### Templates
-Use ALL_CAPS for static/semi-static text blocks:
-- `SYSTEM_PROMPT` - Main system instructions
-- `AVAILABLE_TOOLS` - Tool descriptions
-- `TASK_INSTRUCTIONS` - Task-specific guidance
+### Control Flow → Python Control Flow
 
-Templates can accept arguments:
-```acdl
-QUERY(sys.agent_name)
-ENV_INFO(env.working_dir, env.platform)
-```
+| ACDL | Python Code |
+|------|-------------|
+| `ForEach(@t: range(1, @T)) { ... }` | `for t in range(1, turn): ...` |
+| `ForEach(item: $list) { ... }` | `for item in items: ...` |
+| `If condition { ... }` | `if condition: ...` |
+| `Switch x { Case "a": {...} }` | `if x == "a": ... elif ...` |
+| `Name x := expr` | `x = expr` |
 
-### Control Flow
+## Implementation Pattern
 
-**ForEach** - Iterate over ranges or collections:
-```acdl
-ForEach(@t: range(1, @T)) {
-    U: env.user_input[@t]
-    A: resp.answer[@t]
-}
+For any ACDL spec, generate this structure:
 
-ForEach(doc: $docs) {
-    doc.source
-    doc.content
-}
-```
+```python
+from dataclasses import dataclass
+from typing import List, Optional, Any
 
-**If/ElseIf/Else** - Conditional content:
-```acdl
-If sys.has_history[@T] {
-    // Include history
-} ElseIf @T > 1 {
-    // Alternative
-} Else {
-    // Default case
-}
-```
+# === TEMPLATES ===
+# Static text blocks from ALL_CAPS elements
 
-**Switch/Case/Default** - Multi-way branching:
-```acdl
-Switch sys.action_type[@t] {
-    Case "search": { U: env.search_results[@t] }
-    Case "calculate": { U: env.calculation[@t] }
-    Default: { U: env.fallback[@t] }
-}
+SYSTEM_PROMPT = """
+[Fill in system instructions]
+"""
+
+# === DATA STRUCTURES ===
+
+@dataclass
+class TurnHistory:
+    user_input: str
+    assistant_response: Optional[str] = None
+    tool_calls: List[Any] = None
+    tool_responses: List[str] = None
+
+    def __post_init__(self):
+        if self.tool_calls is None:
+            self.tool_calls = []
+        if self.tool_responses is None:
+            self.tool_responses = []
+
+@dataclass
+class AgentState:
+    history: List[TurnHistory]
+    # Add additional state fields as needed
+
+    def __post_init__(self):
+        if self.history is None:
+            self.history = []
+
+# === MESSAGE BUILDER ===
+
+def build_messages(turn: int, state: AgentState, current_input: str) -> List[dict]:
+    messages = []
+
+    # [Generated from ACDL spec]
+
+    return messages
 ```
 
-### Named Variables
-Bind expressions to reusable names with `$` prefix:
-```acdl
-Name docs := k_relevant_docs(env.query[@T], 5)
-ForEach(i: range(1, $docs.len)) {
-    $docs[i].source
-    $docs[i].content
-}
-```
+## Examples
 
-List comprehensions:
-```acdl
-Name summaries := [sys.summary[@t] for t in range(@T-100, @T, 10)]
-```
+### Example 1: Basic Chat Agent
 
-### Functions
-Named functions for computed content (use camelCase):
+**ACDL:**
 ```acdl
-k_relevant_docs(query, k)       // Retrieve k relevant documents
-summarize(content)              // Summarize content
-range(start, stop)              // Generate sequence (inclusive)
-range(start, stop, step)        // With step size
-```
-
-### Mark Blocks
-Annotate sections for visual emphasis:
-```acdl
-Mark 1 {
-    S: INSTRUCTIONS
-}
-Mark 2 {
+ChatAgent[@T]: {
+    S: SYSTEM_PROMPT
+    ForEach(@t: range(1, @T)) {
+        U: env.user_input[@t]
+        A: resp.response[@t]
+    }
     U: env.user_input[@T]
 }
 ```
 
-### Early Termination
-End prompt conditionally:
-```acdl
-PromptEndsHere when (@T == 1)
+**Generated Code:**
+```python
+SYSTEM_PROMPT = """
+You are a helpful assistant.
+"""
+
+def build_messages(turn: int, state: AgentState, current_input: str) -> List[dict]:
+    messages = []
+
+    # S: SYSTEM_PROMPT
+    messages.append({"role": "system", "content": SYSTEM_PROMPT})
+
+    # ForEach(@t: range(1, @T))
+    for t in range(1, turn):
+        # U: env.user_input[@t]
+        messages.append({"role": "user", "content": state.history[t-1].user_input})
+        # A: resp.response[@t]
+        messages.append({"role": "assistant", "content": state.history[t-1].assistant_response})
+
+    # U: env.user_input[@T]
+    messages.append({"role": "user", "content": current_input})
+
+    return messages
 ```
 
-### Comments
-```acdl
-// Standalone comment
-S: INSTRUCTIONS  // Inline comment
-```
+### Example 2: ReAct Agent with Tools
 
-## Example Patterns
-
-### Basic ReAct Agent
+**ACDL:**
 ```acdl
 ReactAgent[@T]: {
     S: {
@@ -569,11 +551,55 @@ ReactAgent[@T]: {
         }
         T: sys.tool_call[@t].response
     }
-    S: SOLVE_TASK
 }
 ```
 
-### RAG Pattern
+**Generated Code:**
+```python
+INSTRUCTIONS = """
+You are a ReAct agent. Think step by step, then use tools.
+"""
+
+AVAILABLE_TOOLS = """
+Available tools:
+- search(query): Search the web
+- calculate(expr): Evaluate a math expression
+"""
+
+def build_messages(turn: int, state: AgentState, initial_input: str) -> List[dict]:
+    messages = []
+
+    # S: { INSTRUCTIONS, AVAILABLE_TOOLS }
+    messages.append({
+        "role": "system",
+        "content": INSTRUCTIONS + "\n\n" + AVAILABLE_TOOLS
+    })
+
+    # U: env.user_input[@1]
+    messages.append({"role": "user", "content": initial_input})
+
+    # ForEach(@t: range(1, @T))
+    for t in range(1, turn):
+        # A: { resp.reasoning[@t], sys.tool_call[@t] }
+        messages.append({
+            "role": "assistant",
+            "content": state.history[t-1].assistant_response,
+            "tool_calls": state.history[t-1].tool_calls
+        })
+        # T: sys.tool_call[@t].response
+        for i, tool_call in enumerate(state.history[t-1].tool_calls):
+            messages.append({
+                "role": "tool",
+                "tool_call_id": tool_call["id"],
+                "content": state.history[t-1].tool_responses[i]
+            })
+
+    return messages
+```
+
+### Example 3: RAG Agent
+
+**ACDL:**
 ```acdl
 RAGAgent[@T]: {
     S: INSTRUCTIONS
@@ -589,241 +615,58 @@ RAGAgent[@T]: {
 }
 ```
 
-### Multi-Turn Conversation
-```acdl
-ChatAgent[@T]: {
-    S: SYSTEM_PROMPT
-    ForEach(@t: range(1, @T)) {
-        U: env.user_input[@t]
-        A: resp.response[@t]
-    }
-    U: env.user_input[@T]
-}
-```
-
-### Tool Agent with Sub-steps
-```acdl
-ToolAgent[@T.I]: {
-    S: SYSTEM_PROMPT
-    ForEach(@t: range(1, @T)) {
-        U: env.user_input[@t]
-        ForEach(@i: range(1, @t.substeps)) {
-            A: sys.tool_requests[@t.i]
-            T: sys.tool_responses[@t.i]
-        }
-        A: sys.response[@t]
-    }
-    U: env.user_input[@T]
-}
-```
-
-### Agent with Context Compaction
-```acdl
-CompactingAgent[@T]: {
-    S: SYSTEM_PROMPT
-
-    Name C := sys.last_compaction_time[@T]
-    If @$C > 1 {
-        U: SUMMARY_REQUEST
-        A: sys.conversation_summary[@$C]
-    }
-
-    ForEach(@t: range(@$C, @T)) {
-        U: env.user_input[@t]
-        A: resp.response[@t]
-    }
-}
-```
-
-### Conditional Tool Handling
-```acdl
-ConditionalAgent[@T]: {
-    S: INSTRUCTIONS
-    ForEach(@t: range(1, @T)) {
-        Switch sys.tool[@t].type {
-            Case "clarify": {
-                U: env.user_clarification[@t]
-            }
-            Case "search": {
-                T: sys.search_results[@t]
-            }
-            Default: {
-                A: sys.tool[@t].response
-            }
-        }
-    }
-}
-```
-
-## Implementing Code from ACDL
-
-When given an ACDL specification, here's how to translate it to actual code:
-
-### Message Array Construction
-The ACDL specification describes how to build the `messages` array for an LLM API call:
-
+**Generated Code:**
 ```python
-# ACDL:
-# ChatAgent[@T]: {
-#     S: SYSTEM_PROMPT
-#     ForEach(@t: range(1, @T)) {
-#         U: env.user_input[@t]
-#         A: resp.response[@t]
-#     }
-#     U: env.user_input[@T]
-# }
+INSTRUCTIONS = """
+You answer questions based on provided documents.
+"""
 
-# Implementation:
-def build_messages(turn: int, history: list, system_prompt: str, current_input: str):
+ANSWER_FROM_DOCS = """
+Based on the documents above, answer:
+"""
+
+def k_relevant_docs(query: str, k: int) -> List[dict]:
+    # TODO: Implement retrieval logic
+    pass
+
+def build_messages(turn: int, state: AgentState, current_input: str) -> List[dict]:
     messages = []
 
-    # S: SYSTEM_PROMPT
-    messages.append({"role": "system", "content": system_prompt})
+    # S: INSTRUCTIONS
+    messages.append({"role": "system", "content": INSTRUCTIONS})
 
-    # ForEach(@t: range(1, @T)) - iterate over previous turns
-    for t in range(1, turn):  # 1 to T-1 (previous turns)
-        # U: env.user_input[@t]
-        messages.append({"role": "user", "content": history[t].user_input})
-        # A: resp.response[@t]
-        messages.append({"role": "assistant", "content": history[t].response})
+    # Name docs := k_relevant_docs(env.user_input[@T], 5)
+    docs = k_relevant_docs(current_input, 5)
 
-    # U: env.user_input[@T] - current turn
-    messages.append({"role": "user", "content": current_input})
+    user_content = ""
+    # ForEach(doc: $docs)
+    for doc in docs:
+        user_content += f"Source: {doc['source']}\n{doc['content']}\n\n"
+
+    user_content += ANSWER_FROM_DOCS + "\n" + current_input
+    messages.append({"role": "user", "content": user_content})
 
     return messages
 ```
-
-### Mapping ACDL Elements to Code
-
-| ACDL Element | Code Implementation |
-|--------------|---------------------|
-| `S:` | `{"role": "system", "content": ...}` |
-| `U:` | `{"role": "user", "content": ...}` |
-| `A:` | `{"role": "assistant", "content": ...}` |
-| `T:` | `{"role": "tool", "content": ..., "tool_call_id": ...}` |
-| `TEMPLATE` | String constant or function returning string |
-| `env.x[@t]` | External data lookup: `get_env_data("x", t)` |
-| `sys.x[@t]` | Internal state lookup: `state.get("x", t)` |
-| `resp.x[@t]` | Previous LLM response: `history[t].x` |
-| `ForEach(@t: range(1, @T))` | `for t in range(1, current_turn):` |
-| `If condition` | `if evaluate(condition):` |
-| `Name x := expr` | `x = evaluate(expr)` |
-| `@T` | Current turn number (function parameter) |
-| `@T.I` | Current sub-step within turn |
-
-### Tool Calls with Sub-steps
-
-```python
-# ACDL:
-# ToolAgent[@T.I]: {
-#     S: SYSTEM_PROMPT
-#     ForEach(@t: range(1, @T)) {
-#         U: env.user_input[@t]
-#         ForEach(@i: range(1, @t.substeps)) {
-#             A: sys.tool_requests[@t.i]
-#             T: sys.tool_responses[@t.i]
-#         }
-#         A: sys.response[@t]
-#     }
-#     U: env.user_input[@T]
-# }
-
-def build_messages(turn: int, substep: int, history: list, system_prompt: str, current_input: str):
-    messages = [{"role": "system", "content": system_prompt}]
-
-    for t in range(1, turn):
-        messages.append({"role": "user", "content": history[t].user_input})
-
-        # Inner loop over sub-steps (tool calls within turn t)
-        for i in range(1, len(history[t].tool_calls) + 1):
-            messages.append({
-                "role": "assistant",
-                "content": None,
-                "tool_calls": [history[t].tool_calls[i-1]]
-            })
-            messages.append({
-                "role": "tool",
-                "tool_call_id": history[t].tool_calls[i-1].id,
-                "content": history[t].tool_responses[i-1]
-            })
-
-        messages.append({"role": "assistant", "content": history[t].final_response})
-
-    messages.append({"role": "user", "content": current_input})
-    return messages
-```
-
-### Conditional Logic
-
-```python
-# ACDL:
-# If sys.has_summary[@T] {
-#     U: SUMMARY_HEADER
-#     A: sys.summary[@T]
-# }
-
-if state.has_summary(turn):
-    messages.append({"role": "user", "content": SUMMARY_HEADER})
-    messages.append({"role": "assistant", "content": state.get_summary(turn)})
-```
-
-### Context Compaction Pattern
-
-```python
-# ACDL:
-# Name C := sys.last_compaction_time[@T]
-# ForEach(@t: range(@$C, @T)) { ... }
-
-compaction_time = state.last_compaction_time  # Start from compacted point
-for t in range(compaction_time, turn):
-    # Only include history after compaction
-    ...
-```
-
-### Key Implementation Principles
-
-1. **Time index `@T`** = current turn number, passed as parameter
-2. **Time index `@t`** = loop variable iterating over previous turns
-3. **`range(1, @T)`** = Python `range(1, turn)` (excludes current turn)
-4. **`range(1, @T+1)`** or `range(1, @T]` = includes current turn
-5. **Context variables** = data lookups from your state/history objects
-6. **Templates** = string constants or template functions
-7. **Sub-steps `@t.i`** = nested loop over tool calls within a turn
-8. **Order matters** = messages must be appended in ACDL order
 
 ## Output Format
 
-When generating ACDL, provide:
+When given an ACDL specification, provide:
 
-1. **The ACDL specification** in a code block with `acdl` language tag
-2. **Brief explanation** of the key design decisions
-3. **Notes** on any assumptions made about the system
+1. **Template constants** - String constants for all ALL_CAPS templates
+2. **Data structures** - Classes for history and state management
+3. **Helper functions** - Any functions referenced (like `k_relevant_docs`)
+4. **`build_messages()` function** - The main message builder with comments showing which ACDL line each section implements
+5. **Usage example** - Brief example of how to call the function
 
-When implementing from ACDL, provide:
+## Guidelines
 
-1. **The message-building function** that constructs the API call
-2. **Data structures** needed to store history/state
-3. **Notes** on how templates and context variables should be populated
-
-## Guidelines for Generating ACDL
-
-1. **Identify the core loop** - Most agents have a main loop over turns or steps
-2. **Map message roles** - Determine which content goes in S/U/A/T messages
-3. **Find dynamic vs static content** - Use templates for static text, context variables for dynamic
-4. **Model time correctly** - Use `@T` for current step, `@t` for iteration
-5. **Handle sub-steps** - If tool calls happen within turns, use `@T.I` notation
-6. **Use meaningful names** - `CodingAssistant` not `Agent1`
-7. **Keep it minimal** - Only include what's actually in the prompt structure
-8. **Comment non-obvious parts** - Explain unusual control flow or conditions
-
-## Guidelines for Implementing from ACDL
-
-1. **Build messages array** - Each role block becomes a message dict
-2. **Translate loops** - `ForEach(@t: range(a, b))` becomes `for t in range(a, b)`
-3. **Handle state** - Context variables need backing data structures
-4. **Preserve order** - Message order in ACDL = order in messages array
-5. **Track sub-steps** - Tool calls need their own iteration within turns
-6. **Implement templates** - Define string constants or template functions
+1. **Comment each section** - Show which ACDL line the code implements
+2. **Use 0-indexed history** - ACDL uses 1-indexed, Python uses 0-indexed
+3. **Handle nested loops** - Sub-steps require inner iteration over tool calls
+4. **Leave TODOs** - Mark template content and retrieval functions as TODO
+5. **Match message format** - Use OpenAI/Anthropic message format conventions
+6. **Preserve order** - Message order must match ACDL specification order
 </script>
 
   <script>
