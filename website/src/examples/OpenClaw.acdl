@@ -5,7 +5,7 @@ S: {
 	SystemPrompt()
 }
 // summarized early conversation (if exists)
-MARK 2 {
+Mark 2 {
 Name C := sys.last_compaction_time[@T] 
 If (@C > 1) {
 	U: { 
@@ -18,17 +18,17 @@ If (@C > 1) {
 // conversation history
 ForEach(t: range(@C + 1, @T)) {
 	U: {
-                MARK 6 {
+                Mark 6 {
 		// The pending_messages list is often empty
 		ForEach(m: range(1,sys.pending_messages[@t].len)) {
 			sys.pending_messages[@t][m].date_time
 			sys.pending_messages[@t][m].message
 		}
                 }
-    MARK 5 {
+    Mark 5 {
     Switch env.input_source[@t] {
       Case user: {
-        MARK 4 {
+        Mark 4 {
           sys.date_time[@t]
         }
         env.user_query[@t] 
@@ -42,7 +42,7 @@ ForEach(t: range(@C + 1, @T)) {
 	PromptEndsHere when (@t == @T && T.0) 
 	// tool-using loop history
 	ForEach(i: range(1,@t.substeps)) { 
-          MARK 1 {
+          Mark 1 {
             // multiple requests in one assistant message
         A: {
          ForEach(tool: sys.tool_requests[@t.i]) {

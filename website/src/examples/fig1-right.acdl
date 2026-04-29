@@ -12,7 +12,7 @@ ReactToolRagAtEnd[@T]: {
     T: sys.tool_used[@t].tool_response
   }
   S: {
-    MARK 1 {
+    Mark 1 {
     locate_tools(env.user_input[@1])
     }
     USE_TOOLS_TO_SOLVE_TASK 
