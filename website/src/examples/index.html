@@ -10,6 +10,93 @@
   <link rel="stylesheet" href="{{BASE}}shared/styles.css">
   <style>
     /* Page-specific styles */
+    .hero {
+      padding: 120px 24px 48px;
+      min-height: auto;
+    }
+
+    /* Examples legend */
+    .examples-legend {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      padding: 24px 32px;
+      background: linear-gradient(135deg, rgba(120, 119, 198, 0.04) 0%, rgba(120, 119, 198, 0.08) 100%);
+      border: 1px solid rgba(120, 119, 198, 0.12);
+      border-radius: 12px;
+      margin-bottom: 48px;
+    }
+
+    .legend-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #0a0a0a;
+      margin: 0;
+    }
+
+    .legend-items {
+      display: flex;
+      gap: 40px;
+      justify-content: center;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .legend-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      background: rgba(120, 119, 198, 0.1);
+      border-radius: 8px;
+      color: #7877c6;
+      flex-shrink: 0;
+    }
+
+    .legend-content {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .legend-label {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: #0a0a0a;
+    }
+
+    .legend-desc {
+      font-size: 0.8rem;
+      color: rgba(10,10,10,0.5);
+    }
+
+    @media (max-width: 900px) {
+      .legend-items {
+        flex-direction: column;
+        gap: 16px;
+        align-items: flex-start;
+      }
+    }
+
+    .hero h1 {
+      font-size: 2.5rem;
+      margin-bottom: 12px;
+    }
+
+    .hero p {
+      margin-bottom: 0;
+    }
+
+    .section.section-light {
+      padding-top: 48px;
+    }
+
     .section-header {
       text-align: left;
       margin-bottom: 40px;
@@ -428,22 +515,45 @@
 
   <section class="section section-light">
     <div class="container">
-      <div style="background: rgba(120, 119, 198, 0.06); border: 1px solid rgba(120, 119, 198, 0.15); border-radius: 12px; padding: 20px 24px; margin-bottom: 40px;">
-        <p style="color: rgba(10,10,10,0.7); font-size: 0.9rem; margin-bottom: 12px; font-weight: 500;">Each example includes:</p>
-        <ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px;">
-          <li style="display: flex; align-items: flex-start; gap: 10px; color: rgba(10,10,10,0.6); font-size: 0.85rem;">
-            <span style="color: #7877c6; font-weight: 600;">Show More</span>
-            <span>— Expand the code snippet in place</span>
-          </li>
-          <li style="display: flex; align-items: flex-start; gap: 10px; color: rgba(10,10,10,0.6); font-size: 0.85rem;">
-            <span style="color: #7877c6; font-weight: 600;">Preview</span>
-            <span>— Open a modal with the rendered ACDL visualization</span>
-          </li>
-          <li style="display: flex; align-items: flex-start; gap: 10px; color: rgba(10,10,10,0.6); font-size: 0.85rem;">
-            <span style="color: #7877c6; font-weight: 600;">Open in Live Editor</span>
-            <span>— Go to the interactive editor to modify the code</span>
-          </li>
-        </ul>
+      <div class="examples-legend">
+        <h3 class="legend-title">Card Actions</h3>
+        <div class="legend-items">
+          <div class="legend-item">
+            <span class="legend-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </span>
+            <div class="legend-content">
+              <span class="legend-label">Show More</span>
+              <span class="legend-desc">Expand the code snippet</span>
+            </div>
+          </div>
+          <div class="legend-item">
+            <span class="legend-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+            </span>
+            <div class="legend-content">
+              <span class="legend-label">Preview</span>
+              <span class="legend-desc">View rendered visualization</span>
+            </div>
+          </div>
+          <div class="legend-item">
+            <span class="legend-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+              </svg>
+            </span>
+            <div class="legend-content">
+              <span class="legend-label">Open in Live Editor</span>
+              <span class="legend-desc">Modify the code interactively</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div class="section-header">

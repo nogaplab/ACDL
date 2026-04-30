@@ -1,11 +1,21 @@
 <nav>
   <a href="{{BASE}}index.html" class="nav-logo">ACDL</a>
   <div class="nav-links">
-    <a href="{{BASE}}visualizer.html?example=react_base" class="external">Live Editor</a>
-    <a href="{{BASE}}syntax-reference.html">Documentation</a>
-    <a href="{{BASE}}examples/index.html">Examples</a>
-    <a href="{{BASE}}vscode.html">VSCode</a>
-    <a href="{{BASE}}claude-code-skill.html">Skill</a>
+    <div class="nav-dropdown">
+      <button class="nav-dropdown-toggle">Learn</button>
+      <div class="nav-dropdown-menu">
+        <a href="{{BASE}}syntax-reference.html">Documentation</a>
+        <a href="{{BASE}}examples/index.html">Examples</a>
+      </div>
+    </div>
+    <div class="nav-dropdown">
+      <button class="nav-dropdown-toggle">Tools</button>
+      <div class="nav-dropdown-menu">
+        <a href="{{BASE}}visualizer.html?example=react_base" class="external">Live Editor</a>
+        <a href="{{BASE}}vscode.html">VSCode Extension</a>
+        <a href="{{BASE}}claude-code-skill.html">Claude Code Skill</a>
+      </div>
+    </div>
     <a href="#" class="external">Paper</a>
     <a href="https://github.com/nogaplab/ACDL" class="external">GitHub</a>
   </div>

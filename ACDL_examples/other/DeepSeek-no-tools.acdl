@@ -1,0 +1,7 @@
+DeepSeekAgentWithoutTools[@T]: {
+    U: env.user_message[@1]
+    ForEach(t: range(2, @T)) {
+        A: resp.answer[@t-1]
+        U: env.user_message[@t]
+    }
+}

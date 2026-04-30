@@ -1,0 +1,15 @@
+DeepSeekAgentWithTools[@T.I]: {
+    S: sys.tools
+    ForEach(t: range(1, @T)) {
+        U: env.user_message[@t]
+        ForEach(i: 1, @t.substeps) {
+            A: resp.thinking[@t.i]
+            A: resp.tool_call[@t.i]
+            U: env.tool_response[@t.i]
+        }
+        If I==0 and @t>1 {
+            A: resp.answer[@t]
+        } 
+        
+    }
+}

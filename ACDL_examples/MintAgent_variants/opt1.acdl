@@ -7,7 +7,7 @@ Var1[@T]: {
     } 
 
     // only the result of the previous turns or the new query in them
-    ForEach(@t: range(1, @T-1)){
+    ForEach(@t: range(1, @T)){
         A: {
                 resp.solution_reasoning[@t]
                 resp.solution[@t]
@@ -16,7 +16,7 @@ Var1[@T]: {
     }
 
     // all the tool calls and reponses from the current turn
-    ForEach(i: range(1, sys.steps[@T])){
+    ForEach(i: range(1, @T.substeps)){
         A: sys.tool_used[@T.i]
         T: sys.tool_used[@T.i].tool_response
     }

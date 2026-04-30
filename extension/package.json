@@ -1,9 +1,26 @@
 {
   "name": "acdl-language",
-  "displayName": "ACDL Language Support",
+  "displayName": "ACDL - Agentic Context Description Language",
   "description": "Syntax highlighting, diagnostics, preview, and go-to-definition for ACDL (Agentic Context Description Language)",
   "version": "0.1.0",
-  "publisher": "acdl-research",
+  "publisher": "NogaPelegPelc",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nogaplab/ACDL"
+  },
+  "homepage": "https://github.com/nogaplab/ACDL#readme",
+  "bugs": {
+    "url": "https://github.com/nogaplab/ACDL/issues"
+  },
+  "keywords": [
+    "acdl",
+    "agentic",
+    "context",
+    "prompt",
+    "llm",
+    "ai"
+  ],
   "engines": {
     "vscode": "^1.80.0"
   },

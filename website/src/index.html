@@ -23,13 +23,15 @@
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      padding: 6px 14px;
-      background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(255,255,255,0.1);
+      padding: 10px 20px;
+      background: linear-gradient(135deg, rgba(120, 119, 198, 0.15), rgba(120, 119, 198, 0.05));
+      border: 1px solid rgba(120, 119, 198, 0.3);
       border-radius: 100px;
-      font-size: 0.8rem;
-      color: rgba(255,255,255,0.7);
-      margin-bottom: 24px;
+      font-size: 0.95rem;
+      font-weight: 500;
+      color: rgba(255,255,255,0.85);
+      margin-bottom: 32px;
+      letter-spacing: 0.01em;
     }
 
     .hero h1 {
@@ -118,38 +120,38 @@
     .code-and-render .rendered-output {
       background: #fff;
       border-radius: 0 16px 16px 0;
-      padding: 16px 20px;
+      padding: 20px 24px;
       color: #0a0a0a;
       text-align: left;
       font-family: 'JetBrains Mono', monospace;
-      font-size: 10px;
+      font-size: 13px;
       line-height: 1.4;
     }
 
     .code-and-render .render-label {
       font-family: 'Inter', sans-serif;
-      font-size: 9px;
+      font-size: 11px;
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.5px;
       color: rgba(0,0,0,0.4);
-      margin-bottom: 12px;
+      margin-bottom: 10px;
     }
 
     .code-and-render .prompt-title {
       background: #f6f8fa;
       border: 1px solid #d0d7de;
-      border-radius: 3px;
-      padding: 3px 8px;
+      border-radius: 4px;
+      padding: 5px 10px;
       margin-bottom: 8px;
       font-family: 'JetBrains Mono', monospace;
-      font-size: 10px;
+      font-size: 13px;
       font-weight: 600;
       color: #0a0a0a;
     }
 
     .code-and-render .role-msg {
-      border-left: 2px solid #d0d7de;
+      border-left: 3px solid #d0d7de;
       margin: 4px 0;
       padding: 0;
       border-radius: 0;
@@ -162,13 +164,13 @@
     .code-and-render .role-badge {
       display: block;
       width: fit-content;
-      padding: 1px 4px;
+      padding: 3px 6px;
       margin: 0;
-      font-size: 7px;
+      font-size: 9px;
       font-weight: 600;
-      letter-spacing: 0.2px;
+      letter-spacing: 0.3px;
       text-transform: uppercase;
-      border-radius: 0 0 2px 0;
+      border-radius: 0 0 3px 0;
       color: #fff;
       line-height: 1;
     }
@@ -178,26 +180,26 @@
     .code-and-render .role-msg.tool .role-badge { background: #f7660b; }
 
     .code-and-render .role-body {
-      padding: 3px 8px;
+      padding: 4px 10px;
     }
 
     .code-and-render .tpl {
       display: inline-flex;
       align-items: center;
-      gap: 2px;
+      gap: 3px;
       background: #faf5ff;
       border: 1px solid #9333ea;
       color: #9333ea;
-      padding: 1px 4px;
-      border-radius: 3px;
-      font-size: 9px;
+      padding: 3px 7px;
+      border-radius: 4px;
+      font-size: 12px;
       font-weight: 500;
       line-height: 1;
       margin: 1px 0;
     }
     .code-and-render .tpl::before {
       content: '◆';
-      font-size: 6px;
+      font-size: 8px;
       opacity: 0.7;
     }
 
@@ -207,42 +209,42 @@
       background: #e0ffdd;
       border: 1px solid #0da66b;
       color: #0da66b;
-      padding: 1px 4px;
-      border-radius: 3px;
-      font-size: 9px;
+      padding: 3px 7px;
+      border-radius: 4px;
+      font-size: 12px;
       font-weight: 500;
       margin: 1px 0;
     }
 
     .code-and-render .idx {
       color: #0969da;
-      font-weight: 600;
+      font-weight: 700;
     }
 
     .code-and-render .ctrl-block {
-      border-left: 1px solid #6e7781;
-      margin: 4px 0;
-      padding: 2px 6px 2px 8px;
-      border-radius: 2px;
+      border-left: 2px solid #6e7781;
+      margin: 5px 0;
+      padding: 3px 8px 3px 10px;
+      border-radius: 3px;
     }
 
     .code-and-render .ctrl-header {
-      padding: 2px 6px;
-      margin: -2px -6px 4px -8px;
-      border-radius: 0 2px 0 0;
-      font-size: 9px;
+      padding: 4px 8px;
+      margin: -3px -8px 5px -10px;
+      border-radius: 0 3px 0 0;
+      font-size: 12px;
       font-weight: 600;
       color: #57606a;
       background: #eaeef2;
       display: flex;
       align-items: center;
-      gap: 3px;
+      gap: 4px;
     }
 
     .code-and-render .cmt {
       color: #6e7781;
       font-style: italic;
-      font-size: 9px;
+      font-size: 12px;
       display: block;
       margin-bottom: 2px;
     }
@@ -321,6 +323,71 @@
       margin: 0;
       background: transparent;
       padding: 0;
+    }
+
+    .example-cta {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      padding: 32px 40px;
+      background: linear-gradient(135deg, rgba(120, 119, 198, 0.15), rgba(120, 119, 198, 0.05));
+      border: 1px solid rgba(120, 119, 198, 0.3);
+      border-radius: 20px;
+      text-decoration: none;
+      transition: all 0.3s;
+    }
+
+    .example-cta:hover {
+      background: linear-gradient(135deg, rgba(120, 119, 198, 0.25), rgba(120, 119, 198, 0.1));
+      border-color: rgba(120, 119, 198, 0.5);
+      transform: translateY(-4px);
+    }
+
+    .example-cta-icon {
+      flex-shrink: 0;
+      width: 64px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(120, 119, 198, 0.2);
+      border-radius: 16px;
+    }
+
+    .example-cta-icon svg {
+      width: 32px;
+      height: 32px;
+      color: #a5a4e3;
+    }
+
+    .example-cta-content {
+      flex: 1;
+    }
+
+    .example-cta-content h4 {
+      font-size: 1.3rem;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 6px;
+    }
+
+    .example-cta-content p {
+      font-size: 1rem;
+      color: rgba(255,255,255,0.5);
+      margin: 0;
+    }
+
+    .example-cta-arrow {
+      flex-shrink: 0;
+      width: 28px;
+      height: 28px;
+      color: rgba(255,255,255,0.4);
+      transition: transform 0.3s, color 0.3s;
+    }
+
+    .example-cta:hover .example-cta-arrow {
+      transform: translateX(6px);
+      color: #a5a4e3;
     }
 
     /* Resources */
@@ -450,8 +517,8 @@
           <span class="role-badge">Role: User</span>
           <div class="role-body"><span class="ctx">env.user_input[<span class="idx">@1</span>]</span></div>
         </div>
+        <div class="cmt">// Action history</div>
         <div class="ctrl-block">
-          <div class="cmt">// Action history</div>
           <div class="ctrl-header">↻ ForEach <span class="idx">@t</span> : 1 ... <span class="idx">@T</span></div>
           <div class="role-msg assistant">
             <span class="role-badge">Role: Assistant</span>
@@ -484,7 +551,7 @@
         <div class="feature-card">
           <div class="feature-icon icon-purple">S:</div>
           <h3>Role Messages</h3>
-          <p>Four chat roles (System, User, Assistant, Tool) plus completion format. Each message carries exactly one role with visual color-coding.</p>
+          <p>Four chat roles (System, User, Assistant, Tool) and a completion format. Each message carries exactly one role with visual color-coding.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon icon-blue">@T</div>
@@ -528,26 +595,22 @@
             <li>Game-playing agents with hierarchical summaries</li>
           </ul>
         </div>
-        <div class="example-code">
-          <pre><span class="template">OpenCode</span>[<span class="context">@T.I</span>]: {
-  <span class="role">S</span>: { <span class="template">SYSTEM_PROMPT</span>  <span class="template">ENV_INFO</span>(...) }
-
-  <span class="keyword">Name</span> C := <span class="context">sys.compaction_time</span>[<span class="context">@T</span>]
-  <span class="keyword">If</span> <span class="context">@$C</span> > 1 {
-    <span class="role">U</span>: <span class="template">SUMMARY_REQUEST</span>
-    <span class="role">A</span>: <span class="context">sys.conversation_summary</span>[<span class="context">@$C</span>]
-  }
-
-  <span class="keyword">ForEach</span>(<span class="context">@t</span>: range(<span class="context">@$C</span>, <span class="context">@T</span>)) {
-    <span class="role">U</span>: <span class="context">env.user_input</span>[<span class="context">@t</span>]
-    <span class="keyword">ForEach</span>(<span class="context">@i</span>: range(1, <span class="context">@t.substeps</span>)) {
-      <span class="role">A</span>: <span class="context">sys.tool_requests</span>[<span class="context">@t.i</span>]
-      <span class="role">T</span>: <span class="context">sys.tool_responses</span>[<span class="context">@t.i</span>]
-    }
-    <span class="role">A</span>: <span class="context">sys.response</span>[<span class="context">@t</span>]
-  }
-}</pre>
-        </div>
+        <a href="examples/index.html" class="example-cta">
+          <div class="example-cta-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+            </svg>
+          </div>
+          <div class="example-cta-content">
+            <h4>Browse All Examples</h4>
+            <p>Explore ReAct agents, RAG pipelines, multi-agent systems, and more</p>
+          </div>
+          <svg class="example-cta-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+            <polyline points="12 5 19 12 12 19"></polyline>
+          </svg>
+        </a>
       </div>
     </div>
   </section>

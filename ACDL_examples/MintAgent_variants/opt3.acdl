@@ -8,9 +8,9 @@ Var3[@T]: {
     
     // all the tool calls and reponses from all turns
     ForEach(@t: range(1,@T)) {
-        ForEach(k: range(1, sys.substeps[@t])){
-            A: sys.tool_used[@t.k]
-            T: sys.tool_used[@t.k].tool_response
+        ForEach(i: range(1, @t.substeps)){
+            A: sys.tool_used[@t.i]
+            T: sys.tool_used[@t.i].tool_response
         }
         A: {
             resp.solution_reasoning[@t]
@@ -19,8 +19,8 @@ Var3[@T]: {
         U: env.feedback[@t] // response if the answer was right or wrong, remaining tries if failed
     }  
 
-    ForEach(k: range(1, sys.substeps[@T])){
-        A: sys.tool_used[@T.k]
-        T: sys.tool_used[@T.k].tool_response
+    ForEach(i: range(1, @T.substeps)){
+        A: sys.tool_used[@T.i]
+        T: sys.tool_used[@T.i].tool_response
     }
 }

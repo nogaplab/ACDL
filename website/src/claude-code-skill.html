@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="{{BASE}}shared/styles.css">
   <style>
     .hero {
-      padding: 120px 24px 60px;
+      padding: 120px 24px 40px;
     }
 
     .hero h1 {
@@ -22,14 +22,14 @@
       font-size: 1.1rem;
       color: rgba(255,255,255,0.6);
       max-width: 700px;
-      margin: 0 auto 32px;
+      margin: 0 auto 24px;
       line-height: 1.7;
     }
 
     /* Skill content section */
     .skill-section {
       background: #0a0a0a;
-      padding: 60px 24px 80px;
+      padding: 40px 24px 60px;
     }
 
     .skill-container {
@@ -122,87 +122,123 @@
 
     /* Instructions section */
     .instructions-section {
-      background: #f8f9fa;
+      background: linear-gradient(180deg, #f8f9fa 0%, #fff 100%);
+      padding: 48px 24px 56px;
+    }
+
+    .instructions-section .section-header {
+      margin-bottom: 40px;
+    }
+
+    .instructions-section .section-header h2 {
+      font-size: 2.2rem;
+      font-weight: 700;
+      color: #0a0a0a;
+      letter-spacing: -0.02em;
+    }
+
+    .instructions-section .section-header p {
+      font-size: 1.1rem;
+      font-weight: 400;
+      color: rgba(10,10,10,0.5);
+      margin-top: 8px;
     }
 
     .instructions-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 32px;
+      gap: 24px;
       max-width: 900px;
       margin: 0 auto;
     }
 
     .instruction-card {
       background: #fff;
-      border: 1px solid rgba(0,0,0,0.08);
-      border-radius: 16px;
-      padding: 32px;
+      border: 1px solid rgba(0,0,0,0.06);
+      border-radius: 20px;
+      padding: 0;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+      overflow: hidden;
     }
 
     .instruction-card h3 {
-      font-size: 1.1rem;
+      font-size: 1.15rem;
       font-weight: 600;
-      margin-bottom: 20px;
-      color: #0a0a0a;
+      margin: 0;
+      padding: 24px 28px;
+      color: #fff;
+      background: linear-gradient(135deg, #7877c6, #5d5cb8);
       display: flex;
       align-items: center;
       gap: 12px;
     }
 
     .instruction-card h3 svg {
-      width: 24px;
-      height: 24px;
-      color: #7877c6;
+      width: 22px;
+      height: 22px;
+      color: rgba(255,255,255,0.9);
     }
 
     .instruction-steps {
       list-style: none;
-      padding: 0;
+      padding: 20px 28px 24px;
       margin: 0;
     }
 
     .instruction-steps li {
       display: flex;
-      gap: 16px;
-      padding: 12px 0;
-      border-bottom: 1px solid rgba(0,0,0,0.06);
-      color: rgba(10,10,10,0.7);
+      gap: 14px;
+      padding: 14px 0;
+      border-bottom: 1px solid rgba(0,0,0,0.05);
+      color: #0a0a0a;
       font-size: 0.95rem;
       line-height: 1.5;
+      align-items: flex-start;
     }
 
     .instruction-steps li:last-child {
       border-bottom: none;
+      padding-bottom: 0;
+    }
+
+    .instruction-steps li:first-child {
+      padding-top: 0;
     }
 
     .step-num {
-      width: 24px;
-      height: 24px;
-      background: #7877c6;
+      width: 26px;
+      height: 26px;
+      background: linear-gradient(135deg, #7877c6, #5d5cb8);
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 0.75rem;
+      font-size: 0.8rem;
       font-weight: 600;
       color: #fff;
       flex-shrink: 0;
+      box-shadow: 0 2px 8px rgba(120, 119, 198, 0.3);
     }
 
     .code-inline {
       background: rgba(120, 119, 198, 0.1);
-      border: 1px solid rgba(120, 119, 198, 0.2);
-      border-radius: 4px;
-      padding: 2px 6px;
+      border: 1px solid rgba(120, 119, 198, 0.25);
+      border-radius: 6px;
+      padding: 3px 8px;
       font-family: 'JetBrains Mono', monospace;
-      font-size: 0.85rem;
-      color: #7877c6;
+      font-size: 0.8rem;
+      color: #6865b4;
+      font-weight: 500;
     }
 
     /* Use cases section */
     .use-cases-section {
       background: #0a0a0a;
+      padding: 60px 24px;
+    }
+
+    .use-cases-section .section-header {
+      margin-bottom: 32px;
     }
 
     .use-cases-section .section-header h2,
@@ -211,7 +247,10 @@
     }
 
     .use-cases-section .section-header p {
-      color: rgba(255,255,255,0.5);
+      color: rgba(255,255,255,0.8);
+      font-size: 1.3rem;
+      font-weight: 500;
+      margin-top: 8px;
     }
 
     .use-cases-grid {

@@ -7,11 +7,11 @@ Var2[@T]: {
     } 
     
     // all the tool calls and reponses from all turns
-    ForEach(@t: range(1,@T-1)) {
+    ForEach(@t: range(1,@T)) {
         A: { 
-            ForEach(k: range(1, sys.substeps[@t])){
-                sys.tool_used[@t.k]
-                sys.tool_used[@t.k].tool_response
+            ForEach(i: range(1, @t.substeps)){
+                sys.tool_used[@t.i]
+                sys.tool_used[@t.i].tool_response
             }
         }
         A: {
@@ -21,10 +21,10 @@ Var2[@T]: {
         U: env.feedback[@t] // response if the answer was right or wrong, remaining tries if failed
     } 
     
-    ForEach(k: range(1, I-1)){
+    ForEach(i: range(1, @T.substeps)) {
         A: {
-            sys.tool_used[@T.k]
-            sys.tool_used[@T.k].tool_response
+            sys.tool_used[@T.i]
+            sys.tool_used[@T.i].tool_response
         }
     }
 }

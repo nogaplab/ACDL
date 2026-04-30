@@ -6,22 +6,22 @@ Var4[@T.I]: {
         env.task_prompt // the question you need to answer, or task you need to complete
     }
 
-    ForEach(@t: range(1,@T-1)) {
-        ForEach(i: range(1,@t.substeps)) {
+    ForEach(@t: range(1,@T)) {
+        ForEach(i: range(1, @t.substeps)) {
             A: sys.tool_used[@t.i]
             U: sys.tool_used[@t.i].tool_response
-    
-        A: {
-            resp.solution_reasoning[@t]
-            resp.solution[@t]
         }
-        U: env.feedback[@t.i] // response if the answer was right or wrong, remaining tries if failed
-        }
+    A: {
+        resp.solution_reasoning[@t]
+        resp.solution[@t]
     }
+    U: env.feedback[@t.i] // response if the answer was right or wrong, remaining tries if failed
+    }
+    
 
-    ForEach(k: range(1,@T.substeps)) {
-        A: sys.tool_used[@T.k]
-        U: sys.tool_used[@T.k].tool_response
+    ForEach(i: range(1, @T.substeps)) {
+        A: sys.tool_used[@T.i]
+        U: sys.tool_used[@T.i].tool_response
     }
 
 }

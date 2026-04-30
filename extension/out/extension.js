@@ -58,7 +58,7 @@ var CONTROL_KEYWORDS = /* @__PURE__ */ new Set([
   "Name",
   "for",
   "in",
-  "MARK",
+  "Mark",
   "when",
   "not",
   "and",
@@ -612,7 +612,7 @@ var Parser = class {
           return this.parseSwitchOutside();
         case "Name":
           return this.parseNameDef();
-        case "MARK":
+        case "Mark":
           return this.parseMarkBlock();
       }
     }
@@ -654,7 +654,7 @@ var Parser = class {
    * Mark blocks are like label blocks but rendered with a bracket on the right.
    */
   parseMarkBlock() {
-    this.consume("KEYWORD", "MARK");
+    this.consume("KEYWORD", "Mark");
     const numberTok = this.consume("NUMBER");
     const markNumber = parseInt(numberTok.value, 10);
     this.consume("SYMBOL", "{");
@@ -676,7 +676,7 @@ var Parser = class {
    * Mark blocks inside roles contain role building blocks.
    */
   parseMarkBlockInside() {
-    this.consume("KEYWORD", "MARK");
+    this.consume("KEYWORD", "Mark");
     const numberTok = this.consume("NUMBER");
     const markNumber = parseInt(numberTok.value, 10);
     this.consume("SYMBOL", "{");
@@ -761,7 +761,7 @@ var Parser = class {
         return this.parseLoopInside();
       if (val === "Switch")
         return this.parseSwitchInside();
-      if (val === "MARK")
+      if (val === "Mark")
         return this.parseMarkBlockInside();
       if (val === "Name")
         return this.parseNameDef();
