@@ -25,7 +25,6 @@ import {
   PromptBlock,
   TextArgs,
   CommentBlock,
-  LabelBlock,
   MarkBlock,
   MarkBlockInsideRole,
   ExpressionToken,
@@ -35,6 +34,10 @@ import {
   NameRef,
   ListComprehension,
   EndBlock,
+  StrFragDef,
+  RoleFragDef,
+  StrFragInvocation,
+  RoleFragInvocation,
 } from "./types";
 
 
@@ -69,27 +72,39 @@ export function renderPrompt(
 }
 
 /**
- * Render multiple prompts and comments from a file.
- * Prompts are separated by dividers, comments appear inline.
+ * Render multiple prompts, fragments, and comments from a file.
+ * Prompts/fragments are separated by dividers, comments appear inline.
  */
 export function renderPrompts(
-  blocks: (Prompt | CommentBlock)[],
+  blocks: (Prompt | CommentBlock | StrFragDef | RoleFragDef)[],
   style: string = "default"
 ): string {
   const parts: string[] = [];
-  let lastWasPrompt = false;
+  let lastWasDefinition = false;
 
   for (const block of blocks) {
     if (block.kind === "prompt") {
-      // Add divider before prompt if previous block was also a prompt
-      if (lastWasPrompt) {
+      // Add divider before prompt if previous block was also a definition
+      if (lastWasDefinition) {
         parts.push('<div class="prompt-divider"></div>');
       }
       parts.push(renderPrompt(block, style));
-      lastWasPrompt = true;
+      lastWasDefinition = true;
+    } else if (block.kind === "str-frag-def") {
+      if (lastWasDefinition) {
+        parts.push('<div class="prompt-divider"></div>');
+      }
+      parts.push(renderStrFragDef(block, style));
+      lastWasDefinition = true;
+    } else if (block.kind === "role-frag-def") {
+      if (lastWasDefinition) {
+        parts.push('<div class="prompt-divider"></div>');
+      }
+      parts.push(renderRoleFragDef(block, style));
+      lastWasDefinition = true;
     } else if (block.kind === "comment-block") {
       parts.push(`<div class="file-comment">// ${escapeHtml(block.text)}</div>`);
-      lastWasPrompt = false;
+      lastWasDefinition = false;
     }
   }
 
@@ -598,9 +613,6 @@ function renderNoneMessage(msg: NoneMessage): string {
  * Render a PromptBodyItem (either a PromptBlock or a LabelBlock).
  */
 function renderPromptBodyItem(item: PromptBlock): string {
-  if (item.kind === "label-block") {
-    return renderLabelBlock(item);
-  }
   if (item.kind === "mark-block") {
     return renderMarkBlock(item);
   }
@@ -628,9 +640,6 @@ function renderTopLevelBlock(block: PromptBlock): string {
     case "comment-block":
       return renderCommentBlock(block);
 
-    case "label-block":
-      return renderLabelBlock(block);
-
     case "mark-block":
       return renderMarkBlock(block);
 
@@ -639,6 +648,9 @@ function renderTopLevelBlock(block: PromptBlock): string {
 
     case "end-block":
       return renderEndBlock(block);
+
+    case "role-frag-invocation":
+      return renderRoleFragInvocation(block);
 
     default:
       return "";
@@ -660,8 +672,10 @@ function renderNameDef(block: NameDef): string {
     valueHtml = renderContextVarBlock(block.value);
   } else if (block.value.kind === "function") {
     valueHtml = renderFuncBlock(block.value);
-  } else {
+  } else if (block.value.kind === "list-comprehension") {
     valueHtml = renderListComprehension(block.value);
+  } else {
+    valueHtml = renderStrFragInvocation(block.value);
   }
 
   return `<div class="name-def"><span class="keyword">Name</span> <span class="name-ref"><span class="segment">${varName}</span></span> <span class="name-assign">:=</span> ${valueHtml}</div>`;
@@ -672,9 +686,14 @@ function renderNameDef(block: NameDef): string {
  */
 function renderListComprehension(block: ListComprehension): string {
   // Render the element expression
-  const elementHtml = block.element.kind === "context-var"
-    ? renderContextVarBlock(block.element)
-    : renderFuncBlock(block.element);
+  let elementHtml: string;
+  if (block.element.kind === "context-var") {
+    elementHtml = renderContextVarBlock(block.element);
+  } else if (block.element.kind === "function") {
+    elementHtml = renderFuncBlock(block.element);
+  } else {
+    elementHtml = renderStrFragInvocation(block.element);
+  }
 
   // Render the iterable
   const iterableHtml = renderIterable(block.iterable);
@@ -720,26 +739,6 @@ function renderNameRef(block: NameRef): string {
   return `<span class="name-ref">${joined}</span>`;
 }
 
-/**
- * Render a LabelBlock: a labeled section containing multiple PromptBlocks.
- */
-function renderLabelBlock(block: LabelBlock): string {
-  const labelName = escapeHtml(block.label);
-  const labelStart = `<div class="label-start">╔══ ${labelName} ══╗</div>`;
-  const labelEnd = `<div class="label-end">╚══ End ${labelName} ══╝</div>`;
-
-  // Render all blocks in the body array
-  const bodyHtml = block.body.map(b => renderTopLevelBlock(b)).join("\n");
-
-  return `
-<div class="label-block">
-  ${labelStart}
-  <div class="label-block-body">
-    ${bodyHtml}
-  </div>
-  ${labelEnd}
-</div>`;
-}
 
 /**
  * Render a MarkBlock: a section with a right-side bracket and number.
@@ -865,6 +864,9 @@ function renderRoleBuildingBlock(block: RoleBuildingBlock): string {
     case "end-block":
       return renderEndBlock(block);
 
+    case "str-frag-invocation":
+      return renderStrFragInvocation(block);
+
     default:
       return "";
   }
@@ -954,6 +956,9 @@ function renderTextArgs(arg: TextArgs): string {
 
     case "name-ref":
       return renderNameRef(arg);
+
+    case "str-frag-invocation":
+      return renderStrFragInvocation(arg);
   }
 }
 
@@ -1418,5 +1423,69 @@ function renderConditionalOutsideRole(block: ConditionalBlockOutsideRole): strin
   }
 
   return result;
+}
+
+/* ───────────────── Fragment Definitions ───────────────── */
+
+/**
+ * Render a StrFragDef (String Fragment Definition).
+ * Similar to a prompt but with "String Frag" prefix in pink.
+ */
+export function renderStrFragDef(frag: StrFragDef, style: string = "default"): string {
+  const paramsHtml = frag.params.length > 0
+    ? `[${frag.params.map(renderTextArgs).join(", ")}]`
+    : "";
+
+  const titleHtml = `<div class="frag-def-title"><h1>${escapeHtml(frag.name)}${paramsHtml}</h1><span class="frag-badge">SF</span></div>`;
+
+  const bodyHtml = frag.body
+    .map((b: RoleBuildingBlock) => {
+      return `<div class="role-body-block">${renderRoleBuildingBlock(b)}</div>`;
+    })
+    .join("\n");
+
+  return `<div class="frag-def-container frag-style-${style}">${titleHtml}<div class="frag-body">${bodyHtml}</div></div>`;
+}
+
+/**
+ * Render a RoleFragDef (Role Fragment Definition).
+ * Similar to a prompt but with "Role Frag" prefix in pink.
+ */
+export function renderRoleFragDef(frag: RoleFragDef, style: string = "default"): string {
+  const paramsHtml = frag.params.length > 0
+    ? `[${frag.params.map(renderTextArgs).join(", ")}]`
+    : "";
+
+  const titleHtml = `<div class="frag-def-title"><h1>${escapeHtml(frag.name)}${paramsHtml}</h1><span class="frag-badge">RF</span></div>`;
+
+  const bodyHtml = frag.body.map(renderPromptBodyItem).join("\n");
+
+  return `<div class="frag-def-container frag-style-${style}">${titleHtml}<div class="frag-body">${bodyHtml}</div></div>`;
+}
+
+/* ───────────────── Fragment Invocations ───────────────── */
+
+/**
+ * Render a StrFragInvocation (String Fragment Invocation).
+ * Renders with "Frag" keyword outside the purple bubble, similar to "Name".
+ */
+function renderStrFragInvocation(block: StrFragInvocation): string {
+  const argsText = block.arguments.length > 0
+    ? `[${block.arguments.map(renderTextArgs).join(", ")}]`
+    : "";
+
+  return `<span class="frag-invocation-wrapper"><span class="frag-keyword">Frag</span> <span class="frag-invocation"><span class="frag-name">${escapeHtml(block.name)}</span><span class="frag-args-wrapper">${argsText}</span></span></span>`;
+}
+
+/**
+ * Render a RoleFragInvocation (Role Fragment Invocation).
+ * Renders with "Frag" keyword outside the purple bubble, similar to "Name".
+ */
+function renderRoleFragInvocation(block: RoleFragInvocation): string {
+  const argsText = block.arguments.length > 0
+    ? `[${block.arguments.map(renderTextArgs).join(", ")}]`
+    : "";
+
+  return `<span class="frag-invocation-wrapper"><span class="frag-keyword">Frag</span> <span class="frag-invocation"><span class="frag-name">${escapeHtml(block.name)}</span><span class="frag-args-wrapper">${argsText}</span></span></span>`;
 }
 

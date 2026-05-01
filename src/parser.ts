@@ -84,22 +84,92 @@ export class Parser {
   }
 
   /**
-   * Parse a file containing one or more prompts and comments.
-   * Returns an array of Prompt and CommentBlock objects.
+   * Parse a file containing one or more prompts, fragment definitions, and comments.
+   * Returns an array of Prompt, StrFragDef, RoleFragDef, and CommentBlock objects.
    */
-  public parseFile(): (AST.Prompt | AST.CommentBlock)[] {
-    const blocks: (AST.Prompt | AST.CommentBlock)[] = [];
+  public parseFile(): (AST.Prompt | AST.StrFragDef | AST.RoleFragDef | AST.CommentBlock)[] {
+    const blocks: (AST.Prompt | AST.StrFragDef | AST.RoleFragDef | AST.CommentBlock)[] = [];
 
     while (!this.isEOF()) {
-      if (this.peek().type === "COMMENT") {
+      const tok = this.peek();
+      if (tok.type === "COMMENT") {
         const text = this.consume("COMMENT").value as string;
         blocks.push(Create.commentBlock({ text }));
+      } else if (tok.type === "KEYWORD" && tok.value === "StrFrag") {
+        blocks.push(this.parseStrFragDef());
+      } else if (tok.type === "KEYWORD" && tok.value === "RoleFrag") {
+        blocks.push(this.parseRoleFragDef());
       } else {
         blocks.push(this.parsePrompt());
       }
     }
 
     return blocks;
+  }
+
+  /**
+   * Parse a StrFrag definition: StrFrag Name[params]: { RoleBuildingBlock* }
+   */
+  private parseStrFragDef(): AST.StrFragDef {
+    this.consume("KEYWORD", "StrFrag");
+    const name = this.consume("IDENT").value as string;
+
+    // Parse optional parameters in brackets
+    let params: AST.TextArgs[] = [];
+    if (this.peek().value === "[") {
+      this.consume("SYMBOL", "[");
+      if (this.peek().value !== "]") {
+        params = this.parseTextArgs();
+      }
+      this.consume("SYMBOL", "]");
+    }
+
+    this.consume("SYMBOL", ":");
+    this.consume("SYMBOL", "{");
+
+    const body: AST.RoleBuildingBlock[] = [];
+    while (this.peek().type !== "EOF" && this.peek().value !== "}") {
+      body.push(this.parseRoleBuildingBlock());
+    }
+    this.consume("SYMBOL", "}");
+
+    console.log("parsed StrFrag definition");
+    return Create.strFragDef({ name, params, body });
+  }
+
+  /**
+   * Parse a RoleFrag definition: RoleFrag Name[params]: { PromptBlock* }
+   */
+  private parseRoleFragDef(): AST.RoleFragDef {
+    this.consume("KEYWORD", "RoleFrag");
+    const name = this.consume("IDENT").value as string;
+
+    // Parse optional parameters in brackets
+    let params: AST.TextArgs[] = [];
+    if (this.peek().value === "[") {
+      this.consume("SYMBOL", "[");
+      if (this.peek().value !== "]") {
+        params = this.parseTextArgs();
+      }
+      this.consume("SYMBOL", "]");
+    }
+
+    this.consume("SYMBOL", ":");
+    this.consume("SYMBOL", "{");
+
+    const body: AST.PromptBlock[] = [];
+    while (this.peek().type !== "EOF" && this.peek().value !== "}") {
+      if (this.peek().type === "COMMENT") {
+        const text = this.consume("COMMENT").value as string;
+        body.push(Create.commentBlock({ text }));
+        continue;
+      }
+      body.push(this.parsePromptBodyItem());
+    }
+    this.consume("SYMBOL", "}");
+
+    console.log("parsed RoleFrag definition");
+    return Create.roleFragDef({ name, params, body });
   }
 
   private parseTitle(): AST.PromptTitle {
@@ -199,19 +269,6 @@ export class Parser {
    * Parse a PromptBodyItem (either a PromptBlock or a LabelBlock).
    */
   private parsePromptBodyItem(): AST.PromptBlock {
-    const tok = this.peek();
-
-    // Check for Label syntax: IDENT followed by "{"
-    if (tok.type === "IDENT") {
-      const nextTok = this.peekNext();
-
-      // Label: Any IDENT followed by "{"
-      if (nextTok.value === "{") {
-        return this.parseLabelBlock();
-      }
-    }
-
-    // Otherwise parse as a regular PromptBlock
     return this.parseTopLevelBlock();
   }
 
@@ -233,6 +290,7 @@ export class Parser {
         case "Switch": return this.parseSwitchOutside();
         case "Name": return this.parseNameDef();
         case "Mark": return this.parseMarkBlock();
+        case "Frag": return this.parseRoleFragInvocation();
       }
     }
 
@@ -246,42 +304,7 @@ export class Parser {
         return Create.commentBlock({ text });
     }
 
-    if (tok.type === "IDENT" && nextTok.value === "{") {
-      return this.parseLabelBlock();
-    }
-
     throw new Error(`[${tok.line}:${tok.col}] Syntax Error: Unexpected token "${val}" in global scope.`);
-  }
-
-  /**
-   * Parse a LabelBlock: Labelname { PromptBlock+ }
-   * Labels can contain one or more PromptBlocks (but not other LabelBlocks).
-   */
-  private parseLabelBlock(): AST.LabelBlock {
-    const labelTok = this.consume("IDENT");
-    const label = labelTok.value as string;
-
-    this.consume("SYMBOL", "{");
-
-    // Parse blocks until we hit closing "}"
-    const blocks: Array<AST.PromptBlock> = [];
-
-    do {
-      // Check for standalone comments inside label blocks
-      if (this.peek().type === "COMMENT") {
-        const text = this.consume("COMMENT").value as string;
-        blocks.push(Create.commentBlock({ text }));
-        continue;
-      }
-
-      // Parse a block (PromptBlock only, not LabelBlock)
-      const innerBlock = this.parseTopLevelBlock();
-      blocks.push(innerBlock);
-    } while (this.peek().value !== "}");
-
-    this.consume("SYMBOL", "}");
-
-    return Create.labelBlock({ label, body: blocks });
   }
 
   /**
@@ -447,13 +470,16 @@ export class Parser {
       // 2. Check for Name definition
       if (val === "Name") return this.parseNameDef();
 
-      // 3. Handle break and continue as template-like keywords
+      // 3. Check for fragment invocation
+      if (val === "Frag") return this.parseStrFragInvocation();
+
+      // 4. Handle break and continue as template-like keywords
       if (val === "break" || val === "continue") {
         const name = this.consume("KEYWORD").value as string;
         return Create.template({ name, arguments: [], comment: undefined });
       }
 
-      // 4. Check for Context namespaces
+      // 5. Check for Context namespaces
       const namespaces = ["env", "sys", "resp", "prompt"];
       if (namespaces.includes(val as string)) {
         return this.parseContextVar();
@@ -475,7 +501,7 @@ export class Parser {
 
   /**
    * Parse a name definition: name varname := expr
-   * where expr is a ContextVar, Func, or ListComprehension
+   * where expr is a ContextVar, Func, ListComprehension, or StrFragInvocation
    */
   private parseNameDef(): AST.NameDef {
     this.consume("KEYWORD", "Name");
@@ -483,24 +509,26 @@ export class Parser {
     this.consume("SYMBOL", ":");
     this.consume("LOGIC_OP", "=");
 
-    // Parse the value - ContextVar, Func, or ListComprehension
+    // Parse the value - ContextVar, Func, ListComprehension, or StrFragInvocation
     const tok = this.peek();
-    let value: AST.ContextVar | AST.Func | AST.ListComprehension;
+    let value: AST.ContextVar | AST.Func | AST.ListComprehension | AST.StrFragInvocation;
 
     // Check for list comprehension: [expr for var in iterable]
     if (tok.type === "SYMBOL" && tok.value === "[") {
       value = this.parseListComprehension();
     } else if (tok.type === "KEYWORD" && ["env", "sys", "resp", "prompt"].includes(tok.value as string)) {
       value = this.parseContextVar();
+    } else if (tok.type === "KEYWORD" && tok.value === "Frag") {
+      value = this.parseStrFragInvocation();
     } else if (tok.type === "IDENT") {
       const parsed = this.parseTemplateOrFunc();
       if (parsed.kind !== "function") {
         const parsedName = parsed.kind === "template" ? parsed.name : "identifier";
-        throw new Error(`[${tok.line}:${tok.col}] name definitions require a ContextVar, Func, or list comprehension, got ${parsed.kind} "${parsedName}"`);
+        throw new Error(`[${tok.line}:${tok.col}] name definitions require a ContextVar, Func, list comprehension, or Frag invocation, got ${parsed.kind} "${parsedName}"`);
       }
       value = parsed;
     } else {
-      throw new Error(`[${tok.line}:${tok.col}] Expected ContextVar, Func, or list comprehension after :=, got ${tok.type}`);
+      throw new Error(`[${tok.line}:${tok.col}] Expected ContextVar, Func, list comprehension, or Frag invocation after :=, got ${tok.type}`);
     }
 
     return Create.nameDef({ name: varName, value });
@@ -513,21 +541,23 @@ export class Parser {
   private parseListComprehension(): AST.ListComprehension {
     this.consume("SYMBOL", "[");
 
-    // Parse the element expression (ContextVar or Func)
+    // Parse the element expression (ContextVar, Func, or StrFragInvocation)
     const elemTok = this.peek();
-    let element: AST.ContextVar | AST.Func;
+    let element: AST.ContextVar | AST.Func | AST.StrFragInvocation;
 
     if (elemTok.type === "KEYWORD" && ["env", "sys", "resp", "prompt"].includes(elemTok.value as string)) {
       element = this.parseContextVar();
+    } else if (elemTok.type === "KEYWORD" && elemTok.value === "Frag") {
+      element = this.parseStrFragInvocation();
     } else if (elemTok.type === "IDENT") {
       const parsed = this.parseTemplateOrFunc();
       if (parsed.kind !== "function") {
         const parsedName = parsed.kind === "template" ? parsed.name : "identifier";
-        throw new Error(`[${elemTok.line}:${elemTok.col}] List comprehension element must be ContextVar or Func, got ${parsed.kind} "${parsedName}"`);
+        throw new Error(`[${elemTok.line}:${elemTok.col}] List comprehension element must be ContextVar, Func, or Frag invocation, got ${parsed.kind} "${parsedName}"`);
       }
       element = parsed;
     } else {
-      throw new Error(`[${elemTok.line}:${elemTok.col}] Expected ContextVar or Func in list comprehension, got ${elemTok.type}`);
+      throw new Error(`[${elemTok.line}:${elemTok.col}] Expected ContextVar, Func, or Frag invocation in list comprehension, got ${elemTok.type}`);
     }
 
     // Parse "for"
@@ -570,6 +600,50 @@ export class Parser {
       path = this.parsePathDesc();
     }
     return Create.nameRef({ name: varName, indices, path });
+  }
+
+  /* ───────────────── Fragment Invocations ───────────────── */
+
+  /**
+   * Parse a StrFrag invocation: Frag FragName[args]
+   * Used inside role bodies where StrFragInvocation is valid.
+   */
+  private parseStrFragInvocation(): AST.StrFragInvocation {
+    this.consume("KEYWORD", "Frag");
+    const name = this.consume("IDENT").value as string;
+
+    // Parse optional arguments in brackets
+    let args: AST.TextArgs[] = [];
+    if (this.peek().value === "[") {
+      this.consume("SYMBOL", "[");
+      if (this.peek().value !== "]") {
+        args = this.parseTextArgs();
+      }
+      this.consume("SYMBOL", "]");
+    }
+
+    return Create.strFragInvocation({ name, arguments: args });
+  }
+
+  /**
+   * Parse a RoleFrag invocation: Frag FragName[args]
+   * Used at top level where RoleFragInvocation is valid.
+   */
+  private parseRoleFragInvocation(): AST.RoleFragInvocation {
+    this.consume("KEYWORD", "Frag");
+    const name = this.consume("IDENT").value as string;
+
+    // Parse optional arguments in brackets
+    let args: AST.TextArgs[] = [];
+    if (this.peek().value === "[") {
+      this.consume("SYMBOL", "[");
+      if (this.peek().value !== "]") {
+        args = this.parseTextArgs();
+      }
+      this.consume("SYMBOL", "]");
+    }
+
+    return Create.roleFragInvocation({ name, arguments: args });
   }
 
   /* ───────────────── Expressions & Shared Rules ───────────────── */
@@ -655,7 +729,8 @@ export class Parser {
 
   private parseTextArgs(): AST.TextArgs[] {
   const args: AST.TextArgs[] = [];
-  if (this.peek().value === ")") return args;
+  // Check for both ) and ] as terminators (functions use parens, fragments use brackets)
+  if (this.peek().value === ")" || this.peek().value === "]") return args;
 
   do {
     const arg = this.parseSingleTextArg();
@@ -702,6 +777,11 @@ export class Parser {
 
     if (tok.type === "KEYWORD" && ["env", "sys", "resp", "prompt"].includes(tok.value as string)) {
       return this.parseContextVar();
+    }
+
+    // Frag invocation inside arguments: Frag FragName[args]
+    if (tok.type === "KEYWORD" && tok.value === "Frag") {
+      return this.parseStrFragInvocation();
     }
 
     if (tok.type === "NUMBER") {

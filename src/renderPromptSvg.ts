@@ -23,7 +23,6 @@ import {
   PromptBlock,
   TextArgs,
   CommentBlock,
-  LabelBlock,
   MarkBlock,
   MarkBlockInsideRole,
   ExpressionToken,
@@ -33,6 +32,10 @@ import {
   NameRef,
   ListComprehension,
   EndBlock,
+  StrFragDef,
+  RoleFragDef,
+  StrFragInvocation,
+  RoleFragInvocation,
 } from "./types";
 
 import {
@@ -452,6 +455,9 @@ function textArgsToText(arg: TextArgs): string {
       return `${textArgsToText(arg.left)}${arg.operator.join('')}${textArgsToText(arg.right)}`;
     case 'name-ref':
       return nameRefToText(arg);
+    case 'str-frag-invocation':
+      const fragArgs = arg.arguments.map(textArgsToText).join(', ');
+      return `Frag ${arg.name}[${fragArgs}]`;
   }
 }
 
@@ -775,6 +781,8 @@ function renderTextArgsElement(arg: TextArgs, x: number, y: number, nested: bool
       return renderArithmeticBoxed(arg, x, y, nested);
     case 'name-ref':
       return renderNameRef(arg, x, y, nested);
+    case 'str-frag-invocation':
+      return renderStrFragInvocation(arg, x, y);
   }
 }
 
@@ -1324,6 +1332,8 @@ function renderRoleBuildingBlock(block: RoleBuildingBlock, x: number, y: number,
       return renderMarkBlockInsideRole(block, x, y, maxWidth);
     case 'end-block':
       return renderEndBlock(block, x, y);
+    case 'str-frag-invocation':
+      return renderStrFragInvocation(block, x, y, maxWidth);
     default:
       return { svg: '', width: 0, height: 0 };
   }
@@ -1376,9 +1386,11 @@ function renderNameDef(block: NameDef, x: number, y: number, maxWidth?: number):
     valueResult = renderContextVarBlock(block.value, 0, 0, undefined);
   } else if (block.value.kind === 'function') {
     valueResult = renderFuncBlock(block.value, 0, 0, false, undefined);
-  } else {
-    // List comprehension
+  } else if (block.value.kind === 'list-comprehension') {
     valueResult = renderListComprehension(block.value, 0, 0, undefined);
+  } else {
+    // StrFragInvocation
+    valueResult = renderStrFragInvocation(block.value, 0, 0, undefined);
   }
 
   // Check if value fits on the same line
@@ -1406,9 +1418,11 @@ function renderNameDef(block: NameDef, x: number, y: number, maxWidth?: number):
       valueResult = renderContextVarBlock(block.value, 0, 0, undefined);
     } else if (block.value.kind === 'function') {
       valueResult = renderFuncBlock(block.value, 0, 0, false, undefined);
-    } else {
-      // List comprehension
+    } else if (block.value.kind === 'list-comprehension') {
       valueResult = renderListComprehension(block.value, 0, 0, undefined);
+    } else {
+      // StrFragInvocation
+      valueResult = renderStrFragInvocation(block.value, 0, 0, undefined);
     }
 
     const translated = `<g transform="translate(${startX}, ${nextLineY})">${valueResult.svg}</g>`;
@@ -1443,8 +1457,10 @@ function renderListComprehension(block: ListComprehension, x: number, y: number,
   let elemResult: RenderResult;
   if (block.element.kind === 'context-var') {
     elemResult = renderContextVarBlock(block.element, currentX, y);
-  } else {
+  } else if (block.element.kind === 'function') {
     elemResult = renderFuncBlock(block.element, currentX, y);
+  } else {
+    elemResult = renderStrFragInvocation(block.element, currentX, y);
   }
   elements.push(elemResult.svg);
   currentX += elemResult.width + 4;
@@ -1542,6 +1558,337 @@ function renderEndBlock(block: EndBlock, x: number, y: number): RenderResult {
     svg: elements.join('\n'),
     width: currentX - x,
     height: lineHeight,
+  };
+}
+
+/* ───────────────── Fragment Definitions ───────────────── */
+
+// Render a StrFragDef (String Fragment Definition) as SVG
+// Similar structure to a prompt container with badge approach: "Name[params] [SF]"
+function renderStrFragDefSvg(frag: StrFragDef, x: number, y: number, maxWidth?: number): RenderResult {
+  const elements: string[] = [];
+  const fontSize = FONT_SIZES.title;
+  const badgeFontSize = 8;
+  let currentY = y;
+
+  // Build title text: "Name[params]"
+  let titleText = frag.name;
+  if (frag.params.length > 0) {
+    const paramsText = frag.params.map(p => textArgsToText(p)).join(', ');
+    titleText += `[${paramsText}]`;
+  }
+
+  // Render fragment name first
+  const titleWidth = measureText(titleText, fontSize);
+  elements.push(svgText(x, currentY + fontSize, titleText, {
+    fill: COLORS.textPrimary,
+    fontSize,
+    fontWeight: '700',
+  }));
+
+  // Render [SF] badge to the right
+  const badgeText = 'SF';
+  const badgeTextWidth = measureText(badgeText, badgeFontSize);
+  const badgePadding = 4;
+  const badgeWidth = badgeTextWidth + badgePadding * 2;
+  const badgeHeight = badgeFontSize + badgePadding;
+  const badgeX = x + titleWidth + 8;
+  const badgeY = currentY + (fontSize - badgeHeight) / 2 + 2;
+
+  // Badge background
+  elements.push(svgRect(badgeX, badgeY, badgeWidth, badgeHeight, {
+    fill: COLORS.badgeBg,
+    rx: 3,
+    ry: 3,
+  }));
+
+  // Badge text
+  elements.push(svgText(badgeX + badgePadding, badgeY + badgeFontSize - 1, badgeText, {
+    fill: COLORS.badgeText,
+    fontSize: badgeFontSize,
+    fontWeight: '600',
+  }));
+
+  const titleHeight = fontSize + SPACING.blockGap;
+  currentY += titleHeight;
+
+  // Left border starts from bottom of title
+  const borderStartY = currentY;
+
+  // Render body (RoleBuildingBlocks)
+  const bodyX = x + SPACING.indentSize;
+  let bodyHeight = 0;
+
+  for (const block of frag.body) {
+    const result = renderRoleBuildingBlock(block, bodyX, currentY, maxWidth ? maxWidth - SPACING.indentSize : undefined);
+    elements.push(result.svg);
+    currentY += result.height + SPACING.elementGap;
+    bodyHeight += result.height + SPACING.elementGap;
+  }
+
+  // Container left border
+  elements.push(svgLine(x, borderStartY, x, currentY - SPACING.elementGap, {
+    stroke: COLORS.borderMedium,
+    strokeWidth: 1,
+  }));
+
+  const totalHeight = titleHeight + bodyHeight;
+  const totalWidth = maxWidth || 400;
+
+  return {
+    svg: elements.join('\n'),
+    width: totalWidth,
+    height: totalHeight,
+  };
+}
+
+// Render a RoleFragDef (Role Fragment Definition) as SVG
+// Similar structure to a prompt container with badge approach: "Name[params] [RF]"
+function renderRoleFragDefSvg(frag: RoleFragDef, x: number, y: number, maxWidth?: number): RenderResult {
+  const elements: string[] = [];
+  const fontSize = FONT_SIZES.title;
+  const badgeFontSize = 8;
+  let currentY = y;
+
+  // Build title text: "Name[params]"
+  let titleText = frag.name;
+  if (frag.params.length > 0) {
+    const paramsText = frag.params.map(p => textArgsToText(p)).join(', ');
+    titleText += `[${paramsText}]`;
+  }
+
+  // Render fragment name first
+  const titleWidth = measureText(titleText, fontSize);
+  elements.push(svgText(x, currentY + fontSize, titleText, {
+    fill: COLORS.textPrimary,
+    fontSize,
+    fontWeight: '700',
+  }));
+
+  // Render [RF] badge to the right
+  const badgeText = 'RF';
+  const badgeTextWidth = measureText(badgeText, badgeFontSize);
+  const badgePadding = 4;
+  const badgeWidth = badgeTextWidth + badgePadding * 2;
+  const badgeHeight = badgeFontSize + badgePadding;
+  const badgeX = x + titleWidth + 8;
+  const badgeY = currentY + (fontSize - badgeHeight) / 2 + 2;
+
+  // Badge background
+  elements.push(svgRect(badgeX, badgeY, badgeWidth, badgeHeight, {
+    fill: COLORS.badgeBg,
+    rx: 3,
+    ry: 3,
+  }));
+
+  // Badge text
+  elements.push(svgText(badgeX + badgePadding, badgeY + badgeFontSize - 1, badgeText, {
+    fill: COLORS.badgeText,
+    fontSize: badgeFontSize,
+    fontWeight: '600',
+  }));
+
+  const titleHeight = fontSize + SPACING.blockGap;
+  currentY += titleHeight;
+
+  // Left border starts from bottom of title
+  const borderStartY = currentY;
+
+  // Render body (PromptBlocks - role messages, etc.)
+  let bodyHeight = 0;
+
+  for (const block of frag.body) {
+    const result = renderTopLevelBlock(block, x, currentY, maxWidth);
+    elements.push(result.svg);
+    currentY += result.height + SPACING.blockGap;
+    bodyHeight += result.height + SPACING.blockGap;
+  }
+
+  // Container left border
+  elements.push(svgLine(x, borderStartY, x, currentY - SPACING.blockGap, {
+    stroke: COLORS.borderMedium,
+    strokeWidth: 1,
+  }));
+
+  const totalHeight = titleHeight + bodyHeight;
+  const totalWidth = maxWidth || 400;
+
+  return {
+    svg: elements.join('\n'),
+    width: totalWidth,
+    height: totalHeight,
+  };
+}
+
+/* ───────────────── Fragment Invocations ───────────────── */
+
+// Render a StrFragInvocation (String Fragment Invocation) as SVG
+// Renders like a function call with "Frag" keyword in pink
+function renderStrFragInvocation(block: StrFragInvocation, x: number, y: number, _maxWidth?: number): RenderResult {
+  const elements: string[] = [];
+  let currentX = x;
+  const fontSize = FONT_SIZES.normal;
+  const padding = SPACING.blockPadding;
+
+  // Build the full text to measure for the box
+  let fullText = `Frag ${block.name}`;
+  if (block.arguments.length > 0) {
+    const argsText = block.arguments.map(arg => textArgsToText(arg)).join(', ');
+    fullText += `[${argsText}]`;
+  }
+
+  const textWidth = measureText(fullText, fontSize);
+  const boxWidth = textWidth + padding * 2 + 4;
+  const boxHeight = fontSize + padding * 2;
+
+  // Draw box with purple styling (like functions)
+  elements.push(svgRect(currentX, y, boxWidth, boxHeight, {
+    fill: COLORS.funcBg,
+    stroke: COLORS.func,
+    strokeWidth: 1,
+    rx: 3,
+  }));
+
+  const textY = y + padding + fontSize * 0.85;
+  let textX = currentX + padding + 2;
+
+  // "Frag" keyword in pink
+  elements.push(svgText(textX, textY, 'Frag', {
+    fill: COLORS.nameRef,
+    fontSize,
+    fontWeight: '600',
+  }));
+  textX += measureText('Frag', fontSize) + 4;
+
+  // Fragment name in purple
+  elements.push(svgText(textX, textY, block.name, {
+    fill: COLORS.func,
+    fontSize,
+    fontWeight: '600',
+  }));
+  textX += measureText(block.name, fontSize);
+
+  // Arguments
+  if (block.arguments.length > 0) {
+    elements.push(svgText(textX, textY, '[', {
+      fill: COLORS.func,
+      fontSize,
+      fontWeight: '500',
+    }));
+    textX += measureText('[', fontSize);
+
+    for (let i = 0; i < block.arguments.length; i++) {
+      if (i > 0) {
+        elements.push(svgText(textX, textY, ', ', {
+          fill: COLORS.func,
+          fontSize,
+        }));
+        textX += measureText(', ', fontSize);
+      }
+      const argText = textArgsToText(block.arguments[i]);
+      elements.push(svgText(textX, textY, argText, {
+        fill: COLORS.func,
+        fontSize,
+      }));
+      textX += measureText(argText, fontSize);
+    }
+
+    elements.push(svgText(textX, textY, ']', {
+      fill: COLORS.func,
+      fontSize,
+      fontWeight: '500',
+    }));
+  }
+
+  return {
+    svg: elements.join('\n'),
+    width: boxWidth,
+    height: boxHeight,
+  };
+}
+
+// Render a RoleFragInvocation (Role Fragment Invocation) as SVG
+// Renders like a function call with "Frag" keyword in pink
+function renderRoleFragInvocation(block: RoleFragInvocation, x: number, y: number, _maxWidth?: number): RenderResult {
+  const elements: string[] = [];
+  let currentX = x;
+  const fontSize = FONT_SIZES.normal;
+  const padding = SPACING.blockPadding;
+
+  // Build the full text to measure for the box
+  let fullText = `Frag ${block.name}`;
+  if (block.arguments.length > 0) {
+    const argsText = block.arguments.map(arg => textArgsToText(arg)).join(', ');
+    fullText += `[${argsText}]`;
+  }
+
+  const textWidth = measureText(fullText, fontSize);
+  const boxWidth = textWidth + padding * 2 + 4;
+  const boxHeight = fontSize + padding * 2;
+
+  // Draw box with purple styling (like functions)
+  elements.push(svgRect(currentX, y, boxWidth, boxHeight, {
+    fill: COLORS.funcBg,
+    stroke: COLORS.func,
+    strokeWidth: 1,
+    rx: 3,
+  }));
+
+  const textY = y + padding + fontSize * 0.85;
+  let textX = currentX + padding + 2;
+
+  // "Frag" keyword in pink
+  elements.push(svgText(textX, textY, 'Frag', {
+    fill: COLORS.nameRef,
+    fontSize,
+    fontWeight: '600',
+  }));
+  textX += measureText('Frag', fontSize) + 4;
+
+  // Fragment name in purple
+  elements.push(svgText(textX, textY, block.name, {
+    fill: COLORS.func,
+    fontSize,
+    fontWeight: '600',
+  }));
+  textX += measureText(block.name, fontSize);
+
+  // Arguments
+  if (block.arguments.length > 0) {
+    elements.push(svgText(textX, textY, '[', {
+      fill: COLORS.func,
+      fontSize,
+      fontWeight: '500',
+    }));
+    textX += measureText('[', fontSize);
+
+    for (let i = 0; i < block.arguments.length; i++) {
+      if (i > 0) {
+        elements.push(svgText(textX, textY, ', ', {
+          fill: COLORS.func,
+          fontSize,
+        }));
+        textX += measureText(', ', fontSize);
+      }
+      const argText = textArgsToText(block.arguments[i]);
+      elements.push(svgText(textX, textY, argText, {
+        fill: COLORS.func,
+        fontSize,
+      }));
+      textX += measureText(argText, fontSize);
+    }
+
+    elements.push(svgText(textX, textY, ']', {
+      fill: COLORS.func,
+      fontSize,
+      fontWeight: '500',
+    }));
+  }
+
+  return {
+    svg: elements.join('\n'),
+    width: boxWidth,
+    height: boxHeight,
   };
 }
 
@@ -3001,49 +3348,6 @@ function renderSwitchInsideRole(block: SwitchBlockInsideRole, x: number, y: numb
   };
 }
 
-// Render label block
-function renderLabelBlock(block: LabelBlock, x: number, y: number): RenderResult {
-  const elements: string[] = [];
-  let currentY = y;
-
-  // Label start
-  const startText = `╔══ ${block.label} ══╗`;
-  elements.push(svgText(x, currentY + FONT_SIZES.header, startText, {
-    fill: COLORS.textMuted,
-    fontSize: FONT_SIZES.header,
-  }));
-  currentY += getLineHeight(FONT_SIZES.header);
-
-  // Body
-  let maxWidth = measureText(startText, FONT_SIZES.header);
-  for (const child of block.body) {
-    const childResult = renderTopLevelBlock(child, x + SPACING.indentSize, currentY);
-    elements.push(childResult.svg);
-    maxWidth = Math.max(maxWidth, childResult.width + SPACING.indentSize);
-    currentY += childResult.height + SPACING.blockGap;
-  }
-
-  // Label end
-  const endText = `╚══ End ${block.label} ══╝`;
-  elements.push(svgText(x, currentY + FONT_SIZES.header, endText, {
-    fill: COLORS.textMuted,
-    fontSize: FONT_SIZES.header,
-  }));
-  currentY += getLineHeight(FONT_SIZES.header);
-
-  // Left border for body
-  elements.push(svgLine(x + 3, y + getLineHeight(FONT_SIZES.header), x + 3, currentY - getLineHeight(FONT_SIZES.header), {
-    stroke: COLORS.borderLight,
-    strokeWidth: 1,
-  }));
-
-  return {
-    svg: elements.join('\n'),
-    width: maxWidth,
-    height: currentY - y,
-  };
-}
-
 // Render mark block (with bracket on right)
 function renderMarkBlock(block: MarkBlock, x: number, y: number, maxWidthParam?: number): RenderResult {
   const elements: string[] = [];
@@ -3182,14 +3486,14 @@ function renderTopLevelBlock(block: PromptBlock, x: number, y: number, maxWidth?
       return renderSwitchOutsideRole(block, x, y, maxWidth);
     case 'comment-block':
       return renderComment(block.text, x, y, true, maxWidth);
-    case 'label-block':
-      return renderLabelBlock(block, x, y);
     case 'mark-block':
       return renderMarkBlock(block, x, y, maxWidth);
     case 'name-def':
       return renderNameDef(block, x, y, maxWidth);
     case 'end-block':
       return renderEndBlock(block, x, y);
+    case 'role-frag-invocation':
+      return renderRoleFragInvocation(block, x, y, maxWidth);
     default:
       return { svg: '', width: 0, height: 0 };
   }
@@ -3307,9 +3611,9 @@ export function renderPromptSvg(prompt: Prompt): string {
   return wrapSvg(elements.join('\n'), totalWidth, totalHeight);
 }
 
-// Render multiple prompts
+// Render multiple prompts and fragments
 // maxWidth parameter allows constraining the output width (e.g., from width slider)
-export function renderPromptsSvg(blocks: (Prompt | CommentBlock)[], maxWidth?: number): string {
+export function renderPromptsSvg(blocks: (Prompt | CommentBlock | StrFragDef | RoleFragDef)[], maxWidth?: number): string {
   loadFonts();
 
   const startX = SPACING.containerPaddingLeft;
@@ -3323,6 +3627,12 @@ export function renderPromptsSvg(blocks: (Prompt | CommentBlock)[], maxWidth?: n
     } else if (block.kind === 'comment-block') {
       const commentResult = renderComment(block.text, startX, 0);
       maxContentWidth = Math.max(maxContentWidth, commentResult.width + startX);
+    } else if (block.kind === 'str-frag-def') {
+      const fragResult = renderStrFragDefSvg(block, startX, 0);
+      maxContentWidth = Math.max(maxContentWidth, fragResult.width + startX);
+    } else if (block.kind === 'role-frag-def') {
+      const fragResult = renderRoleFragDefSvg(block, startX, 0);
+      maxContentWidth = Math.max(maxContentWidth, fragResult.width + startX);
     }
   }
 
@@ -3381,6 +3691,16 @@ export function renderPromptsSvg(blocks: (Prompt | CommentBlock)[], maxWidth?: n
       const commentResult = renderComment(block.text, startX, currentY, false, commentMaxWidth);
       elements.push(commentResult.svg);
       currentY += commentResult.height + SPACING.elementGap;
+      lastWasPrompt = false;
+    } else if (block.kind === 'str-frag-def') {
+      const fragResult = renderStrFragDefSvg(block, startX, currentY, titleWidth);
+      elements.push(fragResult.svg);
+      currentY += fragResult.height + SPACING.blockGap;
+      lastWasPrompt = false;
+    } else if (block.kind === 'role-frag-def') {
+      const fragResult = renderRoleFragDefSvg(block, startX, currentY, titleWidth);
+      elements.push(fragResult.svg);
+      currentY += fragResult.height + SPACING.blockGap;
       lastWasPrompt = false;
     }
   }

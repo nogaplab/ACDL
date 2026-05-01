@@ -25,7 +25,6 @@ import {
   CaseBlockInsideRole,
   DefaultCaseBlockInsideRole,
   CommentBlock,
-  LabelBlock,
   MarkBlock,
   MarkBlockInsideRole,
   ArithmeticExpr,
@@ -34,7 +33,11 @@ import {
   NameDef,
   NameRef,
   ListComprehension,
-  EndBlock
+  EndBlock,
+  StrFragDef,
+  RoleFragDef,
+  StrFragInvocation,
+  RoleFragInvocation
 } from "./types";
 
 
@@ -149,10 +152,6 @@ export function commentBlock(params: Omit<CommentBlock, "kind">): CommentBlock {
   return { ...params, kind: "comment-block" };
 }
 
-export function labelBlock(params: Omit<LabelBlock, "kind">): LabelBlock {
-  return { ...params, kind: "label-block" };
-}
-
 export function markBlock(params: Omit<MarkBlock, "kind">): MarkBlock {
   return { ...params, kind: "mark-block" };
 }
@@ -179,4 +178,20 @@ export function listComprehension(params: Omit<ListComprehension, "kind">): List
 
 export function endBlock(params: Omit<EndBlock, "kind">): EndBlock {
   return { ...params, kind: "end-block" };
+}
+
+export function strFragDef(params: Omit<StrFragDef, "kind">): StrFragDef {
+  return { ...params, kind: "str-frag-def" };
+}
+
+export function roleFragDef(params: Omit<RoleFragDef, "kind">): RoleFragDef {
+  return { ...params, kind: "role-frag-def" };
+}
+
+export function strFragInvocation(params: Omit<StrFragInvocation, "kind">): StrFragInvocation {
+  return { ...params, kind: "str-frag-invocation" };
+}
+
+export function roleFragInvocation(params: Omit<RoleFragInvocation, "kind">): RoleFragInvocation {
+  return { ...params, kind: "role-frag-invocation" };
 }

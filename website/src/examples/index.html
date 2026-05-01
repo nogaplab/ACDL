@@ -187,6 +187,38 @@
       right: 0;
       height: 50px;
       background: linear-gradient(transparent, #1a1a1a);
+      pointer-events: none;
+    }
+
+    .example-card-code .expand-btn {
+      position: absolute;
+      bottom: 10px;
+      right: 24px;
+      z-index: 10;
+      background: rgba(30,30,30,0.9);
+      border: 1px solid rgba(255,255,255,0.25);
+      color: rgba(255,255,255,0.9);
+      padding: 5px 14px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+
+    .example-card-code .expand-btn:hover {
+      background: rgba(50,50,50,0.95);
+      color: #fff;
+      border-color: rgba(255,255,255,0.4);
+    }
+
+    .example-card-code.expanded .expand-btn {
+      bottom: 40px;
+    }
+
+    .example-card-code.expanded.no-scroll .expand-btn {
+      bottom: 10px;
     }
 
     .example-card-code pre {
@@ -266,11 +298,6 @@
     }
     .example-card-code.expanded::after {
       display: none;
-    }
-
-    .expand-link {
-      cursor: pointer;
-      user-select: none;
     }
 
     /* Modal styles */
@@ -521,17 +548,6 @@
           <div class="legend-item">
             <span class="legend-icon">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="6 9 12 15 18 9"></polyline>
-              </svg>
-            </span>
-            <div class="legend-content">
-              <span class="legend-label">Show More</span>
-              <span class="legend-desc">Expand the code snippet</span>
-            </div>
-          </div>
-          <div class="legend-item">
-            <span class="legend-icon">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                 <circle cx="12" cy="12" r="3"></circle>
               </svg>
@@ -616,6 +632,7 @@
         <span class="context">env.user_input</span>[<span class="context">@T</span>]
     }
 }</pre>
+            <button class="expand-btn" onclick="toggleExpand(this)">Show More</button>
           </div>
           <div class="example-card-rendered">
             <div class="rendered-output">
@@ -639,7 +656,6 @@
             </div>
           </div>
           <div class="example-card-footer">
-            <a href="#" class="expand-link" onclick="toggleExpand(this); return false;">Show More</a>
             <a href="#" onclick="openModal('Basic RAG', this, 'basic_rag'); return false;">Preview</a>
             <a href="../visualizer.html?example=basic_rag">Open in Live Editor</a>
           </div>
@@ -661,7 +677,7 @@
               <span class="tag tag-react">ReAct</span>
             </div>
           </div>
-          <div class="example-card-code">
+          <div class="example-card-code no-scroll">
             <pre><span class="template">ReactBase</span>[<span class="context">@T</span>]: {
     <span class="role">S</span>: {
         <span class="template">INSTRUCTIONS</span>
@@ -677,6 +693,7 @@
     }
     <span class="role">S</span>: <span class="template">USE_TOOLS_TO_SOLVE_TASK</span>
 }</pre>
+            <button class="expand-btn" onclick="toggleExpand(this)">Show More</button>
           </div>
           <div class="example-card-rendered">
             <div class="rendered-output">
@@ -713,7 +730,6 @@
             </div>
           </div>
           <div class="example-card-footer">
-            <a href="#" class="expand-link" onclick="toggleExpand(this); return false;">Show More</a>
             <a href="#" onclick="openModal('ReAct Base', this, 'react_base'); return false;">Preview</a>
             <a href="../visualizer.html?example=react_base">Open in Live Editor</a>
           </div>
@@ -728,7 +744,7 @@
               <span class="tag tag-basic">Variant</span>
             </div>
           </div>
-          <div class="example-card-code">
+          <div class="example-card-code no-scroll">
             <pre><span class="template">ReactNoReasoningInHistory</span>[<span class="context">@T</span>]: {
     <span class="role">S</span>: {
         <span class="template">INSTRUCTIONS</span>
@@ -741,6 +757,7 @@
     }
     <span class="role">S</span>: <span class="template">USE_TOOLS_TO_SOLVE_TASK</span>
 }</pre>
+            <button class="expand-btn" onclick="toggleExpand(this)">Show More</button>
           </div>
           <div class="example-card-rendered">
             <div class="rendered-output">
@@ -774,7 +791,6 @@
             </div>
           </div>
           <div class="example-card-footer">
-            <a href="#" class="expand-link" onclick="toggleExpand(this); return false;">Show More</a>
             <a href="#" onclick="openModal('ReAct No Reasoning', this, 'react_no_reasoning'); return false;">Preview</a>
             <a href="../visualizer.html?example=react_no_reasoning">Open in Live Editor</a>
           </div>
@@ -806,6 +822,7 @@
         <span class="template">USE_TOOLS_TO_SOLVE_TASK</span>
     }
 }</pre>
+            <button class="expand-btn" onclick="toggleExpand(this)">Show More</button>
           </div>
           <div class="example-card-rendered">
             <div class="rendered-output">
@@ -845,7 +862,6 @@
             </div>
           </div>
           <div class="example-card-footer">
-            <a href="#" class="expand-link" onclick="toggleExpand(this); return false;">Show More</a>
             <a href="#" onclick="openModal('ReAct Tool-RAG', this, 'react_tool_rag'); return false;">Preview</a>
             <a href="../visualizer.html?example=react_tool_rag">Open in Live Editor</a>
           </div>
@@ -910,6 +926,7 @@
     <span class="role">A</span>: <span class="context">sys.response</span>[<span class="context">@t</span>]
   }
 }</pre>
+            <button class="expand-btn" onclick="toggleExpand(this)">Show More</button>
           </div>
           <div class="example-card-rendered">
             <div class="rendered-output">
@@ -983,7 +1000,6 @@
             </div>
           </div>
           <div class="example-card-footer">
-            <a href="#" class="expand-link" onclick="toggleExpand(this); return false;">Show More</a>
             <a href="#" onclick="openModal('OpenCode', this, 'opencode'); return false;">Preview</a>
             <a href="../visualizer.html?example=opencode">Open in Live Editor</a>
           </div>
@@ -1039,6 +1055,7 @@
     <span class="role">A</span>: <span class="context">resp.response</span>[<span class="context">@t</span>]
   }
 }</pre>
+            <button class="expand-btn" onclick="toggleExpand(this)">Show More</button>
           </div>
           <div class="example-card-rendered">
             <div class="rendered-output">
@@ -1113,7 +1130,6 @@
             </div>
           </div>
           <div class="example-card-footer">
-            <a href="#" class="expand-link" onclick="toggleExpand(this); return false;">Show More</a>
             <a href="#" onclick="openModal('OpenClaw', this, 'openclaw'); return false;">Preview</a>
             <a href="../visualizer.html?example=openclaw">Open in Live Editor</a>
           </div>
@@ -1150,6 +1166,7 @@
   <span class="role">S</span>: <span class="template">INSTRUCTION_TO_EXPLORE</span>
   <span class="role">S</span>: <span class="template">CHOOSE_ACTION</span>
 }</pre>
+            <button class="expand-btn" onclick="toggleExpand(this)">Show More</button>
           </div>
           <div class="example-card-rendered">
             <div class="rendered-output">
@@ -1202,7 +1219,6 @@
             </div>
           </div>
           <div class="example-card-footer">
-            <a href="#" class="expand-link" onclick="toggleExpand(this); return false;">Show More</a>
             <a href="#" onclick="openModal('Pokemon Agent', this, 'pokemon'); return false;">Preview</a>
             <a href="../visualizer.html?example=pokemon">Open in Live Editor</a>
           </div>
@@ -1245,6 +1261,7 @@
     }
   }
 }</pre>
+            <button class="expand-btn" onclick="toggleExpand(this)">Show More</button>
           </div>
           <div class="example-card-rendered">
             <div class="rendered-output">
@@ -1291,7 +1308,6 @@
             </div>
           </div>
           <div class="example-card-footer">
-            <a href="#" class="expand-link" onclick="toggleExpand(this); return false;">Show More</a>
             <a href="#" onclick="openModal('Multi-Agent', this, 'multiagent'); return false;">Preview</a>
             <a href="../visualizer.html?example=multiagent">Open in Live Editor</a>
           </div>
@@ -1329,11 +1345,10 @@
   </div>
 
   <script>
-    function toggleExpand(link) {
-      const card = link.closest('.example-card');
-      const codeBlock = card.querySelector('.example-card-code');
+    function toggleExpand(btn) {
+      const codeBlock = btn.closest('.example-card-code');
       const isExpanded = codeBlock.classList.toggle('expanded');
-      link.textContent = isExpanded ? 'Show Less' : 'Show More';
+      btn.textContent = isExpanded ? 'Show Less' : 'Show More';
     }
 
     function openModal(title, link, exampleId) {

@@ -780,6 +780,111 @@ body {
   font-weight: 600;
 }
 
+/* ======================================================
+   FRAGMENT DEFINITIONS AND INVOCATIONS
+   ====================================================== */
+
+/* Fragment type keywords (Frag) - black like Name keyword */
+.frag-keyword {
+  color: #000000;
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+}
+
+/* Fragment type badge [SF] or [RF] - subtle gray pill */
+.frag-badge {
+  display: inline-block;
+  background: #e5e7eb;
+  color: #4b5563;
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-size: 8px;
+  font-weight: 600;
+  padding: 2px 5px;
+  border-radius: 3px;
+  letter-spacing: 0.5px;
+}
+
+/* Fragment definition container - similar to prompt-container */
+.frag-def-container {
+  display: inline-block;
+  min-width: 200px;
+  max-width: var(--prompt-width, 800px);
+  margin: 0 auto;
+  position: relative;
+  padding-left: 10px;
+  border-left: 1px solid var(--border-medium);
+  overflow: hidden;
+}
+
+/* Fragment definition title - similar to prompt-title */
+.frag-def-title {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-medium);
+  border-radius: 3px;
+  padding: 3px 8px;
+  margin-bottom: 4px;
+  margin-left: -10px;
+  padding-left: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.frag-def-title h1 {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  white-space: nowrap;
+}
+
+/* Ensure time-index is visible in fragment title */
+.frag-def-title .time-index {
+  display: inline;
+  font-size: inherit;
+  color: var(--accent-variable);
+  font-weight: 700;
+}
+
+/* Fragment invocation wrapper - contains keyword + purple bubble */
+.frag-invocation-wrapper {
+  display: inline;
+}
+
+/* Fragment invocation - the purple bubble (like func-block) */
+.frag-invocation {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+  background: var(--accent-function-bg);
+  border: 1px solid var(--accent-function);
+  color: var(--accent-function);
+  padding: 2px 5px;
+  border-radius: 3px;
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-size: 9px;
+  font-weight: 500;
+  line-height: 1;
+  max-width: 100%;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  margin: 0;
+}
+
+.frag-invocation .frag-name {
+  font-weight: 600;
+  color: var(--accent-function);
+}
+
+.frag-invocation .frag-args-wrapper {
+  display: inline;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
 /* List comprehensions: [ element | var ∈ iterable ] */
 .list-comp-wrapper {
   display: inline-flex;

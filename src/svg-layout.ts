@@ -74,6 +74,10 @@ export const COLORS = {
   nameRef: '#ec4899',
   comment: '#6e7781',
   string: '#a31515',
+
+  // Fragment badge colors
+  badgeBg: '#e5e7eb',
+  badgeText: '#4b5563',
 };
 
 // Font sizes matching styles.css
@@ -251,6 +255,7 @@ export function svgRect(
     stroke?: string;
     strokeWidth?: number;
     rx?: number;
+    ry?: number;
   } = {}
 ): string {
   const attrs = [
@@ -264,6 +269,7 @@ export function svgRect(
   if (options.stroke) attrs.push(`stroke="${options.stroke}"`);
   if (options.strokeWidth) attrs.push(`stroke-width="${options.strokeWidth}"`);
   if (options.rx) attrs.push(`rx="${options.rx}"`);
+  if (options.ry) attrs.push(`ry="${options.ry}"`);
 
   return `<rect ${attrs.join(' ')}/>`;
 }

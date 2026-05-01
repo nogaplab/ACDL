@@ -39,11 +39,11 @@ export type Identifier = {
 // Template text and function types
 // might want to add types for all context bases later, if we need tham to behave differently
 
-export type ContextBase = "sys" | "resp" | "env" | "prompt";
+export type ContextBase = "sys" | "resp" | "env" ;
 
 export type ContextVar = {
     kind: "context-var";
-    base: ContextBase
+    base: ContextBase;
     path?: PathDesc;
     indices: Array<Index>;
     comment?: string;
@@ -76,7 +76,7 @@ export type ArithmeticExpr = {
 // List comprehension: [expr for var in iterable]
 export type ListComprehension = {
     kind: "list-comprehension";
-    element: ContextVar | Func;   // the expression to collect (e.g., sys.Summary[@t])
+    element: ContextVar | Func | StrFragInvocation;   // the expression to collect (e.g., sys.Summary[@t])
     variable: string;              // loop variable name (e.g., "t")
     iterable: Iterable;            // the range/iterable
 }
@@ -85,7 +85,7 @@ export type ListComprehension = {
 export type NameDef = {
     kind: "name-def";
     name: string;           // variable name (e.g., "obs")
-    value: ContextVar | Func | ListComprehension;  // the assigned expression
+    value: ContextVar | Func | ListComprehension | StrFragInvocation;  // the assigned expression
 }
 
 // Named variable reference: $x with optional indices and path: $docs[i].content
@@ -96,7 +96,7 @@ export type NameRef = {
     path?: PathDesc;        // optional path like .content.field
 }
 
-export type TextArgs = ContextVar | Index | Func | ArithmeticExpr | NameRef | Identifier;
+export type TextArgs = ContextVar | Index | Func | ArithmeticExpr | NameRef | Identifier | StrFragInvocation;
 
 export type Func = {
     kind: "function";
@@ -139,19 +139,13 @@ export type CommentBlock = {
   text: string;
 }
 
-export type LabelBlock = {
-  kind: "label-block";
-  label: string;
-  body: Array<PromptBlock>;
-}
-
 export type MarkBlock = {
   kind: "mark-block";
   markNumber: number;
   body: Array<PromptBlock>;
 }
 
-export type PromptBlock = RoleMessage|LabelBlock|MarkBlock|ConditionalBlockOutsideRole|LoopBlockOutsideRole|SwitchBlockOutsideRole|CommentBlock|NameDef|EndBlock;
+export type PromptBlock = RoleMessage|MarkBlock|ConditionalBlockOutsideRole|LoopBlockOutsideRole|SwitchBlockOutsideRole|CommentBlock|NameDef|EndBlock|RoleFragInvocation;
 
 export type LoopBlockOutsideRole = {
   kind: "loop-block-outside-role";
@@ -196,7 +190,7 @@ export type DefaultCaseBlockOutsideRole = {
 
 // Inside Role Building Blocks
 
-export type RoleBuildingBlock = ConditionalBlockInsideRole|LoopBlockInsideRole|SwitchBlockInsideRole|MarkBlockInsideRole|Template|ContextVar|Func|CommentBlock|NameDef|NameRef|OtherIndex|EndBlock;
+export type RoleBuildingBlock = ConditionalBlockInsideRole|LoopBlockInsideRole|SwitchBlockInsideRole|MarkBlockInsideRole|Template|ContextVar|Func|CommentBlock|NameDef|NameRef|OtherIndex|EndBlock|StrFragInvocation;
 
 export type MarkBlockInsideRole = {
   kind: "mark-block-inside-role";
@@ -255,3 +249,45 @@ export type EndBlock = {
   kind: "end-block";
   condition: ExpressionToken[];
 };
+
+// ──────────────── Fragment Definitions ────────────────
+
+// String Fragment Definition: produces content pieces (no role assigned)
+// Body contains RoleBuildingBlock[] - same content as inside a role message
+// Syntax: StrFrag Name[params]: { ... }
+export type StrFragDef = {
+  kind: "str-frag-def";
+  name: string;
+  params: Array<TextArgs>;
+  body: Array<RoleBuildingBlock>;
+}
+
+// Role Fragment Definition: produces one or more role messages
+// Body contains PromptBlock[] - same as a chat prompt body
+// Syntax: RoleFrag Name[params]: { ... }
+export type RoleFragDef = {
+  kind: "role-frag-def";
+  name: string;
+  params: Array<TextArgs>;
+  body: Array<PromptBlock>;
+}
+
+// ──────────────── Fragment Invocations ────────────────
+
+// String Fragment Invocation: valid anywhere ContextVar/Func/Template are valid
+// Expands to content pieces that inherit the enclosing role
+// Syntax: Frag FragName[args]
+export type StrFragInvocation = {
+  kind: "str-frag-invocation";
+  name: string;
+  arguments: Array<TextArgs>;
+}
+
+// Role Fragment Invocation: valid anywhere RoleMessage is valid
+// Expands to one or more role messages
+// Syntax: Frag FragName[args]
+export type RoleFragInvocation = {
+  kind: "role-frag-invocation";
+  name: string;
+  arguments: Array<TextArgs>;
+}

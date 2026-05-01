@@ -220,8 +220,37 @@
     .intro-text {
       font-size: 1.1rem;
       color: rgba(10,10,10,0.7);
-      margin-bottom: 32px;
+      margin-bottom: 24px;
       line-height: 1.8;
+    }
+
+    .tutorial-btn-wrapper {
+      margin-bottom: 32px;
+    }
+
+    .tutorial-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 24px;
+      background: #0a0a0a;
+      color: #fff;
+      text-decoration: none;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      transition: all 0.2s;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    .tutorial-btn:hover {
+      background: #1a1a1a;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    }
+
+    .tutorial-btn svg {
+      flex-shrink: 0;
     }
 
     h2 {
@@ -790,6 +819,16 @@
     <main>
       <h1>Language Reference</h1>
       <p class="intro-text">This is a complete reference for the Agentic Context Description Language (ACDL). The language declaratively specifies context structures sent to large language models, separating structural concerns from content and implementation.</p>
+
+      <div class="tutorial-btn-wrapper">
+        <a href="#" class="tutorial-btn" title="Tutorial video coming soon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polygon points="10 8 16 12 10 16 10 8" fill="currentColor" stroke="none"></polygon>
+          </svg>
+          Watch Tutorial
+        </a>
+      </div>
 
       <!-- SPECIFICATION STRUCTURE -->
       <h2 id="specification-structure">Specification Structure</h2>

@@ -854,8 +854,8 @@
         widthSlider.value = value;
         widthInput.value = value;
 
-        // Apply width directly to all prompt containers via inline style
-        const containers = output.querySelectorAll('.prompt-container');
+        // Apply width directly to all prompt and fragment containers via inline style
+        const containers = output.querySelectorAll('.prompt-container, .frag-def-container');
         containers.forEach(el => {
           el.style.maxWidth = value + 'px';
         });
@@ -898,7 +898,7 @@
       // Helper function to capture full content
       async function captureFullContent() {
         // Check if there's any content to capture
-        if (!output.querySelector(".prompt-container")) return null;
+        if (!output.querySelector(".prompt-container, .frag-def-container")) return null;
 
         // Capture the entire output element to include all prompts and dividers
         const content = output;
@@ -921,7 +921,7 @@
         // html2canvas doesn't render text inside inline-flex elements properly
         // in certain nesting contexts (e.g. context-vars inside ForEach loops).
         // Temporarily switch to inline-block for the capture.
-        const inlineFlexEls = content.querySelectorAll(".context-var, .template-block, .func-block, .expr-context-var");
+        const inlineFlexEls = content.querySelectorAll(".context-var, .template-block, .func-block, .expr-context-var, .frag-invocation");
         const savedDisplays = [];
         inlineFlexEls.forEach(el => {
           savedDisplays.push(el.style.display);
@@ -970,7 +970,7 @@
         });
 
         // Fix title to prevent wrapping
-        const titleH1s = content.querySelectorAll(".prompt-title h1");
+        const titleH1s = content.querySelectorAll(".prompt-title h1, .frag-def-title h1");
         const savedTitleStyles = [];
         titleH1s.forEach(el => {
           savedTitleStyles.push(el.style.cssText);
@@ -993,7 +993,7 @@
         document.head.appendChild(exportFixStyle);
 
         // Remove max-width constraints on containers to allow natural sizing
-        const containers = content.querySelectorAll('.prompt-container');
+        const containers = content.querySelectorAll('.prompt-container, .frag-def-container');
         const savedContainerStyles = [];
         containers.forEach(el => {
           savedContainerStyles.push(el.style.cssText);
@@ -1077,7 +1077,7 @@
         });
 
         // Step 3: Calculate actual content bounds (not the full container size)
-        const contentElements = content.querySelectorAll('.prompt-container, .prompt-divider');
+        const contentElements = content.querySelectorAll('.prompt-container, .frag-def-container, .prompt-divider');
         const contentRect = content.getBoundingClientRect();
         let contentMinLeft = Infinity;
         let contentMinTop = Infinity;
@@ -1219,7 +1219,7 @@
         document.body.style.overflow = "visible";
 
         // Fix inline-flex elements
-        const inlineFlexEls = promptContainer.querySelectorAll(".context-var, .template-block, .func-block, .expr-context-var");
+        const inlineFlexEls = promptContainer.querySelectorAll(".context-var, .template-block, .func-block, .expr-context-var, .frag-invocation");
         const savedDisplays = [];
         inlineFlexEls.forEach(el => {
           savedDisplays.push(el.style.display);
@@ -1266,7 +1266,7 @@
         });
 
         // Fix title
-        const titleH1 = promptContainer.querySelector(".prompt-title h1");
+        const titleH1 = promptContainer.querySelector(".prompt-title h1, .frag-def-title h1");
         const savedTitleStyle = titleH1 ? titleH1.style.cssText : "";
         if (titleH1) {
           titleH1.style.whiteSpace = "nowrap";
@@ -1385,7 +1385,7 @@
                 clonedDoc.head.appendChild(style.cloneNode(true));
               });
               // Re-apply max-width to cloned container to match the slider
-              const clonedContainers = clonedDoc.querySelectorAll('.prompt-container');
+              const clonedContainers = clonedDoc.querySelectorAll('.prompt-container, .frag-def-container');
               clonedContainers.forEach(el => {
                 el.style.width = constrainedWidth + 'px';
             el.style.maxWidth = constrainedWidth + 'px';
@@ -1419,8 +1419,8 @@
         // Collect all elements that represent "lines" of content
         const lineElements = [];
 
-        // Prompt titles
-        container.querySelectorAll('.prompt-title h1').forEach(el => lineElements.push(el));
+        // Prompt and fragment titles
+        container.querySelectorAll('.prompt-title h1, .frag-def-title h1').forEach(el => lineElements.push(el));
 
         // Role body blocks - each child is a line
         container.querySelectorAll('.role-body-block').forEach(block => {
@@ -1460,7 +1460,7 @@
 
       // Helper to capture all content (entire output)
       async function captureAllContent() {
-        if (!output.querySelector(".prompt-container")) return null;
+        if (!output.querySelector(".prompt-container, .frag-def-container")) return null;
 
         // Store original styles
         const originalOutputStyle = output.style.cssText;
@@ -1477,7 +1477,7 @@
         document.body.style.overflow = "visible";
 
         // Fix inline-flex elements
-        const inlineFlexEls = output.querySelectorAll(".context-var, .template-block, .func-block, .expr-context-var");
+        const inlineFlexEls = output.querySelectorAll(".context-var, .template-block, .func-block, .expr-context-var, .frag-invocation");
         const savedDisplays = [];
         inlineFlexEls.forEach(el => {
           savedDisplays.push(el.style.display);
@@ -1524,7 +1524,7 @@
         });
 
         // Fix titles
-        const titleH1s = output.querySelectorAll(".prompt-title h1");
+        const titleH1s = output.querySelectorAll(".prompt-title h1, .frag-def-title h1");
         const savedTitleStyles = [];
         titleH1s.forEach(el => {
           savedTitleStyles.push(el.style.cssText);
@@ -1556,7 +1556,7 @@
         document.head.appendChild(exportFixStyle);
 
         // Remove max-width constraints on containers to allow natural sizing
-        const containers = output.querySelectorAll('.prompt-container');
+        const containers = output.querySelectorAll('.prompt-container, .frag-def-container');
         const savedContainerStyles = [];
         containers.forEach(el => {
           savedContainerStyles.push(el.style.cssText);
@@ -1647,7 +1647,7 @@
         });
 
         // Step 3: Calculate actual content bounds (not the full container size)
-        const contentElements = output.querySelectorAll('.prompt-container, .prompt-divider');
+        const contentElements = output.querySelectorAll('.prompt-container, .frag-def-container, .prompt-divider');
         const outputRect = output.getBoundingClientRect();
         let contentMinLeft = Infinity;
         let contentMinTop = Infinity;
@@ -1694,7 +1694,7 @@
                 clonedDoc.head.appendChild(style.cloneNode(true));
               });
               // Re-apply max-width to cloned containers to ensure they match the slider
-              const clonedContainers = clonedDoc.querySelectorAll('.prompt-container');
+              const clonedContainers = clonedDoc.querySelectorAll('.prompt-container, .frag-def-container');
               clonedContainers.forEach(el => {
                 el.style.width = constrainedWidth + 'px';
                 el.style.maxWidth = constrainedWidth + 'px';
@@ -1745,7 +1745,7 @@
       exportPng.addEventListener("click", async () => {
         exportMenu.classList.remove("show");
 
-        if (!output.querySelector(".prompt-container")) {
+        if (!output.querySelector(".prompt-container, .frag-def-container")) {
           alert("No visualization to export. Please render a prompt first.");
           return;
         }

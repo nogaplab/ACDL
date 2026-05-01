@@ -73,7 +73,7 @@
     "sync-css": "node -e \"require('fs').copyFileSync('../src/styles.css', 'media/preview.css')\"",
     "build": "npm run sync-css && node esbuild.mjs",
     "watch": "npm run sync-css && node esbuild.mjs --watch",
-    "package": "npm run sync-css && npx vsce package -o ../dist/website/extension/"
+    "package": "npm run sync-css && npx vsce package -o ../dist/website/acdl-language-0.1.0.vsix"
   },
   "devDependencies": {
     "@types/vscode": "^1.80.0",

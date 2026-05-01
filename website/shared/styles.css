@@ -198,11 +198,11 @@ nav.nav-open .nav-toggle span:nth-child(3) {
 .btn {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 14px 28px;
-  border-radius: 8px;
+  gap: 10px;
+  padding: 18px 36px;
+  border-radius: 10px;
   font-weight: 600;
-  font-size: 0.95rem;
+  font-size: 1.25rem;
   text-decoration: none;
   transition: all 0.2s;
   border: none;
@@ -294,6 +294,14 @@ nav.nav-open .nav-toggle span:nth-child(3) {
   justify-content: center;
 }
 
+.hero-buttons .btn {
+  justify-content: center;
+}
+
+.hero-buttons .btn svg {
+  flex-shrink: 0;
+}
+
 /* Code blocks */
 pre {
   background: #1a1a1a;
@@ -363,6 +371,21 @@ pre code {
   font-size: 0.9rem;
   color: rgba(10,10,10,0.6);
   line-height: 1.5;
+}
+
+.feature-icons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.feature-icons .feature-icon {
+  width: auto;
+  height: auto;
+  padding: 8px 12px;
+  margin-bottom: 0;
+  font-size: 0.85rem;
 }
 
 .feature-icon {

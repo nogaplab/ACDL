@@ -8,7 +8,6 @@ const NAMESPACE_KEYWORDS = new Set<NamespaceKeyword>([
   "env",
   "sys",
   "resp",
-  "prompt",
 ]);
 
 const CONTROL_KEYWORDS = new Set<ControlKeyword>([
@@ -29,6 +28,9 @@ const CONTROL_KEYWORDS = new Set<ControlKeyword>([
   "not",
   "and",
   "or",
+  "StrFrag",
+  "RoleFrag",
+  "Frag",
 ]);
 
 /* ───────────────── operators ───────────────── */

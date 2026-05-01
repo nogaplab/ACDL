@@ -1,7 +1,6 @@
 import { ArithmeticOperator } from "./types";
 
 export type NamespaceKeyword =
-  | "prompt"
   | "sys"
   | "env"
   | "resp";
@@ -23,7 +22,10 @@ export type ControlKeyword =
   | "when"
   | "not"
   | "and"
-  | "or";
+  | "or"
+  | "StrFrag"
+  | "RoleFrag"
+  | "Frag";
 
 export type Keyword = NamespaceKeyword | ControlKeyword;
 
