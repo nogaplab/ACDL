@@ -1,0 +1,1145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  {{GA}}
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Getting Started - ACDL Tutorial</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{BASE}}shared/styles.css">
+  <style>
+    /* Tutorial-specific styles */
+    .tutorial-hero {
+      padding: 140px 24px 60px;
+      text-align: center;
+      background: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(120, 119, 198, 0.15), transparent);
+    }
+
+    .tutorial-hero h1 {
+      font-size: 3rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      margin-bottom: 16px;
+      background: linear-gradient(to bottom right, #fff 30%, rgba(255,255,255,0.4));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .tutorial-hero p {
+      font-size: 1.25rem;
+      color: rgba(255,255,255,0.5);
+      max-width: 600px;
+      margin: 0 auto 32px;
+    }
+
+    .quick-links {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .quick-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 20px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      color: rgba(255,255,255,0.7);
+      text-decoration: none;
+      font-size: 0.9rem;
+      transition: all 0.2s;
+    }
+
+    .quick-link:hover {
+      background: rgba(255,255,255,0.1);
+      color: #fff;
+    }
+
+    .quick-link.primary {
+      background: #7877c6;
+      border-color: #7877c6;
+      color: #fff;
+    }
+
+    .quick-link.primary:hover {
+      background: #8a89d4;
+    }
+
+    /* Main content */
+    .tutorial-content {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 60px 24px 100px;
+    }
+
+    .step {
+      margin-bottom: 80px;
+    }
+
+    .step-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .step-number {
+      width: 48px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #7877c6, #5a59a8);
+      border-radius: 12px;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #fff;
+      flex-shrink: 0;
+    }
+
+    .step h2 {
+      font-size: 1.75rem;
+      font-weight: 600;
+      color: #fff;
+      letter-spacing: -0.02em;
+    }
+
+    .step p {
+      font-size: 1.1rem;
+      color: rgba(255,255,255,0.6);
+      line-height: 1.8;
+      margin-bottom: 20px;
+    }
+
+    .step p strong {
+      color: rgba(255,255,255,0.85);
+    }
+
+    /* Code examples */
+    .code-example {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+      margin: 24px 0;
+      overflow: hidden;
+    }
+
+    .code-example-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 20px;
+      background: rgba(255,255,255,0.03);
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .code-example-title {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      color: rgba(255,255,255,0.5);
+    }
+
+    .code-example-badge {
+      font-size: 0.75rem;
+      padding: 4px 10px;
+      background: rgba(120, 119, 198, 0.2);
+      border-radius: 4px;
+      color: #a5a4e3;
+      font-weight: 500;
+    }
+
+    .code-example pre {
+      padding: 24px;
+      margin: 0;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      line-height: 1.8;
+      color: rgba(255,255,255,0.85);
+      overflow-x: auto;
+      background: transparent;
+      border-radius: 0;
+    }
+
+    /* Explanation boxes */
+    .explanation {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 16px;
+      padding: 20px 24px;
+      background: rgba(120, 119, 198, 0.08);
+      border: 1px solid rgba(120, 119, 198, 0.2);
+      border-radius: 12px;
+      margin: 24px 0;
+    }
+
+    .explanation-icon {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(120, 119, 198, 0.2);
+      border-radius: 8px;
+      color: #a5a4e3;
+    }
+
+    .explanation-text {
+      font-size: 0.95rem;
+      color: rgba(255,255,255,0.7);
+      line-height: 1.7;
+    }
+
+    .explanation-text code {
+      background: rgba(120, 119, 198, 0.2);
+      color: #c5c4f3;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.9em;
+    }
+
+    /* Syntax highlighting */
+    .keyword { color: #c792ea; }
+    .role { color: #89ddff; }
+    .template { color: #c3e88d; }
+    .context { color: #82aaff; }
+    .comment { color: rgba(255,255,255,0.35); }
+    .string { color: #c3e88d; }
+    .function { color: #ffcb6b; }
+
+    /* Callout boxes */
+    .callout {
+      padding: 20px 24px;
+      border-radius: 12px;
+      margin: 24px 0;
+    }
+
+    .callout.tip {
+      background: rgba(34, 197, 94, 0.1);
+      border: 1px solid rgba(34, 197, 94, 0.3);
+    }
+
+    .callout.tip .callout-title {
+      color: #22c55e;
+    }
+
+    .callout.note {
+      background: rgba(59, 130, 246, 0.1);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+
+    .callout.note .callout-title {
+      color: #3b82f6;
+    }
+
+    .callout-title {
+      font-weight: 600;
+      font-size: 0.9rem;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .callout-content {
+      font-size: 0.95rem;
+      color: rgba(255,255,255,0.7);
+      line-height: 1.7;
+    }
+
+    /* Try it button */
+    .try-it {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 20px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 8px;
+      color: #fff;
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: all 0.2s;
+      margin-top: 16px;
+    }
+
+    .try-it:hover {
+      background: rgba(255,255,255,0.1);
+      border-color: rgba(255,255,255,0.25);
+    }
+
+    .try-it svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    /* Feature list */
+    .feature-list {
+      list-style: none;
+      padding: 0;
+      margin: 20px 0;
+    }
+
+    .feature-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 10px 0;
+      color: rgba(255,255,255,0.7);
+      font-size: 1rem;
+      line-height: 1.6;
+    }
+
+    .feature-list li::before {
+      content: '';
+      width: 8px;
+      height: 8px;
+      background: #7877c6;
+      border-radius: 50%;
+      margin-top: 8px;
+      flex-shrink: 0;
+    }
+
+    /* Next steps section */
+    .next-steps {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+      padding: 40px;
+      margin-top: 60px;
+    }
+
+    .next-steps h2 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 24px;
+    }
+
+    .next-steps-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+    }
+
+    .next-step-card {
+      display: flex;
+      flex-direction: column;
+      padding: 24px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 12px;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+
+    .next-step-card:hover {
+      background: rgba(255,255,255,0.06);
+      border-color: rgba(255,255,255,0.12);
+      transform: translateY(-2px);
+    }
+
+    .next-step-card h4 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 6px;
+    }
+
+    .next-step-card p {
+      font-size: 0.85rem;
+      color: rgba(255,255,255,0.5);
+      margin: 0;
+    }
+
+    /* Code and render side-by-side */
+    .code-and-render {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+      margin: 24px 0;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .code-and-render .code-panel {
+      background: rgba(255,255,255,0.03);
+      padding: 20px;
+    }
+
+    .code-and-render .code-panel pre {
+      margin: 0;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      line-height: 1.7;
+      color: rgba(255,255,255,0.85);
+      background: transparent;
+      padding: 0;
+      border-radius: 0;
+    }
+
+    /* Rendered output - white background */
+    .rendered-output {
+      background: #fff;
+      padding: 16px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      line-height: 1.3;
+      border-left: 1px solid rgba(0,0,0,0.1);
+    }
+
+    .rendered-output .render-label {
+      font-family: 'Inter', sans-serif;
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: rgba(10,10,10,0.4);
+      margin-bottom: 10px;
+    }
+
+    .rendered-output .prompt-title {
+      background: #f6f8fa;
+      border: 1px solid #d0d7de;
+      border-radius: 3px;
+      padding: 4px 10px;
+      margin-bottom: 6px;
+      margin-left: -10px;
+      padding-left: 10px;
+    }
+
+    .rendered-output .prompt-title h1 {
+      margin: 0;
+      font-size: 11px;
+      font-weight: 600;
+      color: #0a0a0a;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .rendered-output .prompt-title .idx {
+      color: #0969da;
+      font-weight: 700;
+    }
+
+    /* Role messages */
+    .rendered-output .role-msg {
+      border-left: 2px solid #d0d7de;
+      margin: 5px 0;
+      padding: 0;
+    }
+    .rendered-output .role-msg.system { border-left-color: #0969da; }
+    .rendered-output .role-msg.user { border-left-color: #e5990b; }
+    .rendered-output .role-msg.assistant { border-left-color: #1acad1; }
+    .rendered-output .role-msg.tool { border-left-color: #f7660b; }
+
+    .rendered-output .role-badge {
+      display: block;
+      width: fit-content;
+      padding: 2px 5px;
+      font-size: 8px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+      border-radius: 0 0 3px 0;
+      color: #fff;
+      line-height: 1;
+    }
+    .rendered-output .role-msg.system .role-badge { background: #0969da; }
+    .rendered-output .role-msg.user .role-badge { background: #e5990b; }
+    .rendered-output .role-msg.assistant .role-badge { background: #1acad1; }
+    .rendered-output .role-msg.tool .role-badge { background: #f7660b; }
+
+    .rendered-output .role-body {
+      padding: 4px 8px;
+    }
+
+    /* Templates - purple */
+    .rendered-output .tpl {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      background: #faf5ff;
+      border: 1px solid #9333ea;
+      color: #9333ea;
+      padding: 3px 6px;
+      border-radius: 3px;
+      font-size: 10px;
+      font-weight: 500;
+      line-height: 1;
+      margin: 1px 0;
+    }
+    .rendered-output .tpl::before {
+      content: '◆';
+      font-size: 8px;
+      opacity: 0.7;
+    }
+
+    /* Context variables - green */
+    .rendered-output .ctx {
+      display: inline-flex;
+      align-items: center;
+      background: #e0ffdd;
+      border: 1px solid #0da66b;
+      color: #0da66b;
+      padding: 3px 6px;
+      border-radius: 3px;
+      font-size: 10px;
+      font-weight: 500;
+      margin: 1px 0;
+    }
+
+    .rendered-output .idx {
+      color: #0969da;
+      font-weight: 700;
+    }
+
+    /* Control flow blocks */
+    .rendered-output .ctrl-block {
+      border-left: 2px solid #6e7781;
+      margin: 6px 0;
+      padding: 4px 8px 4px 10px;
+    }
+
+    .rendered-output .ctrl-header {
+      padding: 3px 6px;
+      margin: -4px -8px 4px -10px;
+      font-size: 10px;
+      font-weight: 600;
+      color: #57606a;
+      background: #eaeef2;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .rendered-output .ctrl-header::before {
+      content: '↻';
+      font-size: 9px;
+      color: #6e7781;
+    }
+
+    .rendered-output .ctrl-header.cond::before {
+      content: '◇';
+      font-size: 8px;
+    }
+
+    /* Comments */
+    .rendered-output .cmt {
+      color: #6e7781;
+      font-style: italic;
+      font-size: 9px;
+      display: block;
+      margin: 3px 0;
+    }
+
+    /* Functions */
+    .rendered-output .fn {
+      display: inline-flex;
+      align-items: center;
+      background: #faf5ff;
+      border: 1px solid #9333ea;
+      color: #9333ea;
+      padding: 3px 6px;
+      border-radius: 3px;
+      font-size: 10px;
+      font-weight: 500;
+    }
+
+    @media (max-width: 700px) {
+      .code-and-render {
+        grid-template-columns: 1fr;
+      }
+      .rendered-output {
+        border-left: none;
+        border-top: 1px solid rgba(0,0,0,0.1);
+      }
+    }
+
+    @media (max-width: 600px) {
+      .tutorial-hero h1 { font-size: 2rem; }
+      .step h2 { font-size: 1.4rem; }
+      .next-steps-grid { grid-template-columns: 1fr; }
+      .quick-links { flex-direction: column; align-items: center; }
+    }
+  </style>
+</head>
+<body>
+  {{NAV}}
+
+  <section class="tutorial-hero">
+    <h1>Getting Started with ACDL</h1>
+    <p>Learn to describe LLM agent context structures in under 10 minutes</p>
+    <div class="quick-links">
+      <a href="#step1" class="quick-link primary">Start from the beginning</a>
+      <a href="#quickstart" class="quick-link">Quick start (I know what I'm doing)</a>
+      <a href="visualizer.html" class="quick-link">Jump to Live Editor</a>
+    </div>
+  </section>
+
+  <div class="tutorial-content">
+
+    <!-- Quick Start Section -->
+    <section id="quickstart" class="step">
+      <div class="step-header">
+        <div class="step-number">Q</div>
+        <h2>Quick Start</h2>
+      </div>
+      <p>
+        If you're already familiar with LLM prompting and just want to dive in, here's the minimum you need to know:
+      </p>
+
+      <div class="code-and-render">
+        <div class="code-panel">
+          <pre><span class="template">MyPrompt</span>[<span class="context">@T</span>]: {
+    <span class="role">S</span>: <span class="template">INSTRUCTIONS</span>
+    <span class="role">U</span>: <span class="context">env.user_input</span>[<span class="context">@T</span>]
+}</pre>
+        </div>
+        <div class="rendered-output">
+          <div class="render-label">Rendered</div>
+          <div class="prompt-title"><h1>MyPrompt[<span class="idx">@T</span>]:</h1></div>
+          <div class="role-msg system">
+            <span class="role-badge">System</span>
+            <div class="role-body"><span class="tpl">INSTRUCTIONS</span></div>
+          </div>
+          <div class="role-msg user">
+            <span class="role-badge">User</span>
+            <div class="role-body"><span class="ctx">env.user_input[<span class="idx">@T</span>]</span></div>
+          </div>
+        </div>
+      </div>
+
+      <p>
+        That's it! <code>S:</code> is a system message, <code>U:</code> is a user message, and <code>env.user_input[@T]</code>
+        is a variable that holds the user's input at turn <code>@T</code>.
+      </p>
+
+      <a href="visualizer.html" class="try-it">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="5 3 19 12 5 21 5 3"></polygon>
+        </svg>
+        Try it in the Live Editor
+      </a>
+
+      <div class="callout tip">
+        <div class="callout-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+            <path d="M2 17l10 5 10-5"></path>
+            <path d="M2 12l10 5 10-5"></path>
+          </svg>
+          Ready for more?
+        </div>
+        <div class="callout-content">
+          Continue reading below for a complete walkthrough, or jump to the <a href="syntax-reference.html" style="color: #22c55e;">documentation</a> for the full reference.
+        </div>
+      </div>
+    </section>
+
+    <!-- Step 1: What is ACDL? -->
+    <section id="step1" class="step">
+      <div class="step-header">
+        <div class="step-number">1</div>
+        <h2>What is ACDL?</h2>
+      </div>
+      <p>
+        <strong>ACDL (Agentic Context Description Language)</strong> is a way to describe the structure of LLM prompts
+        and agent conversations. Think of it as a blueprint for how your AI agent communicates.
+      </p>
+      <p>
+        When you build an AI agent, you need to manage complex conversations: system instructions, user messages,
+        tool calls, loops through history, conditional logic. ACDL gives you a clean way to describe all of this
+        without mixing it up with implementation details.
+      </p>
+
+      <div class="explanation">
+        <div class="explanation-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="16" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+          </svg>
+        </div>
+        <div class="explanation-text">
+          <strong>Why not just write prompts directly?</strong> You can! But as your agent grows more complex,
+          ACDL helps you see the structure at a glance, share it with others, and reason about how context
+          evolves over time.
+        </div>
+      </div>
+    </section>
+
+    <!-- Step 2: Your First Prompt -->
+    <section id="step2" class="step">
+      <div class="step-header">
+        <div class="step-number">2</div>
+        <h2>Your First Prompt</h2>
+      </div>
+      <p>
+        Let's start with the simplest possible ACDL prompt. Every prompt has a <strong>name</strong> and a <strong>body</strong>:
+      </p>
+
+      <div class="code-and-render">
+        <div class="code-panel">
+          <pre><span class="template">HelloWorld</span>[]: {
+    <span class="role">S</span>: <span class="template">INSTRUCTIONS</span>
+    <span class="role">U</span>: <span class="template">CONTENT</span>
+}</pre>
+        </div>
+        <div class="rendered-output">
+          <div class="render-label">Rendered</div>
+          <div class="prompt-title"><h1>HelloWorld[]:</h1></div>
+          <div class="role-msg system">
+            <span class="role-badge">System</span>
+            <div class="role-body"><span class="tpl">INSTRUCTIONS</span></div>
+          </div>
+          <div class="role-msg user">
+            <span class="role-badge">User</span>
+            <div class="role-body"><span class="tpl">CONTENT</span></div>
+          </div>
+        </div>
+      </div>
+
+      <p>
+        Here's what each part means:
+      </p>
+      <ul class="feature-list">
+        <li><code>HelloWorld</code> is the prompt name (CamelCase by convention)</li>
+        <li><code>S:</code> marks a <strong>System</strong> message (instructions for the LLM)</li>
+        <li><code>U:</code> marks a <strong>User</strong> message (what the user says)</li>
+        <li><code>INSTRUCTIONS</code> and <code>CONTENT</code> are <strong>templates</strong> - named placeholders for text blocks (ALL_CAPS by convention)</li>
+      </ul>
+
+      <div class="explanation">
+        <div class="explanation-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="3" y1="9" x2="21" y2="9"></line>
+          </svg>
+        </div>
+        <div class="explanation-text">
+          <strong>Templates</strong> let you separate structure from content. <code>INSTRUCTIONS</code> might expand
+          to a long system prompt, but in ACDL we just see the structural role it plays. This keeps specifications
+          clean and focused on the conversation flow.
+        </div>
+      </div>
+
+      <div class="callout note">
+        <div class="callout-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="16" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+          </svg>
+          The Five Roles
+        </div>
+        <div class="callout-content">
+          ACDL has four chat role markers: <code>S:</code> (System), <code>U:</code> (User), <code>A:</code> (Assistant),
+          and <code>T:</code> (Tool response). These map directly to the roles in chat-based LLM APIs.
+          There's also <code>N:</code> (None) for the legacy completion format - a single message without roles.
+        </div>
+      </div>
+    </section>
+
+    <!-- Step 3: Multi-line Messages -->
+    <section id="step3" class="step">
+      <div class="step-header">
+        <div class="step-number">3</div>
+        <h2>Multi-line Messages</h2>
+      </div>
+      <p>
+        When a role message contains multiple elements, use <strong>braces</strong> to group them together:
+      </p>
+
+      <div class="code-and-render">
+        <div class="code-panel">
+          <pre><span class="template">CodingAssistant</span>[<span class="context">@T</span>]: {
+    <span class="role">S</span>: {
+        <span class="template">SYSTEM_INSTRUCTIONS</span>
+        <span class="template">CODING_GUIDELINES</span>
+        <span class="template">AVAILABLE_TOOLS</span>
+    }
+    <span class="role">U</span>: <span class="context">env.user_input</span>[<span class="context">@T</span>]
+}</pre>
+        </div>
+        <div class="rendered-output">
+          <div class="render-label">Rendered</div>
+          <div class="prompt-title"><h1>CodingAssistant[<span class="idx">@T</span>]:</h1></div>
+          <div class="role-msg system">
+            <span class="role-badge">System</span>
+            <div class="role-body">
+              <span class="tpl">SYSTEM_INSTRUCTIONS</span><br>
+              <span class="tpl">CODING_GUIDELINES</span><br>
+              <span class="tpl">AVAILABLE_TOOLS</span>
+            </div>
+          </div>
+          <div class="role-msg user">
+            <span class="role-badge">User</span>
+            <div class="role-body"><span class="ctx">env.user_input[<span class="idx">@T</span>]</span></div>
+          </div>
+        </div>
+      </div>
+
+      <p>
+        The <code>S: { ... }</code> form lets you include multiple templates, variables, or any combination
+        of content in a single message. Without braces, a role takes just one element.
+      </p>
+    </section>
+
+    <!-- Step 4: Adding Variables -->
+    <section id="step4" class="step">
+      <div class="step-header">
+        <div class="step-number">4</div>
+        <h2>Adding Variables</h2>
+      </div>
+      <p>
+        Real prompts usually include dynamic content. ACDL uses <strong>context variables</strong> that come from
+        three sources:
+      </p>
+      <ul class="feature-list">
+        <li><code>env.</code> - Environment inputs (user inputs, task descriptions, external data)</li>
+        <li><code>sys.</code> - Agent state (memory contents, tool configurations, action histories)</li>
+        <li><code>resp.</code> - LLM responses (what the model previously generated)</li>
+      </ul>
+
+      <div class="callout note">
+        <div class="callout-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="16" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+          </svg>
+          Immutable Values
+        </div>
+        <div class="callout-content">
+          All values in ACDL are immutable. A value like <code>sys.config.role</code> stays the same throughout
+          the system's lifetime. Values that change between steps are accessed with a time index:
+          <code>env.user_input[@T]</code> is the user input at the current step.
+        </div>
+      </div>
+
+      <div class="code-example">
+        <div class="code-example-header">
+          <span class="code-example-title">with-variables.acdl</span>
+        </div>
+        <pre><span class="template">AssistantPrompt</span>: {
+    <span class="role">S</span>: <span class="template">ROLE_DESCRIPTION</span>(<span class="context">env.assistant_name</span>)
+    <span class="role">U</span>: <span class="context">env.user_input</span>
+}</pre>
+      </div>
+
+      <div class="explanation">
+        <div class="explanation-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="16 18 22 12 16 6"></polyline>
+            <polyline points="8 6 2 12 8 18"></polyline>
+          </svg>
+        </div>
+        <div class="explanation-text">
+          Variables like <code>env.user_input</code> are placeholders. When you implement your agent, you'll fill
+          these in with actual values. ACDL doesn't care about the implementation - it just describes the structure.
+        </div>
+      </div>
+    </section>
+
+    <!-- Step 5: Time Indices -->
+    <section id="step5" class="step">
+      <div class="step-header">
+        <div class="step-number">5</div>
+        <h2>Time Indices: Tracking Conversation Turns</h2>
+      </div>
+      <p>
+        Agents have conversations that evolve over multiple turns. ACDL uses <strong>time indices</strong> to
+        describe which turn we're talking about:
+      </p>
+
+      <div class="code-and-render">
+        <div class="code-panel">
+          <pre><span class="template">ChatAgent</span>[<span class="context">@T</span>]: {
+    <span class="role">S</span>: <span class="template">ROLE</span>  <span class="comment">// you are a helpful assistant...</span>
+    <span class="role">U</span>: <span class="context">env.user_input</span>[<span class="context">@T</span>]
+}</pre>
+        </div>
+        <div class="rendered-output">
+          <div class="render-label">Rendered</div>
+          <div class="prompt-title"><h1>ChatAgent[<span class="idx">@T</span>]:</h1></div>
+          <div class="role-msg system">
+            <span class="role-badge">System</span>
+            <div class="role-body"><span class="tpl">ROLE</span> <span class="cmt">// you are a helpful assistant...</span></div>
+          </div>
+          <div class="role-msg user">
+            <span class="role-badge">User</span>
+            <div class="role-body"><span class="ctx">env.user_input[<span class="idx">@T</span>]</span></div>
+          </div>
+        </div>
+      </div>
+
+      <p>
+        The <code>[@T]</code> after the prompt name means "this prompt is parameterized by turn <code>T</code>".
+        Inside the prompt, <code>env.user_input[@T]</code> means "the user's input at turn T".
+      </p>
+
+      <ul class="feature-list">
+        <li><code>@T</code> - The current turn (a parameter)</li>
+        <li><code>@1</code>, <code>@2</code>, etc. - Specific turn numbers</li>
+        <li><code>@t</code> - A loop variable (lowercase) for iterating through turns</li>
+      </ul>
+    </section>
+
+    <!-- Step 6: Loops and History -->
+    <section id="step6" class="step">
+      <div class="step-header">
+        <div class="step-number">6</div>
+        <h2>Loops: Including Conversation History</h2>
+      </div>
+      <p>
+        Most agents need to include previous conversation turns. Use <code>ForEach</code> to loop through history:
+      </p>
+
+      <div class="code-and-render">
+        <div class="code-panel">
+          <pre><span class="template">ChatWithHistory</span>[<span class="context">@T</span>]: {
+    <span class="role">S</span>: <span class="template">INSTRUCTIONS</span>
+    <span class="comment">// Previous turns</span>
+    <span class="keyword">ForEach</span>(<span class="context">@t</span>: range(1, <span class="context">@T</span>)) {
+        <span class="role">U</span>: <span class="context">env.user_input</span>[<span class="context">@t</span>]
+        <span class="role">A</span>: <span class="context">resp.reply</span>[<span class="context">@t</span>]
+    }
+    <span class="comment">// Current turn</span>
+    <span class="role">U</span>: <span class="context">env.user_input</span>[<span class="context">@T</span>]
+}</pre>
+        </div>
+        <div class="rendered-output">
+          <div class="render-label">Rendered</div>
+          <div class="prompt-title"><h1>ChatWithHistory[<span class="idx">@T</span>]:</h1></div>
+          <div class="role-msg system">
+            <span class="role-badge">System</span>
+            <div class="role-body"><span class="tpl">INSTRUCTIONS</span></div>
+          </div>
+          <span class="cmt">// Previous turns</span>
+          <div class="ctrl-block">
+            <div class="ctrl-header">ForEach <span class="idx">@t</span> : 1 ... <span class="idx">@T</span></div>
+            <div class="role-msg user">
+              <span class="role-badge">User</span>
+              <div class="role-body"><span class="ctx">env.user_input[<span class="idx">@t</span>]</span></div>
+            </div>
+            <div class="role-msg assistant">
+              <span class="role-badge">Assistant</span>
+              <div class="role-body"><span class="ctx">resp.reply[<span class="idx">@t</span>]</span></div>
+            </div>
+          </div>
+          <span class="cmt">// Current turn</span>
+          <div class="role-msg user">
+            <span class="role-badge">User</span>
+            <div class="role-body"><span class="ctx">env.user_input[<span class="idx">@T</span>]</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="explanation">
+        <div class="explanation-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+          </svg>
+        </div>
+        <div class="explanation-text">
+          <code>ForEach(@t: range(1, @T))</code> iterates from turn 1 up to (but not including) the current turn <code>@T</code>.
+          The loop variable <code>@t</code> takes each value in that range.
+        </div>
+      </div>
+    </section>
+
+    <!-- Step 7: Building a ReAct Agent -->
+    <section id="step7" class="step">
+      <div class="step-header">
+        <div class="step-number">7</div>
+        <h2>Putting It Together: A ReAct Agent</h2>
+      </div>
+      <p>
+        Let's combine everything to describe a <strong>ReAct agent</strong> - an agent that reasons and uses tools
+        in a loop:
+      </p>
+
+      <div class="code-and-render">
+        <div class="code-panel">
+          <pre><span class="template">ReactAgent</span>[<span class="context">@T</span>]: {
+    <span class="role">S</span>: {
+        <span class="template">TASK_INSTRUCTIONS</span>
+        <span class="template">AVAILABLE_TOOLS</span>
+    }
+    <span class="role">U</span>: <span class="context">env.user_question</span>
+    <span class="comment">// Action history</span>
+    <span class="keyword">ForEach</span>(<span class="context">@t</span>: range(1, <span class="context">@T</span>)) {
+        <span class="role">A</span>: {
+            <span class="context">resp.reasoning</span>[<span class="context">@t</span>]
+            <span class="context">sys.tool_call</span>[<span class="context">@t</span>]
+        }
+        <span class="role">T</span>: <span class="context">sys.tool_call</span>[<span class="context">@t</span>].response
+    }
+    <span class="role">S</span>: <span class="template">CONTINUE_OR_ANSWER</span>
+}</pre>
+        </div>
+        <div class="rendered-output">
+          <div class="render-label">Rendered</div>
+          <div class="prompt-title"><h1>ReactAgent[<span class="idx">@T</span>]:</h1></div>
+          <div class="role-msg system">
+            <span class="role-badge">System</span>
+            <div class="role-body">
+              <span class="tpl">TASK_INSTRUCTIONS</span><br>
+              <span class="tpl">AVAILABLE_TOOLS</span>
+            </div>
+          </div>
+          <div class="role-msg user">
+            <span class="role-badge">User</span>
+            <div class="role-body"><span class="ctx">env.user_question</span></div>
+          </div>
+          <span class="cmt">// Action history</span>
+          <div class="ctrl-block">
+            <div class="ctrl-header">ForEach <span class="idx">@t</span> : 1 ... <span class="idx">@T</span></div>
+            <div class="role-msg assistant">
+              <span class="role-badge">Assistant</span>
+              <div class="role-body">
+                <span class="ctx">resp.reasoning[<span class="idx">@t</span>]</span><br>
+                <span class="ctx">sys.tool_call[<span class="idx">@t</span>]</span>
+              </div>
+            </div>
+            <div class="role-msg tool">
+              <span class="role-badge">Tool</span>
+              <div class="role-body"><span class="ctx">sys.tool_call[<span class="idx">@t</span>].response</span></div>
+            </div>
+          </div>
+          <div class="role-msg system">
+            <span class="role-badge">System</span>
+            <div class="role-body"><span class="tpl">CONTINUE_OR_ANSWER</span></div>
+          </div>
+        </div>
+      </div>
+
+      <p>
+        This describes the classic ReAct pattern:
+      </p>
+      <ul class="feature-list">
+        <li>System message with instructions and available tools</li>
+        <li>User's original question</li>
+        <li>Loop through all previous reasoning steps and tool responses</li>
+        <li>Final prompt asking the agent to continue or give an answer</li>
+      </ul>
+
+      <a href="visualizer.html?example=react" class="try-it">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="5 3 19 12 5 21 5 3"></polygon>
+        </svg>
+        See this in the Live Editor
+      </a>
+    </section>
+
+    <!-- Step 8: Conditionals -->
+    <section id="step8" class="step">
+      <div class="step-header">
+        <div class="step-number">8</div>
+        <h2>Conditionals: Dynamic Context</h2>
+      </div>
+      <p>
+        Sometimes you need different context based on conditions. Use <code>If</code>, <code>ElseIf</code>, and
+        <code>Else</code>:
+      </p>
+
+      <div class="code-and-render">
+        <div class="code-panel">
+          <pre><span class="template">AdaptiveAgent</span>[<span class="context">@T</span>]: {
+    <span class="role">S</span>: <span class="template">BASE_INSTRUCTIONS</span>
+
+    <span class="keyword">If</span> <span class="context">env.has_documents</span> {
+        <span class="role">S</span>: {
+            <span class="template">RAG_INSTRUCTIONS</span>
+            <span class="context">sys.retrieved_docs</span>
+        }
+    }
+
+    <span class="keyword">If</span> <span class="context">env.has_tools</span> {
+        <span class="role">S</span>: <span class="template">TOOL_INSTRUCTIONS</span>
+    } <span class="keyword">Else</span> {
+        <span class="role">S</span>: <span class="template">NO_TOOLS_MESSAGE</span>
+    }
+
+    <span class="role">U</span>: <span class="context">env.user_input</span>[<span class="context">@T</span>]
+}</pre>
+        </div>
+        <div class="rendered-output">
+          <div class="render-label">Rendered</div>
+          <div class="prompt-title"><h1>AdaptiveAgent[<span class="idx">@T</span>]:</h1></div>
+          <div class="role-msg system">
+            <span class="role-badge">System</span>
+            <div class="role-body"><span class="tpl">BASE_INSTRUCTIONS</span></div>
+          </div>
+          <div class="ctrl-block">
+            <div class="ctrl-header cond">If <span class="ctx">env.has_documents</span></div>
+            <div class="role-msg system">
+              <span class="role-badge">System</span>
+              <div class="role-body">
+                <span class="tpl">RAG_INSTRUCTIONS</span><br>
+                <span class="ctx">sys.retrieved_docs</span>
+              </div>
+            </div>
+          </div>
+          <div class="ctrl-block">
+            <div class="ctrl-header cond">If <span class="ctx">env.has_tools</span></div>
+            <div class="role-msg system">
+              <span class="role-badge">System</span>
+              <div class="role-body"><span class="tpl">TOOL_INSTRUCTIONS</span></div>
+            </div>
+          </div>
+          <div class="ctrl-block">
+            <div class="ctrl-header cond">Else</div>
+            <div class="role-msg system">
+              <span class="role-badge">System</span>
+              <div class="role-body"><span class="tpl">NO_TOOLS_MESSAGE</span></div>
+            </div>
+          </div>
+          <div class="role-msg user">
+            <span class="role-badge">User</span>
+            <div class="role-body"><span class="ctx">env.user_input[<span class="idx">@T</span>]</span></div>
+          </div>
+        </div>
+      </div>
+
+      <p>
+        This agent adapts its instructions based on whether documents and tools are available.
+      </p>
+    </section>
+
+    <!-- Next Steps -->
+    <section class="next-steps">
+      <h2>What's Next?</h2>
+      <div class="next-steps-grid">
+        <a href="visualizer.html" class="next-step-card">
+          <h4>Live Editor</h4>
+          <p>Write ACDL and see it rendered in real-time</p>
+        </a>
+        <a href="syntax-reference.html" class="next-step-card">
+          <h4>Full Documentation</h4>
+          <p>Complete syntax reference with all features</p>
+        </a>
+        <a href="examples/index.html" class="next-step-card">
+          <h4>Browse Examples</h4>
+          <p>See ACDL specs for real agent systems</p>
+        </a>
+        <a href="vscode.html" class="next-step-card">
+          <h4>VSCode Extension</h4>
+          <p>Syntax highlighting and preview in your editor</p>
+        </a>
+      </div>
+    </section>
+
+  </div>
+
+  {{FOOTER}}
+</body>
+</html>

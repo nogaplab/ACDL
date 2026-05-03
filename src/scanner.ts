@@ -29,7 +29,7 @@ const CONTROL_KEYWORDS = new Set<ControlKeyword>([
   "and",
   "or",
   "StrFrag",
-  "RoleFrag",
+  "RolesFrag",
   "Frag",
 ]);
 

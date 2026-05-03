@@ -85,10 +85,10 @@ export class Parser {
 
   /**
    * Parse a file containing one or more prompts, fragment definitions, and comments.
-   * Returns an array of Prompt, StrFragDef, RoleFragDef, and CommentBlock objects.
+   * Returns an array of Prompt, StrFragDef, RolesFragDef, and CommentBlock objects.
    */
-  public parseFile(): (AST.Prompt | AST.StrFragDef | AST.RoleFragDef | AST.CommentBlock)[] {
-    const blocks: (AST.Prompt | AST.StrFragDef | AST.RoleFragDef | AST.CommentBlock)[] = [];
+  public parseFile(): (AST.Prompt | AST.StrFragDef | AST.RolesFragDef | AST.CommentBlock)[] {
+    const blocks: (AST.Prompt | AST.StrFragDef | AST.RolesFragDef | AST.CommentBlock)[] = [];
 
     while (!this.isEOF()) {
       const tok = this.peek();
@@ -97,8 +97,8 @@ export class Parser {
         blocks.push(Create.commentBlock({ text }));
       } else if (tok.type === "KEYWORD" && tok.value === "StrFrag") {
         blocks.push(this.parseStrFragDef());
-      } else if (tok.type === "KEYWORD" && tok.value === "RoleFrag") {
-        blocks.push(this.parseRoleFragDef());
+      } else if (tok.type === "KEYWORD" && tok.value === "RolesFrag") {
+        blocks.push(this.parseRolesFragDef());
       } else {
         blocks.push(this.parsePrompt());
       }
@@ -138,10 +138,10 @@ export class Parser {
   }
 
   /**
-   * Parse a RoleFrag definition: RoleFrag Name[params]: { PromptBlock* }
+   * Parse a RolesFrag definition: RolesFrag Name[params]: { PromptBlock* }
    */
-  private parseRoleFragDef(): AST.RoleFragDef {
-    this.consume("KEYWORD", "RoleFrag");
+  private parseRolesFragDef(): AST.RolesFragDef {
+    this.consume("KEYWORD", "RolesFrag");
     const name = this.consume("IDENT").value as string;
 
     // Parse optional parameters in brackets
@@ -168,8 +168,8 @@ export class Parser {
     }
     this.consume("SYMBOL", "}");
 
-    console.log("parsed RoleFrag definition");
-    return Create.roleFragDef({ name, params, body });
+    console.log("parsed RolesFrag definition");
+    return Create.rolesFragDef({ name, params, body });
   }
 
   private parseTitle(): AST.PromptTitle {
@@ -290,7 +290,7 @@ export class Parser {
         case "Switch": return this.parseSwitchOutside();
         case "Name": return this.parseNameDef();
         case "Mark": return this.parseMarkBlock();
-        case "Frag": return this.parseRoleFragInvocation();
+        case "Frag": return this.parseRolesFragInvocation();
       }
     }
 
@@ -626,10 +626,10 @@ export class Parser {
   }
 
   /**
-   * Parse a RoleFrag invocation: Frag FragName[args]
-   * Used at top level where RoleFragInvocation is valid.
+   * Parse a RolesFrag invocation: Frag FragName[args]
+   * Used at top level where RolesFragInvocation is valid.
    */
-  private parseRoleFragInvocation(): AST.RoleFragInvocation {
+  private parseRolesFragInvocation(): AST.RolesFragInvocation {
     this.consume("KEYWORD", "Frag");
     const name = this.consume("IDENT").value as string;
 
@@ -643,7 +643,7 @@ export class Parser {
       this.consume("SYMBOL", "]");
     }
 
-    return Create.roleFragInvocation({ name, arguments: args });
+    return Create.rolesFragInvocation({ name, arguments: args });
   }
 
   /* ───────────────── Expressions & Shared Rules ───────────────── */

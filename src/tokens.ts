@@ -24,7 +24,7 @@ export type ControlKeyword =
   | "and"
   | "or"
   | "StrFrag"
-  | "RoleFrag"
+  | "RolesFrag"
   | "Frag";
 
 export type Keyword = NamespaceKeyword | ControlKeyword;

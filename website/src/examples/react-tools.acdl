@@ -1,4 +1,4 @@
-ReactBase[@T]: {
+ReactAgent[@T]: {
   S: {
     INSTRUCTIONS
     AVAILABLE_TOOLS
@@ -7,9 +7,7 @@ ReactBase[@T]: {
   // history
   ForEach(t: range(1,@T)) {
     A: {
-      Mark 1 {
-        resp.tool_reasoning[@t] 
-      }
+      resp.tool_reasoning[@t] 
       sys.tool_used[@t]
     }
     T: sys.tool_used[@t].tool_response

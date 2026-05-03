@@ -35,9 +35,9 @@ import {
   ListComprehension,
   EndBlock,
   StrFragDef,
-  RoleFragDef,
+  RolesFragDef,
   StrFragInvocation,
-  RoleFragInvocation
+  RolesFragInvocation
 } from "./types";
 
 
@@ -184,14 +184,14 @@ export function strFragDef(params: Omit<StrFragDef, "kind">): StrFragDef {
   return { ...params, kind: "str-frag-def" };
 }
 
-export function roleFragDef(params: Omit<RoleFragDef, "kind">): RoleFragDef {
-  return { ...params, kind: "role-frag-def" };
+export function rolesFragDef(params: Omit<RolesFragDef, "kind">): RolesFragDef {
+  return { ...params, kind: "roles-frag-def" };
 }
 
 export function strFragInvocation(params: Omit<StrFragInvocation, "kind">): StrFragInvocation {
   return { ...params, kind: "str-frag-invocation" };
 }
 
-export function roleFragInvocation(params: Omit<RoleFragInvocation, "kind">): RoleFragInvocation {
-  return { ...params, kind: "role-frag-invocation" };
+export function rolesFragInvocation(params: Omit<RolesFragInvocation, "kind">): RolesFragInvocation {
+  return { ...params, kind: "roles-frag-invocation" };
 }

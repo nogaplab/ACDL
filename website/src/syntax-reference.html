@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  {{GA}}
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Syntax Reference - ACDL</title>
@@ -668,6 +669,58 @@
       font-size: 9px;
     }
 
+    /* Fragment invocations - Frag keyword black/bold, name+args in purple bubble */
+    .rendered-output .frag-kw {
+      font-weight: 800;
+      color: #000;
+      font-size: 9px;
+      letter-spacing: 0.3px;
+    }
+    .rendered-output .frag-inv {
+      display: inline-flex;
+      align-items: center;
+      background: #faf5ff;
+      border: 1px solid #9333ea;
+      color: #9333ea;
+      padding: 2px 5px;
+      border-radius: 3px;
+      font-size: 9px;
+      font-weight: 500;
+      line-height: 1;
+    }
+
+    /* Fragment definition title - like prompt-title but with badge */
+    .rendered-output .frag-title {
+      background: #f6f8fa;
+      border: 1px solid #d0d7de;
+      border-radius: 3px;
+      padding: 3px 8px;
+      margin-bottom: 4px;
+      margin-left: -10px;
+      padding-left: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .rendered-output .frag-title h1 {
+      margin: 0;
+      font-size: 10px;
+      font-weight: 600;
+      color: #0a0a0a;
+      font-family: 'JetBrains Mono', monospace;
+      white-space: nowrap;
+    }
+    .rendered-output .frag-badge {
+      display: inline-block;
+      background: #e5e7eb;
+      color: #4b5563;
+      font-size: 8px;
+      font-weight: 600;
+      padding: 2px 5px;
+      border-radius: 3px;
+      letter-spacing: 0.5px;
+    }
+
     /* Condition badge for If/Switch - compact */
     .rendered-output .cond-badge {
       display: inline-block;
@@ -808,6 +861,7 @@
       <h4>Organization</h4>
       <a href="#mark-blocks">Mark Blocks</a>
       <a href="#name-definitions">Name Definitions</a>
+      <a href="#fragments">Fragments</a>
       <a href="#comments">Comments</a>
       <a href="#naming-conventions">Naming Conventions</a>
 
@@ -821,12 +875,12 @@
       <p class="intro-text">This is a complete reference for the Agentic Context Description Language (ACDL). The language declaratively specifies context structures sent to large language models, separating structural concerns from content and implementation.</p>
 
       <div class="tutorial-btn-wrapper">
-        <a href="#" class="tutorial-btn" title="Tutorial video coming soon">
+        <a href="tutorial.html" class="tutorial-btn">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="10"></circle>
             <polygon points="10 8 16 12 10 16 10 8" fill="currentColor" stroke="none"></polygon>
           </svg>
-          Watch Tutorial
+          Getting Started
         </a>
       </div>
 
@@ -1453,6 +1507,225 @@ PromptName2[idx1, idx2, ...]: {
       </div>
 
       <p>This binds <code>$relevant_summaries</code> to a list of summaries sampled every 100 steps, which is then passed as an argument to a function. The reference syntax is the same regardless of whether the bound value is a single expression or a list.</p>
+
+      <!-- FRAGMENTS -->
+      <h2 id="fragments">Fragments</h2>
+      <p>Fragments are reusable building blocks that encapsulate portions of a prompt specification. They enable modular prompt design by allowing common patterns to be defined once and invoked multiple times. Two kinds of fragments are supported, distinguished by what they produce when expanded.</p>
+
+      <h3>String Fragments</h3>
+      <p><em>String Fragments</em> produce content pieces without an associated role. They are defined with the <code>StrFrag</code> keyword and may contain any elements valid inside a role block&mdash;context variables, functions, templates, control flow, other string fragments, name definitions, and comments. When invoked, the content expands in place and inherits the role of the enclosing message:</p>
+
+      <div class="code-and-render" style="grid-template-columns: 6fr 4fr;">
+        <pre><span class="keyword">StrFrag</span> DocumentContext[doc]: {
+    <span class="context">env.doc_title</span>[doc]
+    <span class="context">env.doc_content</span>[doc]
+    <span class="function">summarize</span>(<span class="context">env.doc_metadata</span>[doc])
+}</pre>
+        <div class="rendered-output">
+          <div class="render-label">Rendered Output</div>
+          <div class="frag-title"><h1>DocumentContext[<span class="idx">doc</span>]</h1><span class="frag-badge">SF</span></div>
+          <div style="border-left: 1px solid #d0d7de; padding-left: 8px; margin-left: 0;">
+            <span class="ctx">env.doc_title[<span class="idx">doc</span>]</span><br>
+            <span class="ctx">env.doc_content[<span class="idx">doc</span>]</span><br>
+            <span class="fn">summarize(<span class="ctx">env.doc_metadata[<span class="idx">doc</span>]</span>)</span>
+          </div>
+        </div>
+      </div>
+
+      <p>A more complex example with control flow:</p>
+
+      <div class="code-and-render" style="grid-template-columns: 6fr 4fr;">
+        <pre><span class="keyword">StrFrag</span> ConversationContext[<span class="context">@T</span>]: {
+    <span class="template">CONTEXT_HEADER</span>
+    <span class="keyword">ForEach</span>(<span class="context">@t</span>: <span class="function">range</span>(<span class="context">@T</span>-5, <span class="context">@T</span>)) {
+        <span class="context">sys.Summary</span>[<span class="context">@t</span>]
+        <span class="keyword">If</span> <span class="context">sys.has_tool_call</span>[<span class="context">@t</span>] {
+            <span class="context">sys.tool_response</span>[<span class="context">@t</span>]
+        }
+    }
+}</pre>
+        <div class="rendered-output">
+          <div class="render-label">Rendered Output</div>
+          <div class="frag-title"><h1>ConversationContext[<span class="idx">@T</span>]</h1><span class="frag-badge">SF</span></div>
+          <div style="border-left: 1px solid #d0d7de; padding-left: 8px; margin-left: 0;">
+            <span class="tpl">CONTEXT_HEADER</span>
+            <div class="ctrl-block">
+              <div class="ctrl-header">ForEach <span class="idx">@t</span> : <span class="idx">@T</span>-5 ... <span class="idx">@T</span></div>
+              <span class="ctx">sys.Summary[<span class="idx">@t</span>]</span>
+              <div class="ctrl-block">
+                <div class="ctrl-header cond">If <span class="ctx">sys.has_tool_call[<span class="idx">@t</span>]</span></div>
+                <span class="ctx">sys.tool_response[<span class="idx">@t</span>]</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <p>String fragments are invoked with the <code>Frag</code> keyword followed by the fragment name and arguments. They may appear anywhere a context variable, function, or template is valid&mdash;inside role blocks, within control flow bodies, or as arguments to other constructs:</p>
+
+      <div class="code-and-render" style="grid-template-columns: 3fr 2fr;">
+        <pre><span class="role">U</span>: {
+    <span class="template">TASK_INSTRUCTIONS</span>
+    <span class="keyword">ForEach</span>(doc: <span class="context">env.documents</span>) {
+        <span class="keyword">Frag</span> DocumentContext[doc]
+    }
+    <span class="context">env.user_question</span>[<span class="context">@T</span>]
+}</pre>
+        <div class="rendered-output">
+          <div class="render-label">Rendered Output</div>
+          <div class="role-msg user">
+            <span class="role-badge">Role: User</span>
+            <div class="role-body">
+              <span class="tpl">TASK_INSTRUCTIONS</span>
+              <div class="ctrl-block">
+                <div class="ctrl-header">ForEach <span class="idx">doc</span> : <span class="ctx">env.documents</span></div>
+                <span class="frag-kw">Frag</span> <span class="frag-inv">DocumentContext[<span class="idx">doc</span>]</span>
+              </div>
+              <span class="ctx">env.user_question[<span class="idx">@T</span>]</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <h3>Role Fragments</h3>
+      <p><em>Role Fragments</em> produce one or more complete role messages. They are defined with the <code>RolesFrag</code> keyword and may contain role messages, control flow, mark blocks, and other prompt-level constructs&mdash;the same elements valid at the top level of a prompt body:</p>
+
+      <div class="code-and-render" style="grid-template-columns: 6fr 4fr;">
+        <pre><span class="keyword">RolesFrag</span> ConversationTurn[<span class="context">@t</span>]: {
+    <span class="role">U</span>: <span class="context">env.user_input</span>[<span class="context">@t</span>]
+    <span class="role">A</span>: <span class="context">resp.answer</span>[<span class="context">@t</span>]
+    <span class="keyword">If</span> <span class="context">sys.tool</span>[<span class="context">@t</span>] != none {
+        <span class="role">T</span>: <span class="context">sys.tool</span>[<span class="context">@t</span>].<span class="context">tool_response</span>
+    }
+}</pre>
+        <div class="rendered-output">
+          <div class="render-label">Rendered Output</div>
+          <div class="frag-title"><h1>ConversationTurn[<span class="idx">@t</span>]</h1><span class="frag-badge">RF</span></div>
+          <div style="border-left: 1px solid #d0d7de; padding-left: 8px; margin-left: 0;">
+            <div class="role-msg user">
+              <span class="role-badge">Role: User</span>
+              <div class="role-body"><span class="ctx">env.user_input[<span class="idx">@t</span>]</span></div>
+            </div>
+            <div class="role-msg assistant">
+              <span class="role-badge">Role: Assistant</span>
+              <div class="role-body"><span class="ctx">resp.answer[<span class="idx">@t</span>]</span></div>
+            </div>
+            <div class="ctrl-block">
+              <div class="ctrl-header cond">If <span class="ctx">sys.tool[<span class="idx">@t</span>]</span> != none</div>
+              <div class="role-msg tool">
+                <span class="role-badge">Role: Tool</span>
+                <div class="role-body"><span class="ctx">sys.tool[<span class="idx">@t</span>].tool_response</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <p>Role fragments are invoked at the top level of a prompt, wherever a role message would be valid. They expand to the full sequence of role messages defined in the fragment body:</p>
+
+      <div class="code-and-render" style="grid-template-columns: 3fr 2fr;">
+        <pre>ChatAgent[<span class="context">@T</span>]: {
+    <span class="role">S</span>: <span class="template">INSTRUCTIONS</span>
+    <span class="keyword">ForEach</span>(<span class="context">@t</span>: <span class="function">range</span>(1, <span class="context">@T</span>)) {
+        <span class="keyword">Frag</span> ConversationTurn[<span class="context">@t</span>]
+    }
+    <span class="role">U</span>: <span class="context">env.user_input</span>[<span class="context">@T</span>]
+}</pre>
+        <div class="rendered-output">
+          <div class="render-label">Rendered Output</div>
+          <div class="prompt-title"><h1>ChatAgent[<span class="idx">@T</span>]:</h1></div>
+          <div class="role-msg system">
+            <span class="role-badge">Role: System</span>
+            <div class="role-body"><span class="tpl">INSTRUCTIONS</span></div>
+          </div>
+          <div class="ctrl-block">
+            <div class="ctrl-header">ForEach <span class="idx">@t</span> : <span class="idx">1</span> ... <span class="idx">@T</span></div>
+            <span class="frag-kw">Frag</span> <span class="frag-inv">ConversationTurn[<span class="idx">@t</span>]</span>
+          </div>
+          <div class="role-msg user">
+            <span class="role-badge">Role: User</span>
+            <div class="role-body"><span class="ctx">env.user_input[<span class="idx">@T</span>]</span></div>
+          </div>
+        </div>
+      </div>
+
+      <h3>Fragment Parameters and Invocation</h3>
+      <p>Both fragment types accept parameters, enabling parameterized reuse. Parameters follow the fragment name in square brackets and may include indices, context variables, or other valid index expressions. The same invocation syntax (<code>Frag Name[args]</code>) is used for both types; the parser determines which kind based on context&mdash;invocations inside role blocks resolve to string fragments, while those at the top level resolve to role fragments.</p>
+
+      <p>Fragment definitions appear at the top level of an ACDL file, alongside prompt specifications. A single file may contain any combination of prompts and fragment definitions:</p>
+
+      <div class="code-and-render" style="grid-template-columns: 55fr 45fr;">
+        <pre><span class="keyword">StrFrag</span> ToolDescription[tool]: {
+    <span class="context">sys.tool_name</span>[tool]
+    <span class="context">sys.tool_schema</span>[tool]
+}
+
+<span class="keyword">RolesFrag</span> ToolResult[<span class="context">@t</span>, tool]: {
+    <span class="role">A</span>: <span class="context">sys.tool_call</span>[<span class="context">@t</span>, tool]
+    <span class="role">T</span>: <span class="context">sys.tool_response</span>[<span class="context">@t</span>, tool]
+}
+
+ToolAgent[<span class="context">@T</span>]: {
+    <span class="role">S</span>: {
+        <span class="template">INSTRUCTIONS</span>
+        <span class="keyword">ForEach</span>(tool: <span class="context">sys.available_tools</span>) {
+            <span class="keyword">Frag</span> ToolDescription[tool]
+        }
+    }
+    <span class="keyword">ForEach</span>(<span class="context">@t</span>: <span class="function">range</span>(1, <span class="context">@T</span>)) {
+        <span class="role">U</span>: <span class="context">env.observation</span>[<span class="context">@t</span>]
+        <span class="keyword">Frag</span> ToolResult[<span class="context">@t</span>, <span class="context">sys.selected_tool</span>[<span class="context">@t</span>]]
+    }
+    <span class="role">U</span>: <span class="context">env.observation</span>[<span class="context">@T</span>]
+}</pre>
+        <div class="rendered-output">
+          <div class="render-label">Rendered Output</div>
+          <!-- StrFrag ToolDescription -->
+          <div class="frag-title"><h1>ToolDescription[<span class="idx">tool</span>]</h1><span class="frag-badge">SF</span></div>
+          <div style="border-left: 1px solid #d0d7de; padding-left: 8px; margin-left: 0; margin-bottom: 12px;">
+            <span class="ctx">sys.tool_name[<span class="idx">tool</span>]</span><br>
+            <span class="ctx">sys.tool_schema[<span class="idx">tool</span>]</span>
+          </div>
+          <!-- RolesFrag ToolResult -->
+          <div class="frag-title"><h1>ToolResult[<span class="idx">@t</span>, <span class="idx">tool</span>]</h1><span class="frag-badge">RF</span></div>
+          <div style="border-left: 1px solid #d0d7de; padding-left: 8px; margin-left: 0; margin-bottom: 12px;">
+            <div class="role-msg assistant">
+              <span class="role-badge">Role: Assistant</span>
+              <div class="role-body"><span class="ctx">sys.tool_call[<span class="idx">@t</span>, <span class="idx">tool</span>]</span></div>
+            </div>
+            <div class="role-msg tool">
+              <span class="role-badge">Role: Tool</span>
+              <div class="role-body"><span class="ctx">sys.tool_response[<span class="idx">@t</span>, <span class="idx">tool</span>]</span></div>
+            </div>
+          </div>
+          <!-- Prompt ToolAgent -->
+          <div class="prompt-title"><h1>ToolAgent[<span class="idx">@T</span>]:</h1></div>
+          <div class="role-msg system">
+            <span class="role-badge">Role: System</span>
+            <div class="role-body">
+              <span class="tpl">INSTRUCTIONS</span>
+              <div class="ctrl-block">
+                <div class="ctrl-header">ForEach <span class="idx">tool</span> : <span class="ctx">sys.available_tools</span></div>
+                <span class="frag-kw">Frag</span> <span class="frag-inv">ToolDescription[<span class="idx">tool</span>]</span>
+              </div>
+            </div>
+          </div>
+          <div class="ctrl-block">
+            <div class="ctrl-header">ForEach <span class="idx">@t</span> : <span class="idx">1</span> ... <span class="idx">@T</span></div>
+            <div class="role-msg user">
+              <span class="role-badge">Role: User</span>
+              <div class="role-body">
+                <span class="ctx">env.observation[<span class="idx">@t</span>]</span><br>
+                <span class="frag-kw">Frag</span> <span class="frag-inv">ToolResult[<span class="idx">@t</span>, <span class="ctx">sys.selected_tool[<span class="idx">@t</span>]</span>]</span>
+              </div>
+            </div>
+          </div>
+          <div class="role-msg user">
+            <span class="role-badge">Role: User</span>
+            <div class="role-body"><span class="ctx">env.observation[<span class="idx">@T</span>]</span></div>
+          </div>
+        </div>
+      </div>
 
       <!-- COMMENTS -->
       <h2 id="comments">Comments</h2>

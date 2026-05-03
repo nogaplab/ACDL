@@ -13,6 +13,7 @@ const DIST_WEBSITE = path.join(__dirname, '..', 'dist', 'website');
 // Read shared partials
 const navHtml = fs.readFileSync(path.join(WEBSITE_SHARED, 'nav.html'), 'utf8');
 const footerHtml = fs.readFileSync(path.join(WEBSITE_SHARED, 'footer.html'), 'utf8');
+const gaHtml = fs.readFileSync(path.join(WEBSITE_SHARED, 'ga.html'), 'utf8');
 
 // Ensure dist directories exist
 function ensureDir(dir) {
@@ -37,6 +38,7 @@ function processHtmlFile(srcPath, destPath) {
   // Replace placeholders
   content = content.replace(/\{\{NAV\}\}/g, navHtml.replace(/\{\{BASE\}\}/g, basePath));
   content = content.replace(/\{\{FOOTER\}\}/g, footerHtml.replace(/\{\{BASE\}\}/g, basePath));
+  content = content.replace(/\{\{GA\}\}/g, gaHtml);
   content = content.replace(/\{\{BASE\}\}/g, basePath);
 
   ensureDir(path.dirname(destPath));

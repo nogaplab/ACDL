@@ -29,7 +29,7 @@ const EXAMPLE_CONFIG = {
   rag: { file: 'ACDL_examples/other/basic-rag.acdl', label: 'Basic RAG', group: 'Basic Patterns' },
 
   // ReAct Patterns
-  fig1_base: { file: 'ACDL_examples/React_variants/fig1-base.acdl', label: 'ReAct Base', group: 'ReAct Patterns' },
+  react: { file: 'website/src/examples/react.acdl', label: 'ReAct', group: 'ReAct Patterns' },
   fig1_left: { file: 'ACDL_examples/React_variants/fig1-left.acdl', label: 'ReAct No Reasoning in History', group: 'ReAct Patterns' },
   fig1_right: { file: 'ACDL_examples/React_variants/fig1-right.acdl', label: 'ReAct with Tool-RAG', group: 'ReAct Patterns' },
 
@@ -843,7 +843,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const EXAMPLE_MAP = {
     "basic": "basic",
     "basic_rag": "rag",
-    "react_base": "fig1_base",
+    "react": "react",
+    "react_tutorial": "react",
+    "react_base": "react",
     "react_no_reasoning": "fig1_left",
     "react_tool_rag": "fig1_right",
     "opencode": "opencode",
@@ -853,7 +855,7 @@ document.addEventListener("DOMContentLoaded", () => {
     "rag": "rag",
     "mintagent": "mintagent",
     // Direct keys also work
-    "fig1_base": "fig1_base",
+    "fig1_base": "react",
     "fig1_left": "fig1_left",
     "fig1_right": "fig1_right"
   };

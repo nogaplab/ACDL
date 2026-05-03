@@ -35,9 +35,9 @@ import {
   ListComprehension,
   EndBlock,
   StrFragDef,
-  RoleFragDef,
+  RolesFragDef,
   StrFragInvocation,
-  RoleFragInvocation,
+  RolesFragInvocation,
 } from "./types";
 
 
@@ -76,7 +76,7 @@ export function renderPrompt(
  * Prompts/fragments are separated by dividers, comments appear inline.
  */
 export function renderPrompts(
-  blocks: (Prompt | CommentBlock | StrFragDef | RoleFragDef)[],
+  blocks: (Prompt | CommentBlock | StrFragDef | RolesFragDef)[],
   style: string = "default"
 ): string {
   const parts: string[] = [];
@@ -96,11 +96,11 @@ export function renderPrompts(
       }
       parts.push(renderStrFragDef(block, style));
       lastWasDefinition = true;
-    } else if (block.kind === "role-frag-def") {
+    } else if (block.kind === "roles-frag-def") {
       if (lastWasDefinition) {
         parts.push('<div class="prompt-divider"></div>');
       }
-      parts.push(renderRoleFragDef(block, style));
+      parts.push(renderRolesFragDef(block, style));
       lastWasDefinition = true;
     } else if (block.kind === "comment-block") {
       parts.push(`<div class="file-comment">// ${escapeHtml(block.text)}</div>`);
@@ -649,8 +649,8 @@ function renderTopLevelBlock(block: PromptBlock): string {
     case "end-block":
       return renderEndBlock(block);
 
-    case "role-frag-invocation":
-      return renderRoleFragInvocation(block);
+    case "roles-frag-invocation":
+      return renderRolesFragInvocation(block);
 
     default:
       return "";
@@ -1448,10 +1448,10 @@ export function renderStrFragDef(frag: StrFragDef, style: string = "default"): s
 }
 
 /**
- * Render a RoleFragDef (Role Fragment Definition).
- * Similar to a prompt but with "Role Frag" prefix in pink.
+ * Render a RolesFragDef (Roles Fragment Definition).
+ * Similar to a prompt but with "Roles Frag" prefix in pink.
  */
-export function renderRoleFragDef(frag: RoleFragDef, style: string = "default"): string {
+export function renderRolesFragDef(frag: RolesFragDef, style: string = "default"): string {
   const paramsHtml = frag.params.length > 0
     ? `[${frag.params.map(renderTextArgs).join(", ")}]`
     : "";
@@ -1478,10 +1478,10 @@ function renderStrFragInvocation(block: StrFragInvocation): string {
 }
 
 /**
- * Render a RoleFragInvocation (Role Fragment Invocation).
+ * Render a RolesFragInvocation (Roles Fragment Invocation).
  * Renders with "Frag" keyword outside the purple bubble, similar to "Name".
  */
-function renderRoleFragInvocation(block: RoleFragInvocation): string {
+function renderRolesFragInvocation(block: RolesFragInvocation): string {
   const argsText = block.arguments.length > 0
     ? `[${block.arguments.map(renderTextArgs).join(", ")}]`
     : "";

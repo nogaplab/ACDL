@@ -2,7 +2,7 @@ import * as vscode from "vscode";
 import * as fs from "fs";
 import * as path from "path";
 import { Parser } from "../../src/parser";
-import { renderPrompt } from "../../src/renderPrompt";
+import { renderPrompts } from "../../src/renderPrompt";
 
 export function registerPreviewCommand(context: vscode.ExtensionContext) {
   let panel: vscode.WebviewPanel | undefined;
@@ -57,12 +57,10 @@ function updatePreview(
 
   try {
     const blocks = new Parser(text).parseFile();
-    // Find the first prompt in the blocks (skip comments)
-    const prompt = blocks.find(block => block.kind === 'prompt');
-    if (!prompt || prompt.kind !== 'prompt') {
-      throw new Error('No prompt found in file');
+    if (blocks.length === 0) {
+      throw new Error('No prompts or fragments found in file');
     }
-    bodyHtml = renderPrompt(prompt);
+    bodyHtml = renderPrompts(blocks);
   } catch (err: any) {
     bodyHtml = `<div style="color: #cf222e; padding: 20px; font-family: monospace; white-space: pre-wrap;">${escapeHtml(err.message)}</div>`;
   }

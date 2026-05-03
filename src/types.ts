@@ -145,7 +145,7 @@ export type MarkBlock = {
   body: Array<PromptBlock>;
 }
 
-export type PromptBlock = RoleMessage|MarkBlock|ConditionalBlockOutsideRole|LoopBlockOutsideRole|SwitchBlockOutsideRole|CommentBlock|NameDef|EndBlock|RoleFragInvocation;
+export type PromptBlock = RoleMessage|MarkBlock|ConditionalBlockOutsideRole|LoopBlockOutsideRole|SwitchBlockOutsideRole|CommentBlock|NameDef|EndBlock|RolesFragInvocation;
 
 export type LoopBlockOutsideRole = {
   kind: "loop-block-outside-role";
@@ -264,9 +264,9 @@ export type StrFragDef = {
 
 // Role Fragment Definition: produces one or more role messages
 // Body contains PromptBlock[] - same as a chat prompt body
-// Syntax: RoleFrag Name[params]: { ... }
-export type RoleFragDef = {
-  kind: "role-frag-def";
+// Syntax: RolesFrag Name[params]: { ... }
+export type RolesFragDef = {
+  kind: "roles-frag-def";
   name: string;
   params: Array<TextArgs>;
   body: Array<PromptBlock>;
@@ -286,8 +286,8 @@ export type StrFragInvocation = {
 // Role Fragment Invocation: valid anywhere RoleMessage is valid
 // Expands to one or more role messages
 // Syntax: Frag FragName[args]
-export type RoleFragInvocation = {
-  kind: "role-frag-invocation";
+export type RolesFragInvocation = {
+  kind: "roles-frag-invocation";
   name: string;
   arguments: Array<TextArgs>;
 }

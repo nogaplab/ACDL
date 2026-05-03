@@ -42,8 +42,7 @@ var vscode = __toESM(require("vscode"));
 var NAMESPACE_KEYWORDS = /* @__PURE__ */ new Set([
   "env",
   "sys",
-  "resp",
-  "prompt"
+  "resp"
 ]);
 var CONTROL_KEYWORDS = /* @__PURE__ */ new Set([
   "If",
@@ -62,7 +61,10 @@ var CONTROL_KEYWORDS = /* @__PURE__ */ new Set([
   "when",
   "not",
   "and",
-  "or"
+  "or",
+  "StrFrag",
+  "RolesFrag",
+  "Frag"
 ]);
 var LOGIC_OP = /* @__PURE__ */ new Set([
   "=",
@@ -402,9 +404,6 @@ function rangeExpr(params) {
 function commentBlock(params) {
   return { ...params, kind: "comment-block" };
 }
-function labelBlock(params) {
-  return { ...params, kind: "label-block" };
-}
 function markBlock(params) {
   return { ...params, kind: "mark-block" };
 }
@@ -425,6 +424,18 @@ function listComprehension(params) {
 }
 function endBlock(params) {
   return { ...params, kind: "end-block" };
+}
+function strFragDef(params) {
+  return { ...params, kind: "str-frag-def" };
+}
+function rolesFragDef(params) {
+  return { ...params, kind: "roles-frag-def" };
+}
+function strFragInvocation(params) {
+  return { ...params, kind: "str-frag-invocation" };
+}
+function rolesFragInvocation(params) {
+  return { ...params, kind: "roles-frag-invocation" };
 }
 
 // ../src/parser.ts
@@ -492,20 +503,78 @@ var Parser = class {
     return prompt({ title, body });
   }
   /**
-   * Parse a file containing one or more prompts and comments.
-   * Returns an array of Prompt and CommentBlock objects.
+   * Parse a file containing one or more prompts, fragment definitions, and comments.
+   * Returns an array of Prompt, StrFragDef, RolesFragDef, and CommentBlock objects.
    */
   parseFile() {
     const blocks = [];
     while (!this.isEOF()) {
-      if (this.peek().type === "COMMENT") {
+      const tok = this.peek();
+      if (tok.type === "COMMENT") {
         const text = this.consume("COMMENT").value;
         blocks.push(commentBlock({ text }));
+      } else if (tok.type === "KEYWORD" && tok.value === "StrFrag") {
+        blocks.push(this.parseStrFragDef());
+      } else if (tok.type === "KEYWORD" && tok.value === "RolesFrag") {
+        blocks.push(this.parseRolesFragDef());
       } else {
         blocks.push(this.parsePrompt());
       }
     }
     return blocks;
+  }
+  /**
+   * Parse a StrFrag definition: StrFrag Name[params]: { RoleBuildingBlock* }
+   */
+  parseStrFragDef() {
+    this.consume("KEYWORD", "StrFrag");
+    const name = this.consume("IDENT").value;
+    let params = [];
+    if (this.peek().value === "[") {
+      this.consume("SYMBOL", "[");
+      if (this.peek().value !== "]") {
+        params = this.parseTextArgs();
+      }
+      this.consume("SYMBOL", "]");
+    }
+    this.consume("SYMBOL", ":");
+    this.consume("SYMBOL", "{");
+    const body = [];
+    while (this.peek().type !== "EOF" && this.peek().value !== "}") {
+      body.push(this.parseRoleBuildingBlock());
+    }
+    this.consume("SYMBOL", "}");
+    console.log("parsed StrFrag definition");
+    return strFragDef({ name, params, body });
+  }
+  /**
+   * Parse a RolesFrag definition: RolesFrag Name[params]: { PromptBlock* }
+   */
+  parseRolesFragDef() {
+    this.consume("KEYWORD", "RolesFrag");
+    const name = this.consume("IDENT").value;
+    let params = [];
+    if (this.peek().value === "[") {
+      this.consume("SYMBOL", "[");
+      if (this.peek().value !== "]") {
+        params = this.parseTextArgs();
+      }
+      this.consume("SYMBOL", "]");
+    }
+    this.consume("SYMBOL", ":");
+    this.consume("SYMBOL", "{");
+    const body = [];
+    while (this.peek().type !== "EOF" && this.peek().value !== "}") {
+      if (this.peek().type === "COMMENT") {
+        const text = this.consume("COMMENT").value;
+        body.push(commentBlock({ text }));
+        continue;
+      }
+      body.push(this.parsePromptBodyItem());
+    }
+    this.consume("SYMBOL", "}");
+    console.log("parsed RolesFrag definition");
+    return rolesFragDef({ name, params, body });
   }
   parseTitle() {
     const name = this.consume("IDENT").value;
@@ -585,13 +654,6 @@ var Parser = class {
    * Parse a PromptBodyItem (either a PromptBlock or a LabelBlock).
    */
   parsePromptBodyItem() {
-    const tok = this.peek();
-    if (tok.type === "IDENT") {
-      const nextTok = this.peekNext();
-      if (nextTok.value === "{") {
-        return this.parseLabelBlock();
-      }
-    }
     return this.parseTopLevelBlock();
   }
   parseTopLevelBlock() {
@@ -614,6 +676,8 @@ var Parser = class {
           return this.parseNameDef();
         case "Mark":
           return this.parseMarkBlock();
+        case "Frag":
+          return this.parseRolesFragInvocation();
       }
     }
     if (tok.type === "IDENT" && val === "PromptEndsHere") {
@@ -623,31 +687,7 @@ var Parser = class {
       const text = this.consume("COMMENT").value;
       return commentBlock({ text });
     }
-    if (tok.type === "IDENT" && nextTok.value === "{") {
-      return this.parseLabelBlock();
-    }
     throw new Error(`[${tok.line}:${tok.col}] Syntax Error: Unexpected token "${val}" in global scope.`);
-  }
-  /**
-   * Parse a LabelBlock: Labelname { PromptBlock+ }
-   * Labels can contain one or more PromptBlocks (but not other LabelBlocks).
-   */
-  parseLabelBlock() {
-    const labelTok = this.consume("IDENT");
-    const label = labelTok.value;
-    this.consume("SYMBOL", "{");
-    const blocks = [];
-    do {
-      if (this.peek().type === "COMMENT") {
-        const text = this.consume("COMMENT").value;
-        blocks.push(commentBlock({ text }));
-        continue;
-      }
-      const innerBlock = this.parseTopLevelBlock();
-      blocks.push(innerBlock);
-    } while (this.peek().value !== "}");
-    this.consume("SYMBOL", "}");
-    return labelBlock({ label, body: blocks });
   }
   /**
    * Parse a MarkBlock: MARK number { PromptBlock+ }
@@ -765,6 +805,8 @@ var Parser = class {
         return this.parseMarkBlockInside();
       if (val === "Name")
         return this.parseNameDef();
+      if (val === "Frag")
+        return this.parseStrFragInvocation();
       if (val === "break" || val === "continue") {
         const name = this.consume("KEYWORD").value;
         return template({ name, arguments: [], comment: void 0 });
@@ -784,7 +826,7 @@ var Parser = class {
   /* ───────────────── Name Definitions ───────────────── */
   /**
    * Parse a name definition: name varname := expr
-   * where expr is a ContextVar, Func, or ListComprehension
+   * where expr is a ContextVar, Func, ListComprehension, or StrFragInvocation
    */
   parseNameDef() {
     this.consume("KEYWORD", "Name");
@@ -797,15 +839,17 @@ var Parser = class {
       value = this.parseListComprehension();
     } else if (tok.type === "KEYWORD" && ["env", "sys", "resp", "prompt"].includes(tok.value)) {
       value = this.parseContextVar();
+    } else if (tok.type === "KEYWORD" && tok.value === "Frag") {
+      value = this.parseStrFragInvocation();
     } else if (tok.type === "IDENT") {
       const parsed = this.parseTemplateOrFunc();
       if (parsed.kind !== "function") {
         const parsedName = parsed.kind === "template" ? parsed.name : "identifier";
-        throw new Error(`[${tok.line}:${tok.col}] name definitions require a ContextVar, Func, or list comprehension, got ${parsed.kind} "${parsedName}"`);
+        throw new Error(`[${tok.line}:${tok.col}] name definitions require a ContextVar, Func, list comprehension, or Frag invocation, got ${parsed.kind} "${parsedName}"`);
       }
       value = parsed;
     } else {
-      throw new Error(`[${tok.line}:${tok.col}] Expected ContextVar, Func, or list comprehension after :=, got ${tok.type}`);
+      throw new Error(`[${tok.line}:${tok.col}] Expected ContextVar, Func, list comprehension, or Frag invocation after :=, got ${tok.type}`);
     }
     return nameDef({ name: varName, value });
   }
@@ -819,15 +863,17 @@ var Parser = class {
     let element;
     if (elemTok.type === "KEYWORD" && ["env", "sys", "resp", "prompt"].includes(elemTok.value)) {
       element = this.parseContextVar();
+    } else if (elemTok.type === "KEYWORD" && elemTok.value === "Frag") {
+      element = this.parseStrFragInvocation();
     } else if (elemTok.type === "IDENT") {
       const parsed = this.parseTemplateOrFunc();
       if (parsed.kind !== "function") {
         const parsedName = parsed.kind === "template" ? parsed.name : "identifier";
-        throw new Error(`[${elemTok.line}:${elemTok.col}] List comprehension element must be ContextVar or Func, got ${parsed.kind} "${parsedName}"`);
+        throw new Error(`[${elemTok.line}:${elemTok.col}] List comprehension element must be ContextVar, Func, or Frag invocation, got ${parsed.kind} "${parsedName}"`);
       }
       element = parsed;
     } else {
-      throw new Error(`[${elemTok.line}:${elemTok.col}] Expected ContextVar or Func in list comprehension, got ${elemTok.type}`);
+      throw new Error(`[${elemTok.line}:${elemTok.col}] Expected ContextVar, Func, or Frag invocation in list comprehension, got ${elemTok.type}`);
     }
     this.consume("KEYWORD", "for");
     const variable = this.consume("IDENT").value;
@@ -859,6 +905,41 @@ var Parser = class {
       path2 = this.parsePathDesc();
     }
     return nameRef({ name: varName, indices, path: path2 });
+  }
+  /* ───────────────── Fragment Invocations ───────────────── */
+  /**
+   * Parse a StrFrag invocation: Frag FragName[args]
+   * Used inside role bodies where StrFragInvocation is valid.
+   */
+  parseStrFragInvocation() {
+    this.consume("KEYWORD", "Frag");
+    const name = this.consume("IDENT").value;
+    let args = [];
+    if (this.peek().value === "[") {
+      this.consume("SYMBOL", "[");
+      if (this.peek().value !== "]") {
+        args = this.parseTextArgs();
+      }
+      this.consume("SYMBOL", "]");
+    }
+    return strFragInvocation({ name, arguments: args });
+  }
+  /**
+   * Parse a RolesFrag invocation: Frag FragName[args]
+   * Used at top level where RolesFragInvocation is valid.
+   */
+  parseRolesFragInvocation() {
+    this.consume("KEYWORD", "Frag");
+    const name = this.consume("IDENT").value;
+    let args = [];
+    if (this.peek().value === "[") {
+      this.consume("SYMBOL", "[");
+      if (this.peek().value !== "]") {
+        args = this.parseTextArgs();
+      }
+      this.consume("SYMBOL", "]");
+    }
+    return rolesFragInvocation({ name, arguments: args });
   }
   /* ───────────────── Expressions & Shared Rules ───────────────── */
   parseContextVar() {
@@ -920,7 +1001,7 @@ var Parser = class {
   }
   parseTextArgs() {
     const args = [];
-    if (this.peek().value === ")")
+    if (this.peek().value === ")" || this.peek().value === "]")
       return args;
     do {
       const arg = this.parseSingleTextArg();
@@ -952,6 +1033,9 @@ var Parser = class {
     }
     if (tok.type === "KEYWORD" && ["env", "sys", "resp", "prompt"].includes(tok.value)) {
       return this.parseContextVar();
+    }
+    if (tok.type === "KEYWORD" && tok.value === "Frag") {
+      return this.parseStrFragInvocation();
     }
     if (tok.type === "NUMBER") {
       const name = this.consume("NUMBER").value;
@@ -1454,6 +1538,35 @@ function renderPrompt(prompt2, style = "default") {
   const bodyHtml = renderPromptBody(prompt2.body);
   return `<div class="prompt-container prompt-style-${style}">${titleHtml}${bodyHtml}</div>`;
 }
+function renderPrompts(blocks, style = "default") {
+  const parts = [];
+  let lastWasDefinition = false;
+  for (const block of blocks) {
+    if (block.kind === "prompt") {
+      if (lastWasDefinition) {
+        parts.push('<div class="prompt-divider"></div>');
+      }
+      parts.push(renderPrompt(block, style));
+      lastWasDefinition = true;
+    } else if (block.kind === "str-frag-def") {
+      if (lastWasDefinition) {
+        parts.push('<div class="prompt-divider"></div>');
+      }
+      parts.push(renderStrFragDef(block, style));
+      lastWasDefinition = true;
+    } else if (block.kind === "roles-frag-def") {
+      if (lastWasDefinition) {
+        parts.push('<div class="prompt-divider"></div>');
+      }
+      parts.push(renderRolesFragDef(block, style));
+      lastWasDefinition = true;
+    } else if (block.kind === "comment-block") {
+      parts.push(`<div class="file-comment">// ${escapeHtml(block.text)}</div>`);
+      lastWasDefinition = false;
+    }
+  }
+  return parts.join("");
+}
 function escapeHtml(text) {
   return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
@@ -1813,9 +1926,6 @@ function renderNoneMessage(msg) {
 </div>`;
 }
 function renderPromptBodyItem(item) {
-  if (item.kind === "label-block") {
-    return renderLabelBlock(item);
-  }
   if (item.kind === "mark-block") {
     return renderMarkBlock(item);
   }
@@ -1833,14 +1943,14 @@ function renderTopLevelBlock(block) {
       return renderSwitchOutsideRole(block);
     case "comment-block":
       return renderCommentBlock(block);
-    case "label-block":
-      return renderLabelBlock(block);
     case "mark-block":
       return renderMarkBlock(block);
     case "name-def":
       return renderNameDef(block);
     case "end-block":
       return renderEndBlock(block);
+    case "roles-frag-invocation":
+      return renderRolesFragInvocation(block);
     default:
       return "";
   }
@@ -1855,13 +1965,22 @@ function renderNameDef(block) {
     valueHtml = renderContextVarBlock(block.value);
   } else if (block.value.kind === "function") {
     valueHtml = renderFuncBlock(block.value);
-  } else {
+  } else if (block.value.kind === "list-comprehension") {
     valueHtml = renderListComprehension(block.value);
+  } else {
+    valueHtml = renderStrFragInvocation(block.value);
   }
   return `<div class="name-def"><span class="keyword">Name</span> <span class="name-ref"><span class="segment">${varName}</span></span> <span class="name-assign">:=</span> ${valueHtml}</div>`;
 }
 function renderListComprehension(block) {
-  const elementHtml = block.element.kind === "context-var" ? renderContextVarBlock(block.element) : renderFuncBlock(block.element);
+  let elementHtml;
+  if (block.element.kind === "context-var") {
+    elementHtml = renderContextVarBlock(block.element);
+  } else if (block.element.kind === "function") {
+    elementHtml = renderFuncBlock(block.element);
+  } else {
+    elementHtml = renderStrFragInvocation(block.element);
+  }
   const iterableHtml = renderIterable(block.iterable);
   return `<span class="list-comp-wrapper"><span class="list-comprehension">[</span> ${elementHtml} <span class="list-comp-separator">|</span> <span class="list-comp-var">${escapeHtml(block.variable)}</span> <span class="list-comp-in">\u2208</span> ${iterableHtml} <span class="list-comprehension">]</span></span>`;
 }
@@ -1883,20 +2002,6 @@ function renderNameRef(block) {
   }
   const joined = segments.join("");
   return `<span class="name-ref">${joined}</span>`;
-}
-function renderLabelBlock(block) {
-  const labelName = escapeHtml(block.label);
-  const labelStart = `<div class="label-start">\u2554\u2550\u2550 ${labelName} \u2550\u2550\u2557</div>`;
-  const labelEnd = `<div class="label-end">\u255A\u2550\u2550 End ${labelName} \u2550\u2550\u255D</div>`;
-  const bodyHtml = block.body.map((b) => renderTopLevelBlock(b)).join("\n");
-  return `
-<div class="label-block">
-  ${labelStart}
-  <div class="label-block-body">
-    ${bodyHtml}
-  </div>
-  ${labelEnd}
-</div>`;
 }
 function renderMarkBlock(block) {
   const bodyHtml = block.body.map((b) => renderTopLevelBlock(b)).join("\n");
@@ -1967,6 +2072,8 @@ function renderRoleBuildingBlock(block) {
       return renderIndexValue(block);
     case "end-block":
       return renderEndBlock(block);
+    case "str-frag-invocation":
+      return renderStrFragInvocation(block);
     default:
       return "";
   }
@@ -2013,6 +2120,8 @@ function renderTextArgs(arg) {
       return `<span class="arithmetic-expr">${left}${escapeHtml(ops)}${right}</span>`;
     case "name-ref":
       return renderNameRef(arg);
+    case "str-frag-invocation":
+      return renderStrFragInvocation(arg);
   }
 }
 function renderTemplateBlock(block) {
@@ -2173,6 +2282,28 @@ function renderConditionalOutsideRole(block) {
   }
   return result;
 }
+function renderStrFragDef(frag, style = "default") {
+  const paramsHtml = frag.params.length > 0 ? `[${frag.params.map(renderTextArgs).join(", ")}]` : "";
+  const titleHtml = `<div class="frag-def-title"><h1>${escapeHtml(frag.name)}${paramsHtml}</h1><span class="frag-badge">SF</span></div>`;
+  const bodyHtml = frag.body.map((b) => {
+    return `<div class="role-body-block">${renderRoleBuildingBlock(b)}</div>`;
+  }).join("\n");
+  return `<div class="frag-def-container frag-style-${style}">${titleHtml}<div class="frag-body">${bodyHtml}</div></div>`;
+}
+function renderRolesFragDef(frag, style = "default") {
+  const paramsHtml = frag.params.length > 0 ? `[${frag.params.map(renderTextArgs).join(", ")}]` : "";
+  const titleHtml = `<div class="frag-def-title"><h1>${escapeHtml(frag.name)}${paramsHtml}</h1><span class="frag-badge">RF</span></div>`;
+  const bodyHtml = frag.body.map(renderPromptBodyItem).join("\n");
+  return `<div class="frag-def-container frag-style-${style}">${titleHtml}<div class="frag-body">${bodyHtml}</div></div>`;
+}
+function renderStrFragInvocation(block) {
+  const argsText = block.arguments.length > 0 ? `[${block.arguments.map(renderTextArgs).join(", ")}]` : "";
+  return `<span class="frag-invocation-wrapper"><span class="frag-keyword">Frag</span> <span class="frag-invocation"><span class="frag-name">${escapeHtml(block.name)}</span><span class="frag-args-wrapper">${argsText}</span></span></span>`;
+}
+function renderRolesFragInvocation(block) {
+  const argsText = block.arguments.length > 0 ? `[${block.arguments.map(renderTextArgs).join(", ")}]` : "";
+  return `<span class="frag-invocation-wrapper"><span class="frag-keyword">Frag</span> <span class="frag-invocation"><span class="frag-name">${escapeHtml(block.name)}</span><span class="frag-args-wrapper">${argsText}</span></span></span>`;
+}
 
 // src/preview.ts
 function registerPreviewCommand(context) {
@@ -2218,11 +2349,10 @@ function updatePreview(panel, doc, context) {
   let bodyHtml;
   try {
     const blocks = new Parser(text).parseFile();
-    const prompt2 = blocks.find((block) => block.kind === "prompt");
-    if (!prompt2 || prompt2.kind !== "prompt") {
-      throw new Error("No prompt found in file");
+    if (blocks.length === 0) {
+      throw new Error("No prompts or fragments found in file");
     }
-    bodyHtml = renderPrompt(prompt2);
+    bodyHtml = renderPrompts(blocks);
   } catch (err) {
     bodyHtml = `<div style="color: #cf222e; padding: 20px; font-family: monospace; white-space: pre-wrap;">${escapeHtml2(err.message)}</div>`;
   }

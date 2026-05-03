@@ -1,0 +1,16 @@
+ReactAgent[@T]: {
+    S: {
+        TASK_INSTRUCTIONS
+        AVAILABLE_TOOLS
+    }
+    U: env.user_question
+    // Action history
+    ForEach(@t: range(1, @T)) {
+        A: {
+            resp.reasoning[@t]
+            sys.tool_call[@t]
+        }
+        T: sys.tool_call[@t].response
+    }
+    S: CONTINUE_OR_ANSWER
+}

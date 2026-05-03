@@ -33,9 +33,9 @@ import {
   ListComprehension,
   EndBlock,
   StrFragDef,
-  RoleFragDef,
+  RolesFragDef,
   StrFragInvocation,
-  RoleFragInvocation,
+  RolesFragInvocation,
 } from "./types";
 
 import {
@@ -1642,9 +1642,9 @@ function renderStrFragDefSvg(frag: StrFragDef, x: number, y: number, maxWidth?: 
   };
 }
 
-// Render a RoleFragDef (Role Fragment Definition) as SVG
+// Render a RolesFragDef (Roles Fragment Definition) as SVG
 // Similar structure to a prompt container with badge approach: "Name[params] [RF]"
-function renderRoleFragDefSvg(frag: RoleFragDef, x: number, y: number, maxWidth?: number): RenderResult {
+function renderRolesFragDefSvg(frag: RolesFragDef, x: number, y: number, maxWidth?: number): RenderResult {
   const elements: string[] = [];
   const fontSize = FONT_SIZES.title;
   const badgeFontSize = 8;
@@ -1807,9 +1807,9 @@ function renderStrFragInvocation(block: StrFragInvocation, x: number, y: number,
   };
 }
 
-// Render a RoleFragInvocation (Role Fragment Invocation) as SVG
+// Render a RolesFragInvocation (Roles Fragment Invocation) as SVG
 // Renders like a function call with "Frag" keyword in pink
-function renderRoleFragInvocation(block: RoleFragInvocation, x: number, y: number, _maxWidth?: number): RenderResult {
+function renderRolesFragInvocation(block: RolesFragInvocation, x: number, y: number, _maxWidth?: number): RenderResult {
   const elements: string[] = [];
   let currentX = x;
   const fontSize = FONT_SIZES.normal;
@@ -3492,8 +3492,8 @@ function renderTopLevelBlock(block: PromptBlock, x: number, y: number, maxWidth?
       return renderNameDef(block, x, y, maxWidth);
     case 'end-block':
       return renderEndBlock(block, x, y);
-    case 'role-frag-invocation':
-      return renderRoleFragInvocation(block, x, y, maxWidth);
+    case 'roles-frag-invocation':
+      return renderRolesFragInvocation(block, x, y, maxWidth);
     default:
       return { svg: '', width: 0, height: 0 };
   }
@@ -3613,7 +3613,7 @@ export function renderPromptSvg(prompt: Prompt): string {
 
 // Render multiple prompts and fragments
 // maxWidth parameter allows constraining the output width (e.g., from width slider)
-export function renderPromptsSvg(blocks: (Prompt | CommentBlock | StrFragDef | RoleFragDef)[], maxWidth?: number): string {
+export function renderPromptsSvg(blocks: (Prompt | CommentBlock | StrFragDef | RolesFragDef)[], maxWidth?: number): string {
   loadFonts();
 
   const startX = SPACING.containerPaddingLeft;
@@ -3630,8 +3630,8 @@ export function renderPromptsSvg(blocks: (Prompt | CommentBlock | StrFragDef | R
     } else if (block.kind === 'str-frag-def') {
       const fragResult = renderStrFragDefSvg(block, startX, 0);
       maxContentWidth = Math.max(maxContentWidth, fragResult.width + startX);
-    } else if (block.kind === 'role-frag-def') {
-      const fragResult = renderRoleFragDefSvg(block, startX, 0);
+    } else if (block.kind === 'roles-frag-def') {
+      const fragResult = renderRolesFragDefSvg(block, startX, 0);
       maxContentWidth = Math.max(maxContentWidth, fragResult.width + startX);
     }
   }
@@ -3697,8 +3697,8 @@ export function renderPromptsSvg(blocks: (Prompt | CommentBlock | StrFragDef | R
       elements.push(fragResult.svg);
       currentY += fragResult.height + SPACING.blockGap;
       lastWasPrompt = false;
-    } else if (block.kind === 'role-frag-def') {
-      const fragResult = renderRoleFragDefSvg(block, startX, currentY, titleWidth);
+    } else if (block.kind === 'roles-frag-def') {
+      const fragResult = renderRolesFragDefSvg(block, startX, currentY, titleWidth);
       elements.push(fragResult.svg);
       currentY += fragResult.height + SPACING.blockGap;
       lastWasPrompt = false;
