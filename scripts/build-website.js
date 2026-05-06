@@ -103,4 +103,16 @@ try {
   process.exit(1);
 }
 
+// Build the VSCode extension VSIX
+console.log('\nBuilding VSCode extension...\n');
+try {
+  execSync('npm run package', {
+    cwd: path.join(__dirname, '..', 'extension'),
+    stdio: 'inherit'
+  });
+} catch (error) {
+  console.error('Failed to build VSCode extension:', error.message);
+  process.exit(1);
+}
+
 console.log('\nFull website build complete!');

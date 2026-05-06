@@ -1,0 +1,21 @@
+// SupportBot: Customer service agent with personalization
+SupportBot[@T]: {
+    S: {
+        SUPPORT_GUIDELINES
+        COMPANY_POLICIES
+        CUSTOMER_INFO(env.customer_name[@1], env.customer_tier[@1])
+    }
+
+    // Conversation history
+    ForEach(@t: range(1, @T)) {
+        U: env.message[@t]
+        A: resp.reply[@t]
+    }
+
+    // Current message with tier-specific instructions
+    U: env.message[@T]
+
+    If env.customer_tier[@T] == "premium" {
+        S: PREMIUM_PRIORITY_NOTICE
+    }
+}

@@ -8,157 +8,13 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{BASE}}shared/styles.css">
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-
+    /* Light theme override for documentation page */
     body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
       background: #fafafa;
       color: #0a0a0a;
       line-height: 1.7;
-      -webkit-font-smoothing: antialiased;
-    }
-
-    /* Navigation */
-    nav {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      z-index: 100;
-      padding: 16px 32px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      background: rgba(10, 10, 10, 0.95);
-      backdrop-filter: blur(12px);
-      border-bottom: 1px solid rgba(255,255,255,0.06);
-    }
-
-    .nav-logo {
-      font-weight: 700;
-      font-size: 1.6rem;
-      color: #fff;
-      text-decoration: none;
-      letter-spacing: -0.02em;
-    }
-
-    .nav-links {
-      display: flex;
-      align-items: center;
-      gap: 40px;
-    }
-
-    .nav-links a {
-      color: rgba(255,255,255,0.6);
-      text-decoration: none;
-      font-size: 1.15rem;
-      font-weight: 500;
-      transition: color 0.2s;
-    }
-
-    .nav-links a:hover { color: #fff; }
-
-    .nav-links a.external::after {
-      content: '';
-      display: inline-block;
-      width: 12px;
-      height: 12px;
-      margin-left: 4px;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.6)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6'/%3E%3Cpolyline points='15 3 21 3 21 9'/%3E%3Cline x1='10' y1='14' x2='21' y2='3'/%3E%3C/svg%3E");
-      background-size: contain;
-      background-repeat: no-repeat;
-      vertical-align: middle;
-      opacity: 0.6;
-      transition: opacity 0.2s;
-    }
-
-    .nav-links a.external:hover::after {
-      opacity: 1;
-    }
-
-    /* Dropdown menus */
-    .nav-dropdown {
-      position: relative;
-    }
-
-    .nav-dropdown-toggle {
-      background: none;
-      border: none;
-      color: rgba(255,255,255,0.6);
-      font-size: 1.15rem;
-      font-weight: 500;
-      cursor: pointer;
-      padding: 0;
-      font-family: inherit;
-      transition: color 0.2s;
-    }
-
-    .nav-dropdown-toggle::after {
-      content: '';
-      display: inline-block;
-      width: 0;
-      height: 0;
-      margin-left: 8px;
-      vertical-align: middle;
-      border-left: 5px solid transparent;
-      border-right: 5px solid transparent;
-      border-top: 6px solid currentColor;
-      transition: transform 0.2s;
-    }
-
-    .nav-dropdown:hover .nav-dropdown-toggle,
-    .nav-dropdown-toggle:focus {
-      color: #fff;
-    }
-
-    .nav-dropdown:hover .nav-dropdown-toggle::after {
-      transform: rotate(180deg);
-    }
-
-    .nav-dropdown-menu {
-      position: absolute;
-      top: 100%;
-      left: 50%;
-      transform: translateX(-50%);
-      min-width: 260px;
-      padding: 16px 0;
-      margin-top: 8px;
-      background: rgba(20, 20, 20, 0.95);
-      backdrop-filter: blur(12px);
-      border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 12px;
-      opacity: 0;
-      visibility: hidden;
-      transition: opacity 0.2s, visibility 0.2s;
-    }
-
-    .nav-dropdown-menu::before {
-      content: '';
-      position: absolute;
-      top: -8px;
-      left: 0;
-      right: 0;
-      height: 8px;
-    }
-
-    .nav-dropdown:hover .nav-dropdown-menu {
-      opacity: 1;
-      visibility: visible;
-    }
-
-    .nav-dropdown-menu a {
-      display: block;
-      padding: 16px 24px;
-      color: rgba(255,255,255,0.7);
-      text-decoration: none;
-      font-size: 1.05rem;
-      transition: background 0.15s, color 0.15s;
-    }
-
-    .nav-dropdown-menu a:hover {
-      background: rgba(255,255,255,0.08);
-      color: #fff;
     }
 
     /* Layout */
@@ -811,7 +667,6 @@
     @media (max-width: 900px) {
       aside { display: none; }
       main { padding: 32px 24px; }
-      .nav-links { display: none; }
     }
   </style>
 </head>
