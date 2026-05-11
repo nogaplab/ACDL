@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  {{GA}}
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Why ACDL? - Motivation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{BASE}}shared/styles.css">
+  <style>
+    .motivation-hero {
+      padding: 140px 24px 60px;
+      text-align: center;
+      background: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(120, 119, 198, 0.15), transparent);
+    }
+
+    .motivation-hero h1 {
+      font-size: 3rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      margin-bottom: 16px;
+      background: linear-gradient(to bottom right, #fff 30%, rgba(255,255,255,0.4));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .motivation-hero p {
+      font-size: 1.25rem;
+      color: rgba(255,255,255,0.5);
+      max-width: 650px;
+      margin: 0 auto;
+    }
+
+    .motivation-content {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 60px 24px 100px;
+    }
+
+    .motivation-section {
+      margin-bottom: 56px;
+    }
+
+    .motivation-section h2 {
+      font-size: 1.75rem;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 20px;
+    }
+
+    .motivation-section p {
+      font-size: 1.1rem;
+      line-height: 1.8;
+      color: rgba(255,255,255,0.7);
+      margin-bottom: 20px;
+    }
+
+    .motivation-section ul {
+      list-style: none;
+      padding: 0;
+      margin: 24px 0;
+    }
+
+    .motivation-section li {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 12px 0;
+      font-size: 1.05rem;
+      color: rgba(255,255,255,0.7);
+    }
+
+    .motivation-section li::before {
+      content: '';
+      width: 8px;
+      height: 8px;
+      min-width: 8px;
+      background: #7877c6;
+      border-radius: 50%;
+      margin-top: 10px;
+    }
+
+    .highlight-box {
+      background: rgba(120, 119, 198, 0.1);
+      border: 1px solid rgba(120, 119, 198, 0.3);
+      border-radius: 12px;
+      padding: 24px 28px;
+      margin: 32px 0;
+    }
+
+    .highlight-box p {
+      margin: 0;
+      font-size: 1.1rem;
+      color: rgba(255,255,255,0.85);
+    }
+
+    .cta-section {
+      text-align: center;
+      padding: 48px 0;
+      border-top: 1px solid rgba(255,255,255,0.1);
+      margin-top: 48px;
+    }
+
+    .cta-section h3 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 24px;
+    }
+
+    .cta-buttons {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+  </style>
+</head>
+<body>
+  {{NAV}}
+
+  <section class="motivation-hero">
+    <h1>Why ACDL?</h1>
+    <p>Understanding the need for a formal language to describe LLM context structures</p>
+  </section>
+
+  <div class="motivation-content">
+    <div class="motivation-section">
+      <h2>The Power of Shared Languages</h2>
+      <p>
+        Clear communication of design choices is essential for reproducible and improvable engineering.
+        Across computer science and software engineering, visual and formal languages have emerged
+        to express system designs: UML diagrams, flowcharts, sequence diagrams, and state machines
+        all serve as shared vocabularies that enable practitioners to describe, compare, and reason
+        about complex systems.
+      </p>
+      <p>
+        In machine learning, plate notation for graphical models and the now-ubiquitous box diagrams
+        for neural network architectures (think ResNet or Transformer diagrams) have become indispensable
+        communication tools. Their value lies not in being executable, but in making structure visible
+        and comparable at a glance.
+      </p>
+    </div>
+
+    <div class="motivation-section">
+      <h2>The Gap in LLM Systems</h2>
+      <p>
+        Despite the rapid growth of agentic LLM systems, there is currently no standard way to precisely
+        describe how the input to a language model is assembled and how it evolves across interaction steps.
+        Descriptions of context construction are typically scattered across code, documentation, and ad-hoc
+        diagrams that fail to fully capture the structure.
+      </p>
+      <div class="highlight-box">
+        <p>
+          Even small variations in how a basic ReAct agent's context is assembled—such as whether to
+          include reasoning steps in the history—lead to measurable differences in agent performance.
+          These are precisely the kinds of distinctions that a descriptive language should make explicit.
+        </p>
+      </div>
+    </div>
+
+    <div class="motivation-section">
+      <h2>What About Existing Tools?</h2>
+      <p>
+        Several languages have been proposed for structuring prompts or orchestrating LLM pipelines.
+        However, these focus on different problems:
+      </p>
+      <ul>
+        <li>Prompt templating languages organize the <em>content</em> of individual prompts</li>
+        <li>Workflow orchestration tools execute LLM-powered pipelines</li>
+        <li>Agent frameworks provide APIs for building agents</li>
+      </ul>
+      <p>
+        None of these address the core question: how does temporally evolving system state and
+        history map to LLM contexts across multi-turn interactions?
+      </p>
+    </div>
+
+    <div class="motivation-section">
+      <h2>ACDL's Approach</h2>
+      <p>
+        ACDL is not a programming language for building agents—it's a <strong>descriptive language</strong>
+        for specifying how context is composed, how it changes over time, and where its components originate.
+        By providing a formal vocabulary for context structures, ACDL enables:
+      </p>
+      <ul>
+        <li>Precise documentation of how agent contexts are assembled</li>
+        <li>Clear communication between researchers and practitioners</li>
+        <li>Direct comparison of different context management strategies</li>
+        <li>Investigation of the design space for context construction</li>
+      </ul>
+      <p>
+        Once a language exists to document structural differences, the variability space becomes apparent
+        and open for systematic investigation.
+      </p>
+    </div>
+
+    <div class="cta-section">
+      <h3>Ready to learn ACDL?</h3>
+      <div class="cta-buttons">
+        <a href="tutorial.html" class="btn btn-primary">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+          </svg>
+          Start the Tutorial
+        </a>
+        <a href="examples/index.html" class="btn btn-secondary">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+          </svg>
+          Explore Examples
+        </a>
+      </div>
+    </div>
+  </div>
+
+  {{FOOTER}}
+</body>
+</html>
