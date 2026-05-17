@@ -12,7 +12,7 @@
   <style>
     /* Tutorial-specific styles */
     .tutorial-hero {
-      padding: 140px 24px 60px;
+      padding: 140px 24px 32px;
       text-align: center;
       background: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(120, 119, 198, 0.15), transparent);
     }
@@ -75,7 +75,7 @@
     .tutorial-content {
       max-width: 800px;
       margin: 0 auto;
-      padding: 60px 24px 100px;
+      padding: 32px 24px 100px;
     }
 
     .step {
@@ -576,73 +576,9 @@
   <section class="tutorial-hero">
     <h1>Getting Started with ACDL</h1>
     <p>Learn to describe LLM agent context structures in under 10 minutes</p>
-    <div class="quick-links">
-      <a href="#step1" class="quick-link primary">Start from the beginning</a>
-      <a href="#quickstart" class="quick-link">Quick start (I know what I'm doing)</a>
-      <a href="visualizer.html" class="quick-link">Jump to Live Editor</a>
-    </div>
   </section>
 
   <div class="tutorial-content">
-
-    <!-- Quick Start Section -->
-    <section id="quickstart" class="step">
-      <div class="step-header">
-        <div class="step-number">Q</div>
-        <h2>Quick Start</h2>
-      </div>
-      <p>
-        If you're already familiar with LLM prompting and just want to dive in, here's the minimum you need to know:
-      </p>
-
-      <div class="code-and-render">
-        <div class="code-panel">
-          <pre><span class="template">MyPrompt</span>[<span class="context">@T</span>]: {
-    <span class="role">S</span>: <span class="template">INSTRUCTIONS</span>
-    <span class="role">U</span>: <span class="context">env.user_input</span>[<span class="context">@T</span>]
-}</pre>
-        </div>
-        <div class="rendered-output">
-          <div class="render-label">Rendered</div>
-          <div class="prompt-title"><h1>MyPrompt[<span class="idx">@T</span>]:</h1></div>
-          <div class="role-msg system">
-            <span class="role-badge">System</span>
-            <div class="role-body"><span class="tpl">INSTRUCTIONS</span></div>
-          </div>
-          <div class="role-msg user">
-            <span class="role-badge">User</span>
-            <div class="role-body"><span class="ctx">env.user_input[<span class="idx">@T</span>]</span></div>
-          </div>
-        </div>
-      </div>
-
-      <p>
-        That's it! <code>S:</code> is a system message, <code>U:</code> is a user message, and <code>env.user_input[@T]</code>
-        is a variable that holds the user's input at turn <code>@T</code>.
-      </p>
-
-      <a href="visualizer.html" class="try-it">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polygon points="5 3 19 12 5 21 5 3"></polygon>
-        </svg>
-        Try it in the Live Editor
-      </a>
-
-      <div class="callout tip">
-        <div class="callout-title">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
-            <path d="M2 17l10 5 10-5"></path>
-            <path d="M2 12l10 5 10-5"></path>
-          </svg>
-          Ready for more?
-        </div>
-        <div class="callout-content">
-          Continue reading below for a complete walkthrough, or jump to the <a href="syntax-reference.html" style="color: #22c55e;">documentation</a> for the full reference.
-        </div>
-      </div>
-    </section>
-
     <!-- Step 1: What is ACDL? -->
     <section id="step1" class="step">
       <div class="step-header">
@@ -650,29 +586,20 @@
         <h2>What is ACDL?</h2>
       </div>
       <p>
-        <strong>ACDL (Agentic Context Description Language)</strong> is a way to describe the structure of LLM prompts
-        and agent conversations. Think of it as a blueprint for how your AI agent communicates.
+        <strong>ACDL (Agentic Context Description Language)</strong> is a notation for describing the structure
+        of agent contexts—the system instructions, user messages, tool calls, conversation history, and
+        conditional logic that make up what your agent sends to the LLM.
       </p>
       <p>
-        When you build an AI agent, you need to manage complex conversations: system instructions, user messages,
-        tool calls, loops through history, conditional logic. ACDL gives you a clean way to describe all of this
-        without mixing it up with implementation details.
+        A <strong>prompt</strong> is what gets sent to the LLM at a single point in time. A <strong>context</strong>
+        is the pattern that describes how prompts are constructed and evolve across turns—which parts stay fixed,
+        which parts accumulate, and how the structure changes dynamically. ACDL describes contexts, not just prompts.
       </p>
-
-      <div class="explanation">
-        <div class="explanation-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10"></circle>
-            <line x1="12" y1="16" x2="12" y2="12"></line>
-            <line x1="12" y1="8" x2="12.01" y2="8"></line>
-          </svg>
-        </div>
-        <div class="explanation-text">
-          <strong>Why not just write prompts directly?</strong> You can! But as your agent grows more complex,
-          ACDL helps you see the structure at a glance, share it with others, and reason about how context
-          evolves over time.
-        </div>
-      </div>
+      <p>
+        Ad hoc prose or prompt excerpts are imprecise, hard to verify, and make comparing implementations difficult. 
+        ACDL provides a clean, precise notation that is easy to read and compare across different systems. 
+        As your agent grows more complex, ACDL helps you see the structure at a glance, share it with others, and reason about how context evolves over time.
+      </p>
     </section>
 
     <!-- Step 2: Your First Prompt -->
@@ -682,19 +609,19 @@
         <h2>Your First Prompt</h2>
       </div>
       <p>
-        Let's start with the simplest possible ACDL prompt. Every prompt has a <strong>name</strong> and a <strong>body</strong>:
+        Let's start with the simplest possible ACDL prompt. Every prompt is a series of messages, each marked with a role (System, User, Assistant, Tool) and containing different types of content. Here's what that looks like in ACDL:
       </p>
 
       <div class="code-and-render">
         <div class="code-panel">
-          <pre><span class="template">HelloWorld</span>[]: {
+          <pre><span class="template">HelloWorld</span>[<span class="context">@T</span>]: {
     <span class="role">S</span>: <span class="template">INSTRUCTIONS</span>
     <span class="role">U</span>: <span class="template">CONTENT</span>
 }</pre>
         </div>
         <div class="rendered-output">
           <div class="render-label">Rendered</div>
-          <div class="prompt-title"><h1>HelloWorld[]:</h1></div>
+          <div class="prompt-title"><h1>HelloWorld[<span class="idx">@T</span>]:</h1></div>
           <div class="role-msg system">
             <span class="role-badge">System</span>
             <div class="role-body"><span class="tpl">INSTRUCTIONS</span></div>
@@ -707,14 +634,8 @@
       </div>
 
       <p>
-        Here's what each part means:
+        This describes an llm context with two messages. The first message is a message who's role is <strong>System</strong> and whose content is the template <code>INSTRUCTIONS</code>. The second message is a message who's role is <strong>User</strong> and whose content is the template <code>CONTENT</code>.
       </p>
-      <ul class="feature-list">
-        <li><code>HelloWorld</code> is the prompt name (CamelCase by convention)</li>
-        <li><code>S:</code> marks a <strong>System</strong> message (instructions for the LLM)</li>
-        <li><code>U:</code> marks a <strong>User</strong> message (what the user says)</li>
-        <li><code>INSTRUCTIONS</code> and <code>CONTENT</code> are <strong>templates</strong> - named placeholders for text blocks (ALL_CAPS by convention)</li>
-      </ul>
 
       <div class="explanation">
         <div class="explanation-icon">
@@ -742,7 +663,6 @@
         <div class="callout-content">
           ACDL has four chat role markers: <code>S:</code> (System), <code>U:</code> (User), <code>A:</code> (Assistant),
           and <code>T:</code> (Tool response). These map directly to the roles in chat-based LLM APIs.
-          There's also <code>N:</code> (None) for the legacy completion format - a single message without roles.
         </div>
       </div>
     </section>

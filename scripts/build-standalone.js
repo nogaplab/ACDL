@@ -224,8 +224,14 @@ export { EditorView };
 /**
  * Transform the source HTML into a standalone version:
  * 1. Replace the external CSS link with inlined styles
- * 2. Remove the Vite module scripts
- * 3. Add bundled JS, embedded prompts, and standalone UI logic
+ * 2. Replace ONLY the Vite module script (editor/example bootstrap) with a
+ *    standalone bootstrap that uses the bundled parser/editor + embedded prompts
+ *
+ * The large inline <script> in src/index.html that follows the module script
+ * (resize, width, and PNG/PDF export + trim logic) is intentionally left
+ * UNTOUCHED and carried through verbatim. That block is the single source of
+ * truth for export behaviour, so the standalone/website visualizer always
+ * matches what `npm run dev` produces and can no longer drift out of sync.
  */
 function transformHTML(html, bundledJS, editorJS, cssContent, prompts) {
   // 1. Replace the external CSS link with inlined CSS
@@ -238,20 +244,40 @@ function transformHTML(html, bundledJS, editorJS, cssContent, prompts) {
     () => `<style>\n${cssContent}\n  </style>`
   );
 
-  // 2. Remove the first <script type="module"> block (Vite imports from main-ui.ts)
-  // This block starts with: <script type="module"> and contains import from "./main-ui.ts"
-  html = html.replace(
-    /<script type="module">[\s\S]*?import[\s\S]*?from\s*"\.\/main-ui\.ts"[\s\S]*?<\/script>/,
-    () => ''
+  // 2. Replace the <script type="module"> block (Vite imports from main-ui.ts)
+  // with the standalone bootstrap. This is the ONLY script we substitute.
+  const moduleScriptRe =
+    /<script type="module">[\s\S]*?from\s*"\.\/main-ui\.ts"[\s\S]*?<\/script>/;
+  if (!moduleScriptRe.test(html)) {
+    throw new Error(
+      'build-standalone: could not find the main-ui.ts module <script> in ' +
+        'src/index.html. The template structure changed — update ' +
+        'transformHTML() in scripts/build-standalone.js before building.'
+    );
+  }
+  html = html.replace(moduleScriptRe, () =>
+    generateStandaloneScripts(bundledJS, editorJS, prompts)
   );
 
-  // 3. Remove the second inline <script> block (resize/export handlers - we'll replace with standalone version)
-  // This is the large script block that handles resizing, collapsing, and export functionality
-  // Match from the <script> tag containing "const sidebar" through the closing </body>
-  html = html.replace(
-    /<script>\s*document\.addEventListener\("DOMContentLoaded"[\s\S]*?const\s+sidebar[\s\S]*?<\/script>\s*<\/body>/,
-    () => generateStandaloneScripts(bundledJS, editorJS, prompts) + '\n</body>'
-  );
+  // Sanity check: the export/trim logic must survive verbatim from
+  // src/index.html. If these markers are missing, the build is producing a
+  // visualizer that differs from `npm run dev` — fail loudly rather than
+  // silently shipping a stale/wrong export.
+  const exportMarkers = [
+    'async function captureAllContent',
+    'drawImage(fullCanvas',
+    'const constrainedWidth = Math.min(currentWidth',
+  ];
+  const missing = exportMarkers.filter((m) => !html.includes(m));
+  if (missing.length > 0) {
+    throw new Error(
+      'build-standalone: the up-to-date PNG export/trim logic was not found ' +
+        'in the standalone output (missing: ' +
+        missing.join(', ') +
+        '). The inline export <script> in src/index.html may have been ' +
+        'removed or rewritten.'
+    );
+  }
 
   return html;
 }
@@ -283,9 +309,19 @@ ${getStandaloneUILogic()}
 }
 
 /**
- * Returns the standalone UI logic JavaScript.
- * This is kept separately in the build script because it uses different
- * initialization than the Vite development version.
+ * Returns the standalone *bootstrap* JavaScript.
+ *
+ * This deliberately covers ONLY the parts that genuinely differ from the Vite
+ * dev build: wiring up the bundled parser/editor globals, loading examples from
+ * the embedded PROMPTS object instead of fetching .acdl files, and the editor /
+ * file-drop / render-button handlers (the equivalent of main-ui.ts +
+ * src/index.html's <script type="module">).
+ *
+ * The resize / width / PNG+PDF export + trim logic is NOT duplicated here. It
+ * is carried through verbatim from src/index.html's inline export <script>, so
+ * `npm run dev` and the built website visualizer always behave identically.
+ * The window.ACDL* globals and the detectOverflow() no-op below are the contract
+ * that retained script depends on.
  */
 function getStandaloneUILogic() {
   return `// Extract Parser and renderPrompts/renderPromptsSvg from the bundle
@@ -293,6 +329,16 @@ const { Parser, renderPrompts, renderPromptsSvg } = ACDL;
 const { createEditor } = ACDLEditor;
 
 let editorView = null;
+
+// --- Contract with the export <script> carried over from src/index.html ---
+// Its PDF export reads these globals; its width slider calls detectOverflow().
+window.ACDLParser = Parser;
+window.ACDLRenderSvg = renderPromptsSvg;
+window.ACDLGetEditorView = function () { return editorView; };
+
+// Overflow detection is a no-op in the dev build too (see main-ui.ts); defined
+// here as a global so the retained width-slider handler does not throw.
+function detectOverflow() {}
 
 function escapeHtml(text) {
   return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");

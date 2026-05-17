@@ -17,13 +17,13 @@ MintOriginal[@T.I]: {
             Mark 2 {
             U: sys.tool_used[@t.i].tool_response
             }
+        }
     
         A: {
             resp.solution_reasoning[@t]
             resp.solution[@t]
         }
         U: env.feedback[@t.i] // response if the answer was right or wrong, remaining tries if failed
-        }
     }
 
     ForEach(i: range(1, @T.substeps)) {
