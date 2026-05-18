@@ -42,6 +42,6 @@ OpenCodeMain[@T.I]: {
       }
       PromptEndsHere when (@T == @t && @T.I)
     }
-    A: sys.response[@t]
+    A: resp.response[@t]
   }
 }
