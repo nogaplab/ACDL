@@ -662,6 +662,7 @@
                 </svg>
                 Export as PNG
               </button>
+              <!-- TEMP: PDF export disabled — re-enable once rendering issue is fixed
               <button class="export-menu-item" id="export-pdf">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -671,6 +672,8 @@
                 </svg>
                 Export as PDF
               </button>
+              -->
+
             </div>
           </div>
           <button class="panel-toggle-btn" id="collapse-output" title="Collapse visualization">
@@ -1051,9 +1054,15 @@
             if (mainContent && comment) {
                 savedCommentStyles.push({ el: comment, style: comment.style.cssText });
                 const mainWidth = mainContent.getBoundingClientRect().width;
-                const gap = 8;
-                const availableForComment = constrainedWidth - 40 - mainWidth - gap;
-                const commentMaxWidth = Math.max(80, availableForComment);
+                // Match HTML's natural flex layout so the export wraps the same
+                // way as the live preview. Overhead = container padding-left +
+                // border-left (10 + 1) + role-body-block padding-x (2 * 6) +
+                // block-with-comment gap (4) = 27 px. Cap at the CSS max-width
+                // from .comment / .inline-comment (350 px) so we never give the
+                // comment more room than CSS would.
+                const CSS_COMMENT_MAX = 350;
+                const availableForComment = constrainedWidth - 27 - mainWidth;
+                const commentMaxWidth = Math.max(80, Math.min(availableForComment, CSS_COMMENT_MAX));
                 comment.style.maxWidth = commentMaxWidth + 'px';
                 comment.style.minWidth = '0';
                 comment.style.flex = '0 1 auto';
@@ -1328,9 +1337,15 @@
             if (mainContent && comment) {
                 savedCommentStyles.push({ el: comment, style: comment.style.cssText });
                 const mainWidth = mainContent.getBoundingClientRect().width;
-                const gap = 8;
-                const availableForComment = constrainedWidth - mainWidth - gap;
-                const commentMaxWidth = Math.max(80, availableForComment);
+                // Match HTML's natural flex layout so the export wraps the same
+                // way as the live preview. Overhead = container padding-left +
+                // border-left (10 + 1) + role-body-block padding-x (2 * 6) +
+                // block-with-comment gap (4) = 27 px. Cap at the CSS max-width
+                // from .comment / .inline-comment (350 px) so we never give the
+                // comment more room than CSS would.
+                const CSS_COMMENT_MAX = 350;
+                const availableForComment = constrainedWidth - 27 - mainWidth;
+                const commentMaxWidth = Math.max(80, Math.min(availableForComment, CSS_COMMENT_MAX));
                 comment.style.maxWidth = commentMaxWidth + 'px';
                 comment.style.minWidth = '0';
                 comment.style.flex = '0 1 auto';
@@ -1621,9 +1636,15 @@
             if (mainContent && comment) {
                 savedCommentStyles.push({ el: comment, style: comment.style.cssText });
                 const mainWidth = mainContent.getBoundingClientRect().width;
-                const gap = 8;
-                const availableForComment = constrainedWidth - 40 - mainWidth - gap;
-                const commentMaxWidth = Math.max(80, availableForComment);
+                // Match HTML's natural flex layout so the export wraps the same
+                // way as the live preview. Overhead = container padding-left +
+                // border-left (10 + 1) + role-body-block padding-x (2 * 6) +
+                // block-with-comment gap (4) = 27 px. Cap at the CSS max-width
+                // from .comment / .inline-comment (350 px) so we never give the
+                // comment more room than CSS would.
+                const CSS_COMMENT_MAX = 350;
+                const availableForComment = constrainedWidth - 27 - mainWidth;
+                const commentMaxWidth = Math.max(80, Math.min(availableForComment, CSS_COMMENT_MAX));
                 comment.style.maxWidth = commentMaxWidth + 'px';
                 comment.style.minWidth = '0';
                 comment.style.flex = '0 1 auto';
@@ -1770,6 +1791,8 @@
         }
       });
 
+      // TEMP: PDF export disabled — re-enable along with the button markup above once the rendering issue is fixed
+      /*
       // Export as PDF using SVG rendering
       exportPdf.addEventListener("click", async () => {
         exportMenu.classList.remove("show");
@@ -1847,6 +1870,7 @@
           exportBtn.classList.remove("loading");
         }
       });
+      */
     });
   </script>
 </body>

@@ -108,6 +108,42 @@ export class Parser {
   }
 
   /**
+   * Like parseFile() but also records the 1-based start and end line of each
+   * top-level block in the source. Useful for cursor-aware tooling that needs
+   * to map editor positions to AST blocks.
+   */
+  public parseFileWithRanges(): Array<{
+    block: AST.Prompt | AST.StrFragDef | AST.RolesFragDef | AST.CommentBlock;
+    startLine: number;
+    endLine: number;
+  }> {
+    const ranges: Array<{
+      block: AST.Prompt | AST.StrFragDef | AST.RolesFragDef | AST.CommentBlock;
+      startLine: number;
+      endLine: number;
+    }> = [];
+
+    while (!this.isEOF()) {
+      const tok = this.peek();
+      const startLine = tok.line;
+      let block: AST.Prompt | AST.StrFragDef | AST.RolesFragDef | AST.CommentBlock;
+      if (tok.type === "COMMENT") {
+        const text = this.consume("COMMENT").value as string;
+        block = Create.commentBlock({ text });
+      } else if (tok.type === "KEYWORD" && tok.value === "StrFrag") {
+        block = this.parseStrFragDef();
+      } else if (tok.type === "KEYWORD" && tok.value === "RolesFrag") {
+        block = this.parseRolesFragDef();
+      } else {
+        block = this.parsePrompt();
+      }
+      ranges.push({ block, startLine, endLine: this.lastConsumedLine });
+    }
+
+    return ranges;
+  }
+
+  /**
    * Parse a StrFrag definition: StrFrag Name[params]: { RoleBuildingBlock* }
    */
   private parseStrFragDef(): AST.StrFragDef {

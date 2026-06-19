@@ -173,9 +173,15 @@ async function renderToPng(htmlContent: string, outputPath: string): Promise<voi
 
             if (mainContent && comment) {
                 const mainWidth = mainContent.getBoundingClientRect().width;
-                const gap = 8;
-                const availableForComment = constrainedWidth - 40 - mainWidth - gap;
-                const commentMaxWidth = Math.max(80, availableForComment);
+                // Match HTML's natural flex layout so the export wraps the same
+                // way as the live preview. Overhead = container padding-left +
+                // border-left (10 + 1) + role-body-block padding-x (2 * 6) +
+                // block-with-comment gap (4) = 27 px. Cap at the CSS max-width
+                // from .comment / .inline-comment (350 px) so we never give the
+                // comment more room than CSS would.
+                const CSS_COMMENT_MAX = 350;
+                const availableForComment = constrainedWidth - 27 - mainWidth;
+                const commentMaxWidth = Math.max(80, Math.min(availableForComment, CSS_COMMENT_MAX));
 
                 comment.style.maxWidth = commentMaxWidth + 'px';
                 comment.style.minWidth = '0';

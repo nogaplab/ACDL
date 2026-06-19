@@ -75,6 +75,20 @@ function processDirectory(srcDir, destDir) {
 // Main build process
 console.log('Building website...\n');
 
+// Regenerate website/src/*.html from Markdown content first, so the rest of the
+// build picks up the latest authored content.
+console.log('Building Markdown content...\n');
+try {
+  execSync('node scripts/build-content.js', {
+    cwd: path.join(__dirname, '..'),
+    stdio: 'inherit',
+  });
+} catch (error) {
+  console.error('Failed to build Markdown content:', error.message);
+  process.exit(1);
+}
+console.log('');
+
 // Clean and create dist directory
 if (fs.existsSync(DIST_WEBSITE)) {
   fs.rmSync(DIST_WEBSITE, { recursive: true });

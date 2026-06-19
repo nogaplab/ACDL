@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  {{GA}}
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{TITLE}}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{BASE}}shared/styles.css">
+  <style>
+    /* Reduce hero spacing */
+    .hero {
+      padding: 120px 24px 48px;
+    }
+
+    /* Page-specific styles */
+    .feature-card svg {
+      width: 24px;
+      height: 24px;
+      color: #7877c6;
+      margin-bottom: 16px;
+    }
+
+    /* Installation - white background */
+    .install-section {
+      background: #fff;
+      padding: 60px 24px;
+    }
+
+    .install-section .section-header {
+      margin-bottom: 36px;
+    }
+
+    .install-section .section-header h2 {
+      color: #0a0a0a;
+      font-size: 2rem;
+    }
+
+    .install-section .section-header p {
+      color: rgba(10,10,10,0.5);
+    }
+
+    .install-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+
+    .install-card-featured {
+      grid-column: 1 / -1;
+      background: linear-gradient(135deg, #f0f0ff 0%, #e8e8f8 100%);
+      border: 2px solid rgba(120, 119, 198, 0.25);
+    }
+
+    .install-link {
+      display: inline-block;
+      margin-top: 16px;
+      color: #5d5cb8;
+      font-weight: 500;
+      text-decoration: none;
+      font-size: 0.9rem;
+    }
+
+    .install-link:hover {
+      text-decoration: underline;
+    }
+
+    .install-card {
+      background: linear-gradient(135deg, #fafaff 0%, #f5f5fa 100%);
+      border: 1px solid rgba(120, 119, 198, 0.12);
+      border-radius: 20px;
+      padding: 28px;
+      box-shadow: 0 4px 20px rgba(120, 119, 198, 0.06);
+    }
+
+    .install-card h3 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 18px;
+      color: #0a0a0a;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .install-card h3::before {
+      content: '';
+      width: 4px;
+      height: 20px;
+      background: linear-gradient(135deg, #7877c6, #5d5cb8);
+      border-radius: 2px;
+    }
+
+    .install-code {
+      background: linear-gradient(135deg, #1e1e2e, #2a2a3e);
+      border-radius: 12px;
+      padding: 18px 20px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      color: #e0e0e0;
+      overflow-x: auto;
+      border: 1px solid rgba(120, 119, 198, 0.2);
+    }
+
+    .install-steps {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .install-steps li {
+      display: flex;
+      gap: 14px;
+      padding: 14px 0;
+      border-bottom: 1px solid rgba(120, 119, 198, 0.08);
+      color: #0a0a0a;
+      font-size: 0.95rem;
+      align-items: center;
+    }
+
+    .install-steps li:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+
+    .install-steps li:first-child {
+      padding-top: 0;
+    }
+
+    .step-num {
+      width: 28px;
+      height: 28px;
+      background: linear-gradient(135deg, #7877c6, #5d5cb8);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #fff;
+      flex-shrink: 0;
+      box-shadow: 0 2px 8px rgba(120, 119, 198, 0.25);
+    }
+
+    kbd {
+      background: #fff;
+      border: 1px solid rgba(120, 119, 198, 0.25);
+      border-radius: 6px;
+      padding: 4px 8px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      color: #5d5cb8;
+      font-weight: 500;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    /* Features - dark background with light boxes */
+    .features-section {
+      background: #0a0a0a;
+      padding: 72px 24px;
+    }
+
+    .features-section .section-header h2 {
+      color: #fff;
+    }
+
+    .features-section .section-header p {
+      color: rgba(255,255,255,0.5);
+    }
+
+    .features-section .features-grid {
+      gap: 16px;
+    }
+
+    .features-section .feature-card {
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 16px;
+      padding: 24px;
+      transition: background 0.2s, border-color 0.2s, transform 0.2s;
+    }
+
+    .features-section .feature-card:hover {
+      background: rgba(255,255,255,0.18);
+      border-color: rgba(255,255,255,0.22);
+      transform: translateY(-2px);
+    }
+
+    .features-section .feature-card svg {
+      width: 28px;
+      height: 28px;
+      color: #a5a4e3;
+      margin-bottom: 12px;
+    }
+
+    .features-section .feature-card h3 {
+      color: #fff;
+      font-size: 1rem;
+      margin-bottom: 6px;
+    }
+
+    .features-section .feature-card p {
+      color: rgba(255,255,255,0.5);
+      font-size: 0.88rem;
+      line-height: 1.5;
+    }
+
+    @media (max-width: 900px) {
+      .install-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  {{NAV}}
+
+  {{CONTENT}}
+
+  {{FOOTER}}
+</body>
+</html>

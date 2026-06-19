@@ -517,3 +517,18 @@ footer a.external::after {
   .hero-buttons { flex-direction: column; }
   .section { padding: 80px 20px; }
 }
+/* ── Markdown-authored content ───────────────────────────────────────────
+   Callout/explanation bodies are written in Markdown, so their text is
+   wrapped in <p>. Neutralize inherited paragraph styling (e.g. tutorial's
+   `.step p`) so the box text matches the original inline look. */
+.callout-content p,
+.explanation-text p {
+  font-size: inherit;
+  color: inherit;
+  line-height: inherit;
+  margin: 0;
+}
+.callout-content p + p,
+.explanation-text p + p {
+  margin-top: 0.75em;
+}
