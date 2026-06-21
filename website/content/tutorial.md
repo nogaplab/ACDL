@@ -44,7 +44,7 @@ Let's start with the simplest possible ACDL context. Every context is a series o
   </div>
 </div>
 
-This describes an llm context with two messages. The first message is a message who's role is **System** (**S:**)which has a single piece of content: the template `INSTRUCTIONS`. The second message is a message who's role is **User** (**U:**) and whose content is the template `CONTENT`. Like every ACDL description, the @T signifies that this is the context sent at turn T of the conversation.
+This describes an llm context with two messages. The first message is a message who's role is **System** (**S:**) which has a single piece of content: the template `INSTRUCTIONS`. The second message is a message who's role is **User** (**U:**) and whose content is the template `CONTENT`. Like every ACDL description, the @T signifies that this is the context sent at turn T of the conversation.
 
 ::: explanation
 **Templates** let you separate structure from content. `INSTRUCTIONS` might expand
@@ -107,25 +107,37 @@ three sources:
   <li><code>resp.</code> - LLM responses (what the model previously generated)</li>
 </ul>
 
+::: explanation code
+strings like `env.user_input` represent information that is tracked by the system or comes from the external world. The existence of a value like `env.user_input` in the context description assumes that your agent has a way to track this information.
+:::
+
+<div class="code-and-render">
+  <div class="code-panel">
+    <pre><span class="template">Assistant</span>: {
+    <span class="role">S</span>: <span class="template">ROLE_DESCRIPTION</span>(<span class="context">env.assistant_name</span>)
+    <span class="role">U</span>: <span class="context">env.user_input</span>
+}</pre>
+  </div>
+  <div class="rendered-output">
+    <div class="render-label">Rendered</div>
+    <div class="prompt-title"><h1>Assistant:</h1></div>
+    <div class="role-msg system">
+      <span class="role-badge">System</span>
+      <div class="role-body"><span class="tpl">ROLE_DESCRIPTION(<span class="ctx">env.assistant_name</span>)</span></div>
+    </div>
+    <div class="role-msg user">
+      <span class="role-badge">User</span>
+      <div class="role-body"><span class="ctx">env.user_input</span></div>
+    </div>
+  </div>
+</div>
+
+This specification shows an assistent agent that recieves 2 messages. The first message's content is a Role Template that is dependent on the assistant's name (similar to the how you have parameters for printf in Python). The second message is the user's input at turn T. We use the env prefix here to signify that this value originated in the environment. The [@T] after the prompt name means "this prompt is parameterized by turn T".
+
 ::: callout Immutable Values
 All values in ACDL are immutable. A value like `sys.config.role` stays the same throughout
 the system's lifetime. Values that change between steps are accessed with a time index:
 `env.user_input[@T]` is the user input at the current step.
-:::
-
-<div class="code-example">
-  <div class="code-example-header">
-    <span class="code-example-title">with-variables.acdl</span>
-  </div>
-  <pre><span class="template">AssistantPrompt</span>: {
-    <span class="role">S</span>: <span class="template">ROLE_DESCRIPTION</span>(<span class="context">env.assistant_name</span>)
-    <span class="role">U</span>: <span class="context">env.user_input</span>
-}</pre>
-</div>
-
-::: explanation code
-Variables like `env.user_input` are placeholders. When you implement your agent, you'll fill
-these in with actual values. ACDL doesn't care about the implementation - it just describes the structure.
 :::
 
 ::::
@@ -156,20 +168,111 @@ describe which turn we're talking about:
   </div>
 </div>
 
-The `[@T]` after the prompt name means "this prompt is parameterized by turn `T`".
-Inside the prompt, `env.user_input[@T]` means "the user's input at turn T".
+This specification shows a coding agent that recieves 2 messages. The first message is a `Role` template, and the second message is the user's input at turn T. The `[@T]` after the prompt name means "this prompt is parameterized by turn `T`". Notice here that we do not include any of the history.
 
 <ul class="feature-list">
   <li><code>@T</code> - The current turn (a parameter)</li>
   <li><code>@1</code>, <code>@2</code>, etc. - Specific turn numbers</li>
-  <li><code>@t</code> - A loop variable (lowercase) for iterating through turns</li>
+  <li><code>@T-1</code> - The previous turn</li>
 </ul>
+
+Below is an example of a chat agent that also gets the user's input and the LLM's response from the 3 previous turns. 
+
+<div class="code-and-render">
+  <div class="code-panel">
+    <pre><span class="template">ChatAgent</span>[<span class="context">@T</span>]: {
+    <span class="role">S</span>: <span class="template">ROLE</span>
+    <span class="role">U</span>: <span class="context">env.user_input</span>[<span class="context">@T-3</span>]
+    <span class="role">A</span>: <span class="context">resp.answer</span>[<span class="context">@T-3</span>]
+    <span class="role">U</span>: <span class="context">env.user_input</span>[<span class="context">@T-2</span>]
+    <span class="role">A</span>: <span class="context">resp.answer</span>[<span class="context">@T-2</span>]
+    <span class="role">U</span>: <span class="context">env.user_input</span>[<span class="context">@T-1</span>]
+    <span class="role">A</span>: <span class="context">resp.answer</span>[<span class="context">@T-1</span>]
+    <span class="role">U</span>: <span class="context">env.user_input</span>[<span class="context">@T</span>]
+}</pre>
+  </div>
+  <div class="rendered-output">
+    <div class="render-label">Rendered</div>
+    <div class="prompt-title"><h1>ChatAgent[<span class="idx">@T</span>]:</h1></div>
+    <div class="role-msg system">
+      <span class="role-badge">System</span>
+      <div class="role-body"><span class="tpl">ROLE</span></div>
+    </div>
+    <div class="role-msg user">
+      <span class="role-badge">User</span>
+      <div class="role-body"><span class="ctx">env.user_input[<span class="idx">@T-3</span>]</span></div>
+    </div>
+    <div class="role-msg assistant">
+      <span class="role-badge">Assistant</span>
+      <div class="role-body"><span class="ctx">resp.answer[<span class="idx">@T-3</span>]</span></div>
+    </div>
+    <div class="role-msg user">
+      <span class="role-badge">User</span>
+      <div class="role-body"><span class="ctx">env.user_input[<span class="idx">@T-2</span>]</span></div>
+    </div>
+    <div class="role-msg assistant">
+      <span class="role-badge">Assistant</span>
+      <div class="role-body"><span class="ctx">resp.answer[<span class="idx">@T-2</span>]</span></div>
+    </div>
+    <div class="role-msg user">
+      <span class="role-badge">User</span>
+      <div class="role-body"><span class="ctx">env.user_input[<span class="idx">@T-1</span>]</span></div>
+    </div>
+    <div class="role-msg assistant">
+      <span class="role-badge">Assistant</span>
+      <div class="role-body"><span class="ctx">resp.answer[<span class="idx">@T-1</span>]</span></div>
+    </div>
+    <div class="role-msg user">
+      <span class="role-badge">User</span>
+      <div class="role-body"><span class="ctx">env.user_input[<span class="idx">@T</span>]</span></div>
+    </div>
+  </div>
+</div>
+
+The history can also be sent in one long message, instead of separate messages for each content piece. Here is how that would look like:
+
+<div class="code-and-render">
+  <div class="code-panel">
+    <pre><span class="template">ChatAgent</span>[<span class="context">@T</span>]: {
+    <span class="role">S</span>: <span class="template">ROLE</span>
+    <span class="role">U</span>: {
+        <span class="context">env.user_input</span>[<span class="context">@T-3</span>]
+        <span class="context">resp.answer</span>[<span class="context">@T-3</span>]
+        <span class="context">env.user_input</span>[<span class="context">@T-2</span>]
+        <span class="context">resp.answer</span>[<span class="context">@T-2</span>]
+        <span class="context">env.user_input</span>[<span class="context">@T-1</span>]
+        <span class="context">resp.answer</span>[<span class="context">@T-1</span>]
+        <span class="context">env.user_input</span>[<span class="context">@T</span>]
+    }
+}</pre>
+  </div>
+  <div class="rendered-output">
+    <div class="render-label">Rendered</div>
+    <div class="prompt-title"><h1>ChatAgent[<span class="idx">@T</span>]:</h1></div>
+    <div class="role-msg system">
+      <span class="role-badge">System</span>
+      <div class="role-body"><span class="tpl">ROLE</span></div>
+    </div>
+    <div class="role-msg user">
+      <span class="role-badge">User</span>
+      <div class="role-body">
+        <span class="ctx">env.user_input[<span class="idx">@T-3</span>]</span><br>
+        <span class="ctx">resp.answer[<span class="idx">@T-3</span>]</span><br>
+        <span class="ctx">env.user_input[<span class="idx">@T-2</span>]</span><br>
+        <span class="ctx">resp.answer[<span class="idx">@T-2</span>]</span><br>
+        <span class="ctx">env.user_input[<span class="idx">@T-1</span>]</span><br>
+        <span class="ctx">resp.answer[<span class="idx">@T-1</span>]</span><br>
+        <span class="ctx">env.user_input[<span class="idx">@T</span>]</span>
+      </div>
+    </div>
+  </div>
+</div>
 
 ::::
 
 :::: step 6 | Loops: Including Conversation History
 
-Most agents need to include previous conversation turns. Use `ForEach` to loop through history:
+Instead of writing out each of the turns, if there is a recurring pattern of what you include in the history, use `ForEach` to loop through it:
 
 <div class="code-and-render">
   <div class="code-panel">
@@ -278,21 +381,81 @@ in a loop:
   </div>
 </div>
 
-This describes the classic ReAct pattern:
-
-<ul class="feature-list">
-  <li>System message with instructions and available tools</li>
-  <li>User's original question</li>
-  <li>Loop through all previous reasoning steps and tool responses</li>
-  <li>Final prompt asking the agent to continue or give an answer</li>
-</ul>
-
 <a href="visualizer.html?example=react" class="try-it">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
     <polygon points="5 3 19 12 5 21 5 3"></polygon>
   </svg>
   See this in the Live Editor
 </a>
+
+This describes the classic ReAct pattern. The first message is a System message holding two templates, `TASK_INSTRUCTIONS` and `AVAILABLE_TOOLS`. The second is a User message with the question to answer. After that come the steps of the ReAct loop—two messages per step: an Assistant message with the LLM's reasoning and the tool it chose to call, followed by a Tool message with that tool's response. Once every step up to the current one has been included, we close with a final System message that asks the LLM to either continue the loop or reply to the user.
+
+Notice that this agent handles a single turn (the user's question) but takes multiple steps within it (the ReAct loop). We could also describe an agent that answers a series of questions, one after another, running a ReAct loop for each one. Here is an example description of such an agent:
+
+<div class="code-and-render">
+  <div class="code-panel">
+    <pre><span class="template">MultiTurnReactAgent</span>[<span class="context">@T</span>]: {
+    <span class="role">S</span>: {
+        <span class="template">TASK_DESCRIPTION</span>
+        <span class="context">env.tool_descriptions</span>
+    }
+    <span class="comment">// previous turns</span>
+    <span class="keyword">ForEach</span>(<span class="context">@t</span>: range(1, <span class="context">@T</span>)) {
+        <span class="keyword">ForEach</span>(<span class="context">i</span>: range(1, <span class="context">@t.substeps</span>)) {
+            <span class="role">A</span>: <span class="context">sys.tool_used</span>[<span class="context">@t.i</span>]
+            <span class="role">T</span>: <span class="context">sys.tool_used</span>[<span class="context">@t.i</span>].tool_response
+        }
+    }
+    <span class="comment">// current turn</span>
+    <span class="keyword">ForEach</span>(<span class="context">i</span>: range(1, <span class="context">I</span>)) {
+        <span class="role">A</span>: <span class="context">sys.tool_used</span>[<span class="context">@T.i</span>]
+        <span class="role">T</span>: <span class="context">sys.tool_used</span>[<span class="context">@T.i</span>].tool_response
+    }
+}</pre>
+  </div>
+  <div class="rendered-output">
+    <div class="render-label">Rendered</div>
+    <div class="prompt-title"><h1>MultiTurnReactAgent[<span class="idx">@T</span>]:</h1></div>
+    <div class="role-msg system">
+      <span class="role-badge">System</span>
+      <div class="role-body">
+        <span class="tpl">TASK_DESCRIPTION</span><br>
+        <span class="ctx">env.tool_descriptions</span>
+      </div>
+    </div>
+    <span class="cmt">// previous turns</span>
+    <div class="ctrl-block">
+      <div class="ctrl-header">ForEach <span class="idx">@t</span> : 1 ... <span class="idx">@T</span></div>
+      <div class="ctrl-block">
+        <div class="ctrl-header">ForEach <span class="idx">i</span> : 1 ... <span class="idx">@t.substeps</span></div>
+        <div class="role-msg assistant">
+          <span class="role-badge">Assistant</span>
+          <div class="role-body"><span class="ctx">sys.tool_used[<span class="idx">@t.i</span>]</span></div>
+        </div>
+        <div class="role-msg tool">
+          <span class="role-badge">Tool</span>
+          <div class="role-body"><span class="ctx">sys.tool_used[<span class="idx">@t.i</span>].tool_response</span></div>
+        </div>
+      </div>
+    </div>
+    <span class="cmt">// current turn</span>
+    <div class="ctrl-block">
+      <div class="ctrl-header">ForEach <span class="idx">i</span> : 1 ... <span class="idx">I</span></div>
+      <div class="role-msg assistant">
+        <span class="role-badge">Assistant</span>
+        <div class="role-body"><span class="ctx">sys.tool_used[<span class="idx">@T.i</span>]</span></div>
+      </div>
+      <div class="role-msg tool">
+        <span class="role-badge">Tool</span>
+        <div class="role-body"><span class="ctx">sys.tool_used[<span class="idx">@T.i</span>].tool_response</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+::: callout No answer at turn T
+Pay attention: the description never shows the LLM's answer for the current turn `T`. That's intentional—at the moment this context is assembled, turn `T` hasn't happened yet, so the model hasn't produced an answer. The context describes what we send *to* the model at turn `T`; the response only exists afterward.
+:::
 
 ::::
 

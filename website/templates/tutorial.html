@@ -254,7 +254,8 @@
 
     /* Try it button */
     .try-it {
-      display: inline-flex;
+      display: flex;
+      width: fit-content;
       align-items: center;
       gap: 8px;
       padding: 12px 20px;
@@ -266,7 +267,7 @@
       font-size: 0.9rem;
       font-weight: 500;
       transition: all 0.2s;
-      margin-top: 16px;
+      margin: 40px auto;
     }
 
     .try-it:hover {
@@ -377,7 +378,7 @@
     .code-and-render .code-panel pre {
       margin: 0;
       font-family: 'JetBrains Mono', monospace;
-      font-size: 13px;
+      font-size: 15px;
       line-height: 1.7;
       color: rgba(255,255,255,0.85);
       background: transparent;
