@@ -107,6 +107,8 @@ three sources:
   <li><code>resp.</code> - LLM responses (what the model previously generated)</li>
 </ul>
 
+Templates can also take arguments—most often context variables. The template's text then depends on the arguments it receives, much like a format string with parameters in Python's `printf`.
+
 ::: explanation code
 strings like `env.user_input` represent information that is tracked by the system or comes from the external world. The existence of a value like `env.user_input` in the context description assumes that your agent has a way to track this information.
 :::
@@ -132,7 +134,7 @@ strings like `env.user_input` represent information that is tracked by the syste
   </div>
 </div>
 
-This specification shows an assistent agent that recieves 2 messages. The first message's content is a Role Template that is dependent on the assistant's name (similar to the how you have parameters for printf in Python). The second message is the user's input at turn T. We use the env prefix here to signify that this value originated in the environment. The [@T] after the prompt name means "this prompt is parameterized by turn T".
+This specification shows an assistent agent that recieves 2 messages. The first message's content is a Role Template that is dependent on the assistant's name. The second message is the user's input at turn T. We use the env prefix here to signify that this value originated in the environment. The [@T] after the prompt name means "this prompt is parameterized by turn T".
 
 ::: callout Immutable Values
 All values in ACDL are immutable. A value like `sys.config.role` stays the same throughout

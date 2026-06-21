@@ -687,6 +687,7 @@ three sources:</p>
   <li><code>sys.</code> - Agent state (memory contents, tool configurations, action histories)</li>
   <li><code>resp.</code> - LLM responses (what the model previously generated)</li>
 </ul>
+<p>Templates can also take arguments—most often context variables. The template's text then depends on the arguments it receives, much like a format string with parameters in <code>printf</code>.</p>
 <div class="explanation">
   <div class="explanation-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg></div>
   <div class="explanation-text">
@@ -713,7 +714,7 @@ three sources:</p>
     </div>
   </div>
 </div>
-<p>This specification shows an assistent agent that recieves 2 messages. The first message's content is a Role Template that is dependent on the assistant's name (similar to the how you have parameters for printf in Python). The second message is the user's input at turn T. We use the env prefix here to signify that this value originated in the environment. The [@T] after the prompt name means &quot;this prompt is parameterized by turn T&quot;.</p>
+<p>This specification shows an assistent agent that recieves 2 messages. The first message's content is a Role Template that is dependent on the assistant's name. The second message is the user's input at turn T. We use the env prefix here to signify that this value originated in the environment. The [@T] after the prompt name means &quot;this prompt is parameterized by turn T&quot;.</p>
 <div class="callout note">
   <div class="callout-title">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
