@@ -555,6 +555,86 @@
       font-weight: 500;
     }
 
+    /* Mark blocks - right bracket, compact */
+    .rendered-output .mark-block {
+      position: relative;
+      padding-right: 25px;
+      margin: 4px 0;
+    }
+    .rendered-output .mark-bracket {
+      position: absolute;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      display: flex;
+      align-items: center;
+    }
+    .rendered-output .mark-line {
+      width: 5px;
+      height: 100%;
+      border: 2px solid #000;
+      border-left: none;
+      border-radius: 0 2px 2px 0;
+    }
+    .rendered-output .mark-num {
+      font-size: 9px;
+      font-weight: 700;
+      color: #000;
+      margin-left: 2px;
+    }
+
+    /* Fragment invocation - Frag keyword + invocation pill */
+    .rendered-output .frag-kw {
+      font-weight: 800;
+      color: #000;
+      font-size: 9px;
+      letter-spacing: 0.3px;
+    }
+    .rendered-output .frag-inv {
+      display: inline-flex;
+      align-items: center;
+      background: #faf5ff;
+      border: 1px solid #9333ea;
+      color: #9333ea;
+      padding: 2px 5px;
+      border-radius: 3px;
+      font-size: 9px;
+      font-weight: 500;
+      line-height: 1;
+    }
+
+    /* Fragment definitions - title bar with kind badge */
+    .rendered-output .frag-title {
+      background: #f6f8fa;
+      border: 1px solid #d0d7de;
+      border-radius: 3px;
+      padding: 3px 8px;
+      margin-bottom: 4px;
+      margin-left: -10px;
+      padding-left: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .rendered-output .frag-title h1 {
+      margin: 0;
+      font-size: 10px;
+      font-weight: 600;
+      color: #0a0a0a;
+      font-family: 'JetBrains Mono', monospace;
+      white-space: nowrap;
+    }
+    .rendered-output .frag-badge {
+      display: inline-block;
+      background: #e5e7eb;
+      color: #4b5563;
+      font-size: 8px;
+      font-weight: 600;
+      padding: 2px 5px;
+      border-radius: 3px;
+      letter-spacing: 0.5px;
+    }
+
     @media (max-width: 700px) {
       .code-and-render {
         grid-template-columns: 1fr;
@@ -578,7 +658,7 @@
 
   <section class="tutorial-hero">
     <h1>Getting Started with ACDL</h1>
-    <p>Learn to describe LLM agent context structures in under 10 minutes</p>
+    <p>Learn to describe LLM agent context structures in 20 minutes</p>
   </section>
 
   <div class="tutorial-content">
@@ -687,7 +767,7 @@ three sources:</p>
   <li><code>sys.</code> - Agent state (memory contents, tool configurations, action histories)</li>
   <li><code>resp.</code> - LLM responses (what the model previously generated)</li>
 </ul>
-<p>Templates can also take arguments—most often context variables. The template's text then depends on the arguments it receives, much like a format string with parameters in <code>printf</code>.</p>
+<p>Templates can also take arguments—most often context variables. The template's text then depends on the arguments it receives, much like a format string with parameters in Python's <code>printf</code>.</p>
 <div class="explanation">
   <div class="explanation-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg></div>
   <div class="explanation-text">
@@ -714,7 +794,7 @@ three sources:</p>
     </div>
   </div>
 </div>
-<p>This specification shows an assistent agent that recieves 2 messages. The first message's content is a Role Template that is dependent on the assistant's name. The second message is the user's input at turn T. We use the env prefix here to signify that this value originated in the environment. The [@T] after the prompt name means &quot;this prompt is parameterized by turn T&quot;.</p>
+<p>This specification shows an assistent agent that recieves 2 messages. The first message's content is a <code>ROLE</code> Template that is dependent on the assistant's name. The second message is the user's input at turn T. We use the env prefix here to signify that this value originated in the environment. The <code>@T</code> after the prompt name means &quot;this prompt is parameterized by turn T&quot;.</p>
 <div class="callout note">
   <div class="callout-title">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
@@ -754,7 +834,7 @@ describe which turn we're talking about:</p>
     </div>
   </div>
 </div>
-<p>This specification shows a coding agent that recieves 2 messages. The first message is a <code>Role</code> template, and the second message is the user's input at turn T. The <code>[@T]</code> after the prompt name means &quot;this prompt is parameterized by turn <code>T</code>&quot;. Notice here that we do not include any of the history.</p>
+<p>This specification is very similar to the previous example: it has two messages. The first is a <code>ROLE</code> template, this time with no arguments, and the second is a user message containing the user's input at turn T. The key difference is the time index: here the user input is parameterized by the current turn (<code>[@T]</code>), whereas in the earlier example it had no time index—meaning there was a single user input, constant across all turns. The <code>[@T]</code> after the prompt name means &quot;this prompt is parameterized by turn <code>T</code>&quot;. Notice that we do not include any of the history here.</p>
 <ul class="feature-list">
   <li><code>@T</code> - The current turn (a parameter)</li>
   <li><code>@1</code>, <code>@2</code>, etc. - Specific turn numbers</li>
@@ -854,7 +934,7 @@ describe which turn we're talking about:</p>
     <div class="step-number">6</div>
     <h2>Loops: Including Conversation History</h2>
   </div>
-<p>Instead of writing out each of the turns, if there is a recurring pattern of what you include in the history, use <code>ForEach</code> to loop through it:</p>
+<p>Instead of writing out each of the turns, if there is a recurring pattern of what you include in the history (or in any other case), use <code>ForEach</code> to loop through it:</p>
 <div class="code-and-render">
   <div class="code-panel">
     <pre><span class="template">ChatWithHistory</span>[<span class="context">@T</span>]: {
@@ -899,6 +979,7 @@ describe which turn we're talking about:</p>
   <div class="explanation-text">
 <p><code>ForEach(@t: range(1, @T))</code> iterates from turn 1 up to (but not including) the current turn <code>@T</code>.
 The loop variable <code>@t</code> takes each value in that range.</p>
+<p><code>ForEach</code> isn't limited to time ranges—you can loop over any list of items, such as <code>ForEach(doc: env.documents)</code>, binding the loop variable to each element in turn.</p>
   </div>
 </div>
 </section>
@@ -1107,6 +1188,212 @@ in a loop:</p>
   </div>
 </div>
 <p>This agent adapts its instructions based on whether documents and tools are available.</p>
+</section>
+<section id="step9" class="step">
+  <div class="step-header">
+    <div class="step-number">9</div>
+    <h2>Functions and Markers</h2>
+  </div>
+<p>Functions represent computed content—summarization, retrieval, formatting, or any transformation that cannot be expressed as a simple variable lookup. They are declared by name and purpose without defining their implementation; the name conveys semantic intent.</p>
+<p><strong>Markers</strong> annotate a section of a specification for visual emphasis in the rendered output. A mark draws a bracket along the side of the marked content with a number beside it (shown as <code>]1</code>), and is purely presentational—it doesn't change the prompt's meaning. You can wrap anything from a single content element to a large multi-message section, and use several marks with different numbers to highlight distinct parts.</p>
+<div class="code-and-render">
+  <div class="code-panel">
+    <pre><span class="template">ReactToolRagAtEnd</span>[<span class="context">@T</span>]: {
+    <span class="role">S</span>: {
+        <span class="template">INSTRUCTIONS</span>
+    }
+    <span class="role">U</span>: <span class="context">env.user_input</span>[<span class="context">@1</span>]
+    <span class="comment">// history</span>
+    <span class="keyword">ForEach</span>(<span class="context">t</span>: range(1, <span class="context">@T</span>)) {
+        <span class="role">A</span>: {
+            <span class="context">resp.tool_reasoning</span>[<span class="context">@t</span>]
+            <span class="context">sys.tool_used</span>[<span class="context">@t</span>]
+        }
+        <span class="role">T</span>: <span class="context">sys.tool_used</span>[<span class="context">@t</span>].tool_response
+    }
+    <span class="role">S</span>: {
+        <span class="keyword">Mark</span> 1 {
+            <span class="function">locate_tools</span>(<span class="context">env.user_input</span>[<span class="context">@1</span>])
+        }
+        <span class="template">USE_TOOLS_TO_SOLVE_TASK</span>
+    }
+}</pre>
+  </div>
+  <div class="rendered-output">
+    <div class="render-label">Rendered</div>
+    <div class="prompt-title"><h1>ReactToolRagAtEnd[<span class="idx">@T</span>]:</h1></div>
+    <div class="role-msg system">
+      <span class="role-badge">System</span>
+      <div class="role-body"><span class="tpl">INSTRUCTIONS</span></div>
+    </div>
+    <div class="role-msg user">
+      <span class="role-badge">User</span>
+      <div class="role-body"><span class="ctx">env.user_input[<span class="idx">@1</span>]</span></div>
+    </div>
+    <span class="cmt">// history</span>
+    <div class="ctrl-block">
+      <div class="ctrl-header">ForEach <span class="idx">t</span> : 1 ... <span class="idx">@T</span></div>
+      <div class="role-msg assistant">
+        <span class="role-badge">Assistant</span>
+        <div class="role-body">
+          <span class="ctx">resp.tool_reasoning[<span class="idx">@t</span>]</span><br>
+          <span class="ctx">sys.tool_used[<span class="idx">@t</span>]</span>
+        </div>
+      </div>
+      <div class="role-msg tool">
+        <span class="role-badge">Tool</span>
+        <div class="role-body"><span class="ctx">sys.tool_used[<span class="idx">@t</span>].tool_response</span></div>
+      </div>
+    </div>
+    <div class="role-msg system">
+      <span class="role-badge">System</span>
+      <div class="role-body">
+        <div class="mark-block">
+          <span class="fn">locate_tools(<span class="ctx">env.user_input[<span class="idx">@1</span>]</span>)</span>
+          <div class="mark-bracket">
+            <div class="mark-line"></div>
+            <span class="mark-num">1</span>
+          </div>
+        </div>
+        <span class="tpl">USE_TOOLS_TO_SOLVE_TASK</span>
+      </div>
+    </div>
+  </div>
+</div>
+<p>This specification describes a ReAct agent that retrieves its tools at the end of the context. The first message is a System message with the agent's <code>INSTRUCTIONS</code>, and the second is a User message holding the original task—<code>env.user_input[@1]</code>, fixed at the first turn. The <code>// history</code> loop then replays every previous step: for each turn <code>t</code> from 1 up to <code>@T</code>, an Assistant message with the model's reasoning for choosing the tool and the tool it used, followed by a Tool message with that tool's response. The final System message is where the function comes in: <code>locate_tools(env.user_input[@1])</code> is computed content—rather than looking up a stored value, it runs over the original task to retrieve the relevant tools—followed by the <code>USE_TOOLS_TO_SOLVE_TASK</code> template. The function is declared by name and purpose only; its implementation is left out of the specification. The <code>]1</code> on the right of the function is there to highlight the function.</p>
+</section>
+<section id="step10" class="step">
+  <div class="step-header">
+    <div class="step-number">10</div>
+    <h2>Fragments</h2>
+  </div>
+<p>Beyond messages and variables, ACDL gives you tools to reuse content and to highlight parts of a specification.</p>
+<p><strong>String fragments</strong> are reusable pieces of content with no role of their own. You define them with the <code>StrFrag</code> keyword and invoke them with the <code>Frag</code> keyword.</p>
+<div class="code-and-render">
+  <div class="code-panel">
+    <pre><span class="keyword">StrFrag</span> <span class="template">DocumentContext</span>[<span class="context">doc</span>]: {
+    <span class="context">env.doc_title</span>[<span class="context">doc</span>]
+    <span class="context">env.doc_content</span>[<span class="context">doc</span>]
+    <span class="function">summarize</span>(<span class="context">env.doc_metadata</span>[<span class="context">doc</span>])
+}</pre>
+  </div>
+  <div class="rendered-output">
+    <div class="render-label">Rendered</div>
+    <div class="frag-title"><h1>DocumentContext[<span class="idx">doc</span>]</h1><span class="frag-badge">SF</span></div>
+    <div style="border-left: 1px solid #d0d7de; padding-left: 8px; margin-left: 0;">
+      <span class="ctx">env.doc_title[<span class="idx">doc</span>]</span><br>
+      <span class="ctx">env.doc_content[<span class="idx">doc</span>]</span><br>
+      <span class="fn">summarize(<span class="ctx">env.doc_metadata[<span class="idx">doc</span>]</span>)</span>
+    </div>
+  </div>
+</div>
+<p>This string fragment, <code>DocumentContext</code>, bundles together everything that describes a single document, parameterized by <code>doc</code>. Its body holds three content pieces: the document's title (<code>env.doc_title[doc]</code>), its content (<code>env.doc_content[doc]</code>), and a <code>summarize(env.doc_metadata[doc])</code> function that condenses the document's metadata. The <code>SF</code> badge in the render marks it as a String Fragment—on its own it just defines a reusable block of content; it doesn't place anything in a prompt until it's invoked.</p>
+<p>To use it, we invoke it with the <code>Frag</code> keyword from inside a message:</p>
+<div class="code-and-render">
+  <div class="code-panel">
+    <pre><span class="template">DocumentQA</span>[<span class="context">@T</span>]: {
+    <span class="role">U</span>: {
+        <span class="template">TASK_INSTRUCTIONS</span>
+        <span class="keyword">ForEach</span>(<span class="context">doc</span>: <span class="context">env.documents</span>) {
+            <span class="keyword">Frag</span> <span class="template">DocumentContext</span>[<span class="context">doc</span>]
+        }
+        <span class="context">env.user_question</span>[<span class="context">@T</span>]
+    }
+}</pre>
+  </div>
+  <div class="rendered-output">
+    <div class="render-label">Rendered</div>
+    <div class="prompt-title"><h1>DocumentQA[<span class="idx">@T</span>]:</h1></div>
+    <div class="role-msg user">
+      <span class="role-badge">User</span>
+      <div class="role-body">
+        <span class="tpl">TASK_INSTRUCTIONS</span>
+        <div class="ctrl-block">
+          <div class="ctrl-header">ForEach <span class="idx">doc</span> : <span class="ctx">env.documents</span></div>
+          <span class="frag-kw">Frag</span> <span class="frag-inv">DocumentContext[<span class="idx">doc</span>]</span>
+        </div>
+        <span class="ctx">env.user_question[<span class="idx">@T</span>]</span>
+      </div>
+    </div>
+  </div>
+</div>
+<p>Here, <code>DocumentQA</code> is an ordinary prompt with a single User message. Inside that message, a <code>ForEach</code> walks over <code>env.documents</code> and invokes <code>Frag DocumentContext[doc]</code> once per document. Each invocation drops the fragment's three pieces in place, and because they land inside a User message, they inherit the User role. The message ends up as <code>TASK_INSTRUCTIONS</code>, then a title–content–summary block for every document, then the user's question—and the document layout itself is written only once, back in the fragment definition.</p>
+<p><strong>Role fragments</strong> are reusable groups of whole messages. You define them with the <code>RolesFrag</code> keyword and invoke them at the top level of a prompt, wherever a role message would be valid. They expand to the full sequence of role messages defined in the fragment body.</p>
+<!-- role fragment example to be added -->
+<p>Both kinds of fragment can take parameters in square brackets and are invoked with the same <code>Frag Name[args]</code> syntax; ACDL decides which kind is meant from context—inside a role block it resolves to a string fragment, at the top level to a role fragment.</p>
+<p>Putting it all together, here is a tool-using agent that defines both kinds of fragment and uses each one:</p>
+<div class="code-and-render">
+  <div class="code-panel">
+    <pre><span class="keyword">StrFrag</span> <span class="template">ToolDescription</span>[<span class="context">tool</span>]: {
+    <span class="context">sys.tool_name</span>[<span class="context">tool</span>]
+    <span class="context">sys.tool_schema</span>[<span class="context">tool</span>]
+}
+
+<span class="keyword">RolesFrag</span> <span class="template">ToolResult</span>[<span class="context">@t</span>, <span class="context">tool</span>]: {
+    <span class="role">A</span>: <span class="context">sys.tool_call</span>[<span class="context">@t</span>, <span class="context">tool</span>]
+    <span class="role">T</span>: <span class="context">sys.tool_response</span>[<span class="context">@t</span>, <span class="context">tool</span>]
+}
+
+<span class="template">ToolAgent</span>[<span class="context">@T</span>]: {
+    <span class="role">S</span>: {
+        <span class="template">INSTRUCTIONS</span>
+        <span class="keyword">ForEach</span>(<span class="context">tool</span>: <span class="context">sys.available_tools</span>) {
+            <span class="keyword">Frag</span> <span class="template">ToolDescription</span>[<span class="context">tool</span>]
+        }
+    }
+    <span class="keyword">ForEach</span>(<span class="context">@t</span>: range(1, <span class="context">@T</span>)) {
+        <span class="role">U</span>: <span class="context">env.observation</span>[<span class="context">@t</span>]
+        <span class="keyword">Frag</span> <span class="template">ToolResult</span>[<span class="context">@t</span>, <span class="context">sys.selected_tool</span>[<span class="context">@t</span>]]
+    }
+    <span class="role">U</span>: <span class="context">env.observation</span>[<span class="context">@T</span>]
+}</pre>
+  </div>
+  <div class="rendered-output">
+    <div class="render-label">Rendered</div>
+    <div class="frag-title"><h1>ToolDescription[<span class="idx">tool</span>]</h1><span class="frag-badge">SF</span></div>
+    <div style="border-left: 1px solid #d0d7de; padding-left: 8px; margin-left: 0; margin-bottom: 12px;">
+      <span class="ctx">sys.tool_name[<span class="idx">tool</span>]</span><br>
+      <span class="ctx">sys.tool_schema[<span class="idx">tool</span>]</span>
+    </div>
+    <div class="frag-title"><h1>ToolResult[<span class="idx">@t</span>, <span class="idx">tool</span>]</h1><span class="frag-badge">RF</span></div>
+    <div style="border-left: 1px solid #d0d7de; padding-left: 8px; margin-left: 0; margin-bottom: 12px;">
+      <div class="role-msg assistant">
+        <span class="role-badge">Assistant</span>
+        <div class="role-body"><span class="ctx">sys.tool_call[<span class="idx">@t</span>, <span class="idx">tool</span>]</span></div>
+      </div>
+      <div class="role-msg tool">
+        <span class="role-badge">Tool</span>
+        <div class="role-body"><span class="ctx">sys.tool_response[<span class="idx">@t</span>, <span class="idx">tool</span>]</span></div>
+      </div>
+    </div>
+    <div class="prompt-title"><h1>ToolAgent[<span class="idx">@T</span>]:</h1></div>
+    <div class="role-msg system">
+      <span class="role-badge">System</span>
+      <div class="role-body">
+        <span class="tpl">INSTRUCTIONS</span>
+        <div class="ctrl-block">
+          <div class="ctrl-header">ForEach <span class="idx">tool</span> : <span class="ctx">sys.available_tools</span></div>
+          <span class="frag-kw">Frag</span> <span class="frag-inv">ToolDescription[<span class="idx">tool</span>]</span>
+        </div>
+      </div>
+    </div>
+    <div class="ctrl-block">
+      <div class="ctrl-header">ForEach <span class="idx">@t</span> : 1 ... <span class="idx">@T</span></div>
+      <div class="role-msg user">
+        <span class="role-badge">User</span>
+        <div class="role-body">
+          <span class="ctx">env.observation[<span class="idx">@t</span>]</span><br>
+          <span class="frag-kw">Frag</span> <span class="frag-inv">ToolResult[<span class="idx">@t</span>, <span class="ctx">sys.selected_tool[<span class="idx">@t</span>]</span>]</span>
+        </div>
+      </div>
+    </div>
+    <div class="role-msg user">
+      <span class="role-badge">User</span>
+      <div class="role-body"><span class="ctx">env.observation[<span class="idx">@T</span>]</span></div>
+    </div>
+  </div>
+</div>
+<p><code>ToolDescription</code> is a string fragment and <code>ToolResult</code> is a role fragment, and <code>ToolAgent</code> uses both. Inside the System message, <code>Frag ToolDescription[tool]</code> is invoked within a role block, so it resolves to the <strong>string fragment</strong>—each tool's name and schema expand in place as System content. In the history loop, <code>Frag ToolResult[@t, sys.selected_tool[@t]]</code> sits at the top level, so it resolves to the <strong>role fragment</strong>, expanding into the Assistant and Tool messages for that step. The same <code>Frag Name[args]</code> syntax appears in both places; ACDL picks the right kind from where the invocation sits.</p>
 </section>
 <section class="next-steps">
   <h2>What's Next?</h2>

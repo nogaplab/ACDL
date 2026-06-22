@@ -553,6 +553,86 @@
       font-weight: 500;
     }
 
+    /* Mark blocks - right bracket, compact */
+    .rendered-output .mark-block {
+      position: relative;
+      padding-right: 25px;
+      margin: 4px 0;
+    }
+    .rendered-output .mark-bracket {
+      position: absolute;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      display: flex;
+      align-items: center;
+    }
+    .rendered-output .mark-line {
+      width: 5px;
+      height: 100%;
+      border: 2px solid #000;
+      border-left: none;
+      border-radius: 0 2px 2px 0;
+    }
+    .rendered-output .mark-num {
+      font-size: 9px;
+      font-weight: 700;
+      color: #000;
+      margin-left: 2px;
+    }
+
+    /* Fragment invocation - Frag keyword + invocation pill */
+    .rendered-output .frag-kw {
+      font-weight: 800;
+      color: #000;
+      font-size: 9px;
+      letter-spacing: 0.3px;
+    }
+    .rendered-output .frag-inv {
+      display: inline-flex;
+      align-items: center;
+      background: #faf5ff;
+      border: 1px solid #9333ea;
+      color: #9333ea;
+      padding: 2px 5px;
+      border-radius: 3px;
+      font-size: 9px;
+      font-weight: 500;
+      line-height: 1;
+    }
+
+    /* Fragment definitions - title bar with kind badge */
+    .rendered-output .frag-title {
+      background: #f6f8fa;
+      border: 1px solid #d0d7de;
+      border-radius: 3px;
+      padding: 3px 8px;
+      margin-bottom: 4px;
+      margin-left: -10px;
+      padding-left: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .rendered-output .frag-title h1 {
+      margin: 0;
+      font-size: 10px;
+      font-weight: 600;
+      color: #0a0a0a;
+      font-family: 'JetBrains Mono', monospace;
+      white-space: nowrap;
+    }
+    .rendered-output .frag-badge {
+      display: inline-block;
+      background: #e5e7eb;
+      color: #4b5563;
+      font-size: 8px;
+      font-weight: 600;
+      padding: 2px 5px;
+      border-radius: 3px;
+      letter-spacing: 0.5px;
+    }
+
     @media (max-width: 700px) {
       .code-and-render {
         grid-template-columns: 1fr;
