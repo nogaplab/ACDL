@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  {{GA}}
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{TITLE}}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{BASE}}shared/styles.css">
+  <style>
+    /* Light theme override for documentation page */
+    body {
+      background: #fafafa;
+      color: #0a0a0a;
+      line-height: 1.7;
+    }
+
+    /* Layout */
+    .container {
+      display: flex;
+      max-width: 1300px;
+      margin: 0 auto;
+      padding-top: 64px;
+    }
+
+    /* Sidebar */
+    aside {
+      width: 260px;
+      padding: 32px 24px;
+      position: sticky;
+      top: 64px;
+      height: calc(100vh - 64px);
+      overflow-y: auto;
+      flex-shrink: 0;
+      border-right: 1px solid rgba(0,0,0,0.06);
+    }
+
+    aside h4 {
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: rgba(10,10,10,0.4);
+      margin-bottom: 12px;
+      margin-top: 24px;
+    }
+
+    aside h4:first-child { margin-top: 0; }
+
+    aside a {
+      display: block;
+      color: rgba(10,10,10,0.7);
+      text-decoration: none;
+      font-size: 0.9rem;
+      padding: 6px 0;
+      transition: color 0.2s;
+    }
+
+    aside a:hover { color: #7877c6; }
+
+    /* Main content */
+    main {
+      flex: 1;
+      padding: 48px 64px;
+      max-width: 860px;
+    }
+
+    h1 {
+      font-size: 2.25rem;
+      font-weight: 700;
+      margin-bottom: 16px;
+      letter-spacing: -0.02em;
+    }
+
+    .intro-text {
+      font-size: 1.1rem;
+      color: rgba(10,10,10,0.7);
+      margin-bottom: 24px;
+      line-height: 1.8;
+    }
+
+    .tutorial-btn-wrapper {
+      margin-bottom: 32px;
+    }
+
+    .tutorial-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 24px;
+      background: #0a0a0a;
+      color: #fff;
+      text-decoration: none;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      transition: all 0.2s;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    .tutorial-btn:hover {
+      background: #1a1a1a;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    }
+
+    .tutorial-btn svg {
+      flex-shrink: 0;
+    }
+
+    h2 {
+      font-size: 1.4rem;
+      font-weight: 600;
+      margin-top: 56px;
+      margin-bottom: 16px;
+      padding-top: 32px;
+      border-top: 1px solid rgba(0,0,0,0.08);
+    }
+
+    h2:first-of-type {
+      margin-top: 40px;
+      border-top: none;
+      padding-top: 0;
+    }
+
+    h3 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-top: 32px;
+      margin-bottom: 12px;
+    }
+
+    p {
+      color: rgba(10,10,10,0.7);
+      margin-bottom: 16px;
+    }
+
+    /* Code blocks */
+    pre {
+      background: #1a1a1a;
+      border-radius: 12px;
+      padding: 20px 24px;
+      overflow-x: auto;
+      margin: 20px 0;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      line-height: 1.7;
+      color: rgba(255,255,255,0.85);
+    }
+
+    code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85em;
+      background: rgba(120, 119, 198, 0.1);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: #7877c6;
+    }
+
+    pre code {
+      background: none;
+      padding: 0;
+      color: inherit;
+    }
+
+    .keyword { color: #c792ea; }
+    .role { color: #89ddff; }
+    .template { color: #c3e88d; }
+    .context { color: #82aaff; }
+    .comment { color: rgba(255,255,255,0.35); }
+    .string { color: #c3e88d; }
+    .function { color: #ffcb6b; }
+
+    /* Tables */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      font-size: 0.9rem;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 12px 16px;
+      border-bottom: 1px solid rgba(0,0,0,0.06);
+    }
+
+    th {
+      font-weight: 600;
+      background: rgba(0,0,0,0.02);
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: rgba(10,10,10,0.5);
+    }
+
+    td:first-child {
+      white-space: nowrap;
+    }
+
+    /* Lists */
+    ul, ol {
+      margin: 16px 0;
+      padding-left: 24px;
+      color: rgba(10,10,10,0.7);
+    }
+
+    li { margin-bottom: 8px; }
+
+    /* Note boxes */
+    .note {
+      background: rgba(120, 119, 198, 0.08);
+      border-left: 3px solid #7877c6;
+      border-radius: 0 8px 8px 0;
+      padding: 16px 20px;
+      margin: 24px 0;
+    }
+
+    .note p { margin: 0; color: rgba(10,10,10,0.8); }
+
+    .warning {
+      background: rgba(255, 152, 0, 0.08);
+      border-left: 3px solid #ff9800;
+      border-radius: 0 8px 8px 0;
+      padding: 16px 20px;
+      margin: 24px 0;
+    }
+
+    .warning p { margin: 0; color: rgba(10,10,10,0.8); }
+
+    /* Example figures */
+    .example-figure {
+      background: rgba(0,0,0,0.02);
+      border-radius: 12px;
+      padding: 24px;
+      margin: 32px 0;
+    }
+
+    .example-figure pre {
+      margin: 0 0 16px 0;
+    }
+
+    .example-figure figcaption {
+      font-size: 0.9rem;
+      color: rgba(10,10,10,0.6);
+      font-style: italic;
+      border-top: 1px solid rgba(0,0,0,0.06);
+      padding-top: 16px;
+      margin-top: 8px;
+    }
+
+    p.figcaption {
+      font-size: 0.85rem;
+      color: rgba(10,10,10,0.6);
+      font-style: italic;
+      margin-top: 12px;
+    }
+
+    /* Prompt title - matches styles.css .prompt-title */
+    .rendered-output .prompt-title {
+      background: #f6f8fa;
+      border: 1px solid #d0d7de;
+      border-radius: 3px;
+      padding: 3px 8px;
+      margin-bottom: 4px;
+      margin-left: -10px;
+      padding-left: 10px;
+    }
+    .rendered-output .prompt-title h1 {
+      margin: 0;
+      font-size: 10px;
+      font-weight: 600;
+      color: #0a0a0a;
+      font-family: 'JetBrains Mono', monospace;
+      white-space: nowrap;
+    }
+    .rendered-output .prompt-title .idx {
+      color: #0969da;
+      font-weight: 700;
+    }
+
+    /* Rendered output examples - matching actual visualizer compact mode */
+    .rendered-output {
+      background: #fff;
+      border: 1px solid rgba(0,0,0,0.1);
+      border-radius: 8px;
+      padding: 12px;
+      margin: 20px 0;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px;
+      border-left: 1px solid #d0d7de;
+      padding-left: 10px;
+      line-height: 1;
+    }
+
+    .rendered-output .render-label {
+      font-family: 'Inter', sans-serif;
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: rgba(10,10,10,0.4);
+      margin-bottom: 8px;
+    }
+
+    /* Role messages - left border style like visualizer compact mode */
+    .rendered-output .role-msg {
+      border-left: 1px solid #d0d7de;
+      margin: 4px 0;
+      padding: 0;
+      border-radius: 0;
+    }
+    .rendered-output .role-msg.system { border-left-color: #0969da; }
+    .rendered-output .role-msg.user { border-left-color: #e5990b; }
+    .rendered-output .role-msg.assistant { border-left-color: #1acad1; }
+    .rendered-output .role-msg.tool { border-left-color: #f7660b; }
+
+    /* Role badge - corner badge style like compact mode */
+    .rendered-output .role-badge {
+      display: block;
+      width: fit-content;
+      padding: 1px 4px;
+      margin: 0;
+      font-size: 7px;
+      font-weight: 600;
+      letter-spacing: 0.2px;
+      text-transform: uppercase;
+      border-radius: 0 0 2px 0;
+      color: #fff;
+      line-height: 1;
+    }
+    .rendered-output .role-msg.system .role-badge { background: #0969da; }
+    .rendered-output .role-msg.user .role-badge { background: #e5990b; }
+    .rendered-output .role-msg.assistant .role-badge { background: #1acad1; }
+    .rendered-output .role-msg.tool .role-badge { background: #f7660b; }
+
+    .rendered-output .role-body {
+      padding: 2px 6px;
+    }
+    .rendered-output .role-body > * {
+      margin: 1px 0;
+    }
+    /* Wrapper for content + comment pairs - inline-flex allows comment to wrap beside content */
+    .rendered-output .block-with-comment {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .rendered-output .block-with-comment > .tpl,
+    .rendered-output .block-with-comment > .ctx,
+    .rendered-output .block-with-comment > .fn,
+    .rendered-output .block-with-comment > .idx {
+      flex-shrink: 0;
+    }
+
+    /* Templates - purple with diamond, compact */
+    .rendered-output .tpl {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      background: #faf5ff;
+      border: 1px solid #9333ea;
+      color: #9333ea;
+      padding: 2px 5px;
+      border-radius: 3px;
+      font-size: 9px;
+      font-weight: 500;
+      line-height: 1;
+    }
+    .rendered-output .tpl::before {
+      content: '◆';
+      font-size: 7px;
+      opacity: 0.7;
+      line-height: 1;
+    }
+
+    /* Context variables - green/teal, compact */
+    .rendered-output .ctx {
+      display: inline-flex;
+      align-items: center;
+      gap: 1px;
+      background: #e0ffdd;
+      border: 1px solid #0da66b;
+      color: #0da66b;
+      padding: 2px 5px;
+      border-radius: 3px;
+      font-size: 9px;
+      font-weight: 500;
+    }
+
+    /* Functions - purple like templates, compact */
+    .rendered-output .fn {
+      display: inline-flex;
+      align-items: center;
+      background: #faf5ff;
+      border: 1px solid #9333ea;
+      color: #9333ea;
+      padding: 2px 5px;
+      border-radius: 3px;
+      font-size: 9px;
+      font-weight: 500;
+      line-height: 1;
+    }
+
+    /* Time indices - blue */
+    .rendered-output .idx {
+      color: #0969da;
+      font-weight: 700;
+      font-size: 9px;
+    }
+
+    /* Control flow blocks - compact style */
+    .rendered-output .ctrl-block {
+      border-left: 1px solid #6e7781;
+      margin: 2px 0;
+      padding: 2px 6px 2px 8px;
+      border-radius: 2px;
+    }
+    .rendered-output .ctrl-header {
+      padding: 1px 4px;
+      margin: -2px -6px 2px -8px;
+      border-radius: 0 2px 0 0;
+      font-size: 9px;
+      font-weight: 600;
+      color: #57606a;
+      background: #eaeef2;
+      display: flex;
+      align-items: center;
+      gap: 3px;
+    }
+    /* Default icon for loops */
+    .rendered-output .ctrl-header::before {
+      content: '↻';
+      font-size: 8px;
+      color: #6e7781;
+    }
+    /* Conditional icon */
+    .rendered-output .ctrl-header.cond::before {
+      content: '◇';
+      font-size: 7px;
+    }
+    /* Switch icon */
+    .rendered-output .ctrl-header.switch::before {
+      content: '⎇';
+      font-size: 8px;
+    }
+    /* Case/Default - no icon */
+    .rendered-output .ctrl-header.case::before,
+    .rendered-output .ctrl-header.default::before {
+      content: '';
+    }
+
+    /* Comments - compact, allow wrapping */
+    .rendered-output .cmt {
+      color: #6e7781;
+      font-style: italic;
+      font-size: 7px;
+      margin-left: 2px;
+      white-space: normal;
+      flex: 0 1 auto;
+      min-width: 0;
+    }
+
+    /* Label blocks - compact */
+    .rendered-output .label-block {
+      margin: 4px 0;
+    }
+    .rendered-output .label-start,
+    .rendered-output .label-end {
+      font-size: 9px;
+      color: #8b949e;
+      letter-spacing: 0.5px;
+      padding: 2px 0;
+    }
+    .rendered-output .label-block-body {
+      border-left: 1px solid #e1e4e8;
+      margin-left: 3px;
+      padding-left: 6px;
+    }
+
+    /* Mark blocks - right bracket, compact */
+    .rendered-output .mark-block {
+      position: relative;
+      padding-right: 25px;
+      margin: 4px 0;
+    }
+    .rendered-output .mark-bracket {
+      position: absolute;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      display: flex;
+      align-items: center;
+    }
+    .rendered-output .mark-line {
+      width: 5px;
+      height: 100%;
+      border: 2px solid #000;
+      border-left: none;
+      border-radius: 0 2px 2px 0;
+    }
+    .rendered-output .mark-num {
+      font-size: 9px;
+      font-weight: 700;
+      color: #000;
+      margin-left: 2px;
+    }
+
+    /* Name definitions - compact */
+    .rendered-output .name-kw {
+      font-weight: 800;
+      color: #000;
+      font-size: 9px;
+    }
+    .rendered-output .name-var {
+      color: #ec4899;
+      font-weight: 600;
+      font-size: 9px;
+    }
+    .rendered-output .name-assign {
+      color: #000;
+      font-weight: 600;
+      font-size: 9px;
+    }
+
+    /* Fragment invocations - Frag keyword black/bold, name+args in purple bubble */
+    .rendered-output .frag-kw {
+      font-weight: 800;
+      color: #000;
+      font-size: 9px;
+      letter-spacing: 0.3px;
+    }
+    .rendered-output .frag-inv {
+      display: inline-flex;
+      align-items: center;
+      background: #faf5ff;
+      border: 1px solid #9333ea;
+      color: #9333ea;
+      padding: 2px 5px;
+      border-radius: 3px;
+      font-size: 9px;
+      font-weight: 500;
+      line-height: 1;
+    }
+
+    /* Fragment definition title - like prompt-title but with badge */
+    .rendered-output .frag-title {
+      background: #f6f8fa;
+      border: 1px solid #d0d7de;
+      border-radius: 3px;
+      padding: 3px 8px;
+      margin-bottom: 4px;
+      margin-left: -10px;
+      padding-left: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .rendered-output .frag-title h1 {
+      margin: 0;
+      font-size: 10px;
+      font-weight: 600;
+      color: #0a0a0a;
+      font-family: 'JetBrains Mono', monospace;
+      white-space: nowrap;
+    }
+    .rendered-output .frag-badge {
+      display: inline-block;
+      background: #e5e7eb;
+      color: #4b5563;
+      font-size: 8px;
+      font-weight: 600;
+      padding: 2px 5px;
+      border-radius: 3px;
+      letter-spacing: 0.5px;
+    }
+
+    /* Condition badge for If/Switch - compact */
+    .rendered-output .cond-badge {
+      display: inline-block;
+      font-size: 9px;
+      color: #57606a;
+      margin-bottom: 4px;
+    }
+
+    /* End block (PromptEndsHere) - compact */
+    .rendered-output .end-block {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin: 2px 0;
+      margin-left: -10px;
+      padding: 2px 0;
+      padding-right: 6px;
+      font-size: 9px;
+      width: calc(100% + 10px);
+    }
+    .rendered-output .end-line {
+      flex: 1;
+      height: 1px;
+      background: repeating-linear-gradient(to right, #6e7781 0, #6e7781 4px, transparent 4px, transparent 8px);
+      min-width: 10px;
+      margin-left: 10px;
+    }
+    .rendered-output .end-text {
+      color: #000;
+      font-weight: 800;
+      white-space: nowrap;
+      font-size: 9px;
+    }
+
+    .code-and-render {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin: 20px 0;
+    }
+
+    .code-and-render pre {
+      margin: 0;
+    }
+
+    .code-and-render .rendered-output {
+      margin: 0;
+    }
+
+    @media (max-width: 1100px) {
+      .code-and-render {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Footer */
+    footer {
+      padding: 48px 24px;
+      text-align: center;
+      background: #0a0a0a;
+      border-top: 1px solid rgba(255,255,255,0.06);
+    }
+
+    footer p {
+      font-size: 0.9rem;
+      color: rgba(255,255,255,0.4);
+    }
+
+    footer a {
+      color: rgba(255,255,255,0.6);
+      text-decoration: none;
+    }
+
+    footer a:hover { color: #fff; }
+
+    footer a.external::after {
+      content: '';
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      margin-left: 4px;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.5)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6'/%3E%3Cpolyline points='15 3 21 3 21 9'/%3E%3Cline x1='10' y1='14' x2='21' y2='3'/%3E%3C/svg%3E");
+      background-size: contain;
+      background-repeat: no-repeat;
+      vertical-align: middle;
+    }
+
+    @media (max-width: 900px) {
+      aside { display: none; }
+      main { padding: 32px 24px; }
+    }
+  </style>
+</head>
+<body>
+  {{NAV}}
+
+  {{CONTENT}}
+
+  {{FOOTER}}
+</body>
+</html>

@@ -25,6 +25,12 @@ website/templates/<page>.html ← the HTML shell: <head>, the page's <style> blo
 website/src/<page>.html       ← generated; consumed by the existing build/deploy
 ```
 
+All seven pages are built this way. Nested pages are mirrored, so
+`content/examples/index.md` + `templates/examples/index.html` →
+`src/examples/index.html`. A page-specific `<script>` or modal can live in the
+template after the `{{CONTENT}}`/`{{FOOTER}}` slots (see
+`templates/claude-code-skill.html` and `templates/examples/index.html`).
+
 Each `.md` starts with YAML frontmatter. `title:` fills the page `<title>`. Any
 other `key:` is available in the template as `{{KEY}}` (uppercased) — e.g. the
 tutorial template uses `{{HERO_TITLE}}` / `{{HERO_SUBTITLE}}`.

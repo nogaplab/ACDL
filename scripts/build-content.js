@@ -214,35 +214,53 @@ function applyTemplate(template, html, data, name) {
   return out.replace(/(<!DOCTYPE html>\n)/i, `$1${banner}`);
 }
 
+// Recursively collect .md files under `dir`, returned as paths relative to it
+// (POSIX separators), so the same string indexes content/, templates/ and src/.
+function collectMarkdown(dir, base = dir) {
+  const out = [];
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      out.push(...collectMarkdown(full, base));
+    } else if (entry.name.endsWith('.md')) {
+      out.push(path.relative(base, full).split(path.sep).join('/'));
+    }
+  }
+  return out;
+}
+
 function build() {
   if (!fs.existsSync(CONTENT_DIR)) {
     console.log('No website/content directory; skipping markdown build.');
     return;
   }
   const md = makeMarkdown();
-  const files = fs.readdirSync(CONTENT_DIR).filter((f) => f.endsWith('.md'));
+  // Walk content/ recursively so nested pages (e.g. examples/index.md ->
+  // src/examples/index.html) work the same as top-level ones.
+  const files = collectMarkdown(CONTENT_DIR);
   if (files.length === 0) {
     console.log('No markdown content files found.');
     return;
   }
 
-  for (const file of files) {
-    const name = file.replace(/\.md$/, '');
+  for (const rel of files) {
+    const name = rel.replace(/\.md$/, ''); // e.g. "vscode" or "examples/index"
     const templatePath = path.join(TEMPLATE_DIR, `${name}.html`);
     if (!fs.existsSync(templatePath)) {
       // No matching template (e.g. README.md and other docs in content/) — skip.
-      console.log(`Skipped: ${name}.md (no website/templates/${name}.html)`);
+      console.log(`Skipped: ${rel} (no website/templates/${name}.html)`);
       continue;
     }
-    const raw = fs.readFileSync(path.join(CONTENT_DIR, file), 'utf8');
+    const raw = fs.readFileSync(path.join(CONTENT_DIR, rel), 'utf8');
     const { data, body } = parseFrontmatter(raw);
     const html = renderBody(md, body);
     const template = fs.readFileSync(templatePath, 'utf8');
     const page = applyTemplate(template, html, data, name);
 
     const destPath = path.join(SRC_DIR, `${name}.html`);
+    fs.mkdirSync(path.dirname(destPath), { recursive: true });
     fs.writeFileSync(destPath, page);
-    console.log(`Built content: ${name}.md -> website/src/${name}.html`);
+    console.log(`Built content: ${rel} -> website/src/${name}.html`);
   }
   console.log('\nMarkdown content build complete.');
 }
