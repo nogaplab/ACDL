@@ -608,8 +608,8 @@
           <option value="fig1_right">ReAct with Tool-RAG</option>
         </optgroup>
         <optgroup label="Real-World Systems">
-          <option value="opencode">OpenCode (Claude Code-like)</option>
-          <option value="openclaw">OpenClaw (Letta-like)</option>
+          <option value="opencode">OpenCode</option>
+          <option value="openclaw">OpenClaw</option>
           <option value="pokemon">Pokemon Agent</option>
           <option value="multiagent">Multi-Agent Simulation</option>
           <option value="mintagent">MintAgent</option>
@@ -662,7 +662,6 @@
                 </svg>
                 Export as PNG
               </button>
-              <!-- TEMP: PDF export disabled — re-enable once rendering issue is fixed
               <button class="export-menu-item" id="export-pdf">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -672,8 +671,6 @@
                 </svg>
                 Export as PDF
               </button>
-              -->
-
             </div>
           </div>
           <button class="panel-toggle-btn" id="collapse-output" title="Collapse visualization">
@@ -702,6 +699,29 @@
     window.ACDLParser = Parser;
     window.ACDLRenderSvg = renderPromptsSvg;
     window.ACDLGetEditorView = getEditorView;
+
+    // Load JetBrains Mono as base64 for the SVG/PDF export renderer (svg-layout.ts).
+    // The standalone/website build injects window.__ACDL_FONTS__ at build time; the
+    // dev server fetches the .ttf files so the SVG layout uses real glyph metrics
+    // and embeds the font, matching the website export.
+    (async function loadAcdlExportFonts() {
+      if (window.__ACDL_FONTS__) return;
+      try {
+        const toBase64 = (buf) => {
+          let binary = "";
+          const bytes = new Uint8Array(buf);
+          for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+          return btoa(binary);
+        };
+        const [regular, bold] = await Promise.all([
+          fetch("/fonts/JetBrainsMono-Regular.ttf").then((r) => r.arrayBuffer()),
+          fetch("/fonts/JetBrainsMono-Bold.ttf").then((r) => r.arrayBuffer()),
+        ]);
+        window.__ACDL_FONTS__ = { regular: toBase64(regular), bold: toBase64(bold) };
+      } catch (e) {
+        // PDF export falls back to estimated metrics if fonts can't be fetched
+      }
+    })();
 
     // Map dropdown values to file paths (absolute paths resolved by Vite alias)
     const PROMPT_PATHS = {
@@ -1791,8 +1811,6 @@
         }
       });
 
-      // TEMP: PDF export disabled — re-enable along with the button markup above once the rendering issue is fixed
-      /*
       // Export as PDF using SVG rendering
       exportPdf.addEventListener("click", async () => {
         exportMenu.classList.remove("show");
@@ -1870,7 +1888,6 @@
           exportBtn.classList.remove("loading");
         }
       });
-      */
     });
   </script>
 </body>

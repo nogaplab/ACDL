@@ -77,6 +77,25 @@ function createContext(maxWidth: number = 450): RenderContext {
   };
 }
 
+// Draw the grey banner background behind a control-flow / loop header. The
+// banner spans from the header's x to the block's content right edge (rightX),
+// so it reads as a full-width header that stops at the block's own right edge
+// (matching the HTML render: headers are full-width within their block, so
+// nested blocks get shorter banners and banners stop before mark brackets).
+//
+// Banners that extend all the way to the block's right edge (because a wide
+// child drives rightX) are pulled in by RIGHT_INSET so they don't abut the
+// border/mark bracket. The inset never shrinks a banner below its own header
+// content width (headerWidth), so header-snug banners stay tight to their text.
+function controlHeaderBanner(headerX: number, y: number, rightX: number, height: number, headerWidth: number): string {
+  const RIGHT_INSET = 20;
+  const width = Math.max(headerWidth, rightX - headerX - RIGHT_INSET);
+  return svgRect(headerX, y, Math.max(0, width), height, {
+    fill: COLORS.controlHeaderBg,
+    rx: 2,
+  });
+}
+
 // Check if a block type is inline (can flow horizontally with flex-wrap) or block-level (starts new line)
 // Each content piece (template, context-var, function) should be on its own line
 function isInlineBlock(_kind: string): boolean {
@@ -381,6 +400,13 @@ function renderStyledText(
   return { svg, width, height: fontSize };
 }
 
+// Build the bracketed index list as plain text: [a,b]. Returns '' when empty.
+// SVG counterpart of renderPrompt.ts's renderIndexList (which emits HTML).
+function renderIndexList(indices: Index[]): string {
+  if (indices.length === 0) return '';
+  return '[' + indices.map(indexToText).join(',') + ']';
+}
+
 // Convert index to display text
 function indexToText(index: Index): string {
   const content = indexValueToText(index.value);
@@ -411,9 +437,7 @@ function indexValueToText(value: IndexValue): string {
 
 function pathToText(path: PathDesc): string {
   let result = path.base;
-  if (path.indices.length > 0) {
-    result += '[' + path.indices.map(indexToText).join(',') + ']';
-  }
+  result += renderIndexList(path.indices);
   if (path.next) {
     result += '.' + pathToText(path.next);
   }
@@ -422,9 +446,7 @@ function pathToText(path: PathDesc): string {
 
 function contextVarToText(cv: ContextVar): string {
   let result = cv.base;
-  if (cv.indices.length > 0) {
-    result += '[' + cv.indices.map(indexToText).join(',') + ']';
-  }
+  result += renderIndexList(cv.indices);
   if (cv.path) {
     result += '.' + pathToText(cv.path);
   }
@@ -468,9 +490,7 @@ function stripNameRefPrefix(name: string): string {
 
 function nameRefToText(ref: NameRef): string {
   let result = stripNameRefPrefix(ref.name);
-  if (ref.indices.length > 0) {
-    result += '[' + ref.indices.map(indexToText).join(',') + ']';
-  }
+  result += renderIndexList(ref.indices);
   if (ref.path) {
     result += '.' + pathToText(ref.path);
   }
@@ -483,12 +503,18 @@ function expressionTokensToText(tokens: ExpressionToken[]): string {
 
 function iterableToText(iterable: Iterable): string {
   if (iterable.kind === 'range-expr') {
-    const start = expressionTokensToText(iterable.start);
-    const end = expressionTokensToText(iterable.end);
-    const step = iterable.step ? ` every ${expressionTokensToText(iterable.step)}` : '';
-    return `${start}...${end}${step}`;
+    return renderRangeExpr(iterable);
   }
   return expressionTokensToText(iterable.tokens);
+}
+
+// Render a RangeExpr as plain text: start...end or start...end every step.
+// SVG counterpart of renderPrompt.ts's renderRangeExpr (which emits HTML).
+function renderRangeExpr(range: RangeExpr): string {
+  const start = expressionTokensToText(range.start);
+  const end = expressionTokensToText(range.end);
+  const step = range.step ? ` every ${expressionTokensToText(range.step)}` : '';
+  return `${start}...${end}${step}`;
 }
 
 // Render a template block
@@ -1304,7 +1330,6 @@ function renderIndexValue(index: Index, x: number, y: number): RenderResult {
 // Render a role building block (inline element inside role)
 function renderRoleBuildingBlock(block: RoleBuildingBlock, x: number, y: number, maxWidth?: number): RenderResult {
   if (block.kind === 'conditional-block-inside-role') {
-    console.log('[renderRoleBuildingBlock] calling renderConditionalInsideRole with maxWidth:', maxWidth);
   }
 
   switch (block.kind) {
@@ -1331,7 +1356,7 @@ function renderRoleBuildingBlock(block: RoleBuildingBlock, x: number, y: number,
     case 'mark-block-inside-role':
       return renderMarkBlockInsideRole(block, x, y, maxWidth);
     case 'end-block':
-      return renderEndBlock(block, x, y);
+      return renderEndBlock(block, x, y, maxWidth);
     case 'str-frag-invocation':
       return renderStrFragInvocation(block, x, y, maxWidth);
     default:
@@ -1413,13 +1438,15 @@ function renderNameDef(block: NameDef, x: number, y: number, maxWidth?: number):
     const lineHeight = getLineHeight(fontSize);
     const nextLineY = y + lineHeight + SPACING.elementGap;
 
-    // Re-render value on next line without width constraint
+    // Re-render value on next line. Give wrappable values (list comprehensions)
+    // the remaining width so they wrap at their operators instead of overflowing.
+    const valueMaxWidth = maxWidth ? maxWidth - (startX - x) : undefined;
     if (block.value.kind === 'context-var') {
       valueResult = renderContextVarBlock(block.value, 0, 0, undefined);
     } else if (block.value.kind === 'function') {
       valueResult = renderFuncBlock(block.value, 0, 0, false, undefined);
     } else if (block.value.kind === 'list-comprehension') {
-      valueResult = renderListComprehension(block.value, 0, 0, undefined);
+      valueResult = renderListComprehension(block.value, 0, 0, valueMaxWidth);
     } else {
       // StrFragInvocation
       valueResult = renderStrFragInvocation(block.value, 0, 0, undefined);
@@ -1437,81 +1464,94 @@ function renderNameDef(block: NameDef, x: number, y: number, maxWidth?: number):
 }
 
 // Render list comprehension
-function renderListComprehension(block: ListComprehension, x: number, y: number, _maxWidth?: number): RenderResult {
+function renderListComprehension(block: ListComprehension, x: number, y: number, maxWidth?: number): RenderResult {
   const elements: string[] = [];
-  let currentX = x;
   const fontSize = FONT_SIZES.normal;
   const padding = SPACING.blockPadding;
-  // Align text baseline with boxes (boxes use y + padding + fontSize * 0.85)
-  const textY = y + padding + fontSize * 0.85;
+  const lineHeight = getLineHeight(fontSize);
+  const startX = x;
+  let currentX = x;
+  let currentY = y;
+  let maxRight = x;
+  const rightLimit = maxWidth ? startX + maxWidth : Infinity;
+
+  // Baseline for the current line (boxes use y + padding + fontSize * 0.85).
+  const baseline = () => currentY + padding + fontSize * 0.85;
+  // Wrap to a new line before placing a group of width `w` (break-before the
+  // operator that leads the group), unless we're already at the line start.
+  const wrapIfNeeded = (w: number) => {
+    if (currentX > startX && currentX + w > rightLimit) {
+      currentY += lineHeight;
+      currentX = startX;
+    }
+  };
 
   // [
-  elements.push(svgText(currentX, textY, '[', {
-    fill: COLORS.textPrimary,
-    fontSize,
-    fontWeight: '700',
-  }));
+  elements.push(svgText(currentX, baseline(), '[', { fill: COLORS.textPrimary, fontSize, fontWeight: '700' }));
   currentX += measureText('[', fontSize, true) + 2;
 
-  // element
+  // element (boxed)
   let elemResult: RenderResult;
   if (block.element.kind === 'context-var') {
-    elemResult = renderContextVarBlock(block.element, currentX, y);
+    elemResult = renderContextVarBlock(block.element, currentX, currentY);
   } else if (block.element.kind === 'function') {
-    elemResult = renderFuncBlock(block.element, currentX, y);
+    elemResult = renderFuncBlock(block.element, currentX, currentY);
   } else {
-    elemResult = renderStrFragInvocation(block.element, currentX, y);
+    elemResult = renderStrFragInvocation(block.element, currentX, currentY);
   }
   elements.push(elemResult.svg);
   currentX += elemResult.width + 4;
+  maxRight = Math.max(maxRight, currentX);
 
-  // |
-  elements.push(svgText(currentX, textY, '|', {
-    fill: COLORS.textPrimary,
-    fontSize,
-    fontWeight: '700',
-  }));
-  currentX += measureText('|', fontSize, true) + 4;
+  // | var  — break before this group if it would overflow
+  const pipeW = measureText('|', fontSize, true);
+  const varW = measureText(block.variable, fontSize, true);
+  wrapIfNeeded(pipeW + 4 + varW + 4);
+  elements.push(svgText(currentX, baseline(), '|', { fill: COLORS.textPrimary, fontSize, fontWeight: '700' }));
+  currentX += pipeW + 4;
+  elements.push(svgText(currentX, baseline(), block.variable, { fill: COLORS.variable, fontSize, fontWeight: '700' }));
+  currentX += varW + 4;
+  maxRight = Math.max(maxRight, currentX);
 
-  // variable
-  elements.push(svgText(currentX, textY, block.variable, {
-    fill: COLORS.variable,
-    fontSize,
-    fontWeight: '700',
-  }));
-  currentX += measureText(block.variable, fontSize, true) + 4;
-
-  // ∈
-  elements.push(svgText(currentX, textY, '∈', {
-    fill: COLORS.textPrimary,
-    fontSize,
-    fontWeight: '600',
-  }));
-  currentX += measureText('∈', fontSize) + 4;
-
-  // iterable - use token-based rendering for proper coloring
+  // ∈ iterable — break before this group if it would overflow
+  const inW = measureText('∈', fontSize);
+  const bracketW = measureText(']', fontSize, true);
   const iterTokens = iterableToTokens(block.iterable);
-  const iterResult = renderExpressionTokensSvg(iterTokens, currentX, textY, fontSize);
+  const iterOneLine = sliceWidth(iterTokens, 0, iterTokens.length, fontSize);
+  wrapIfNeeded(inW + 4 + iterOneLine + 2 + bracketW);
+  elements.push(svgText(currentX, baseline(), '∈', { fill: COLORS.textPrimary, fontSize, fontWeight: '600' }));
+  currentX += inW + 4;
+
+  // Iterable - token-based rendering; wraps internally at range/operator points.
+  const iterStartX = currentX;
+  const iterMax = maxWidth ? Math.max(60, rightLimit - iterStartX - 2 - bracketW) : undefined;
+  const iterResult = renderExpressionTokensSvg(iterTokens, iterStartX, baseline(), fontSize, iterMax, currentY);
   elements.push(...iterResult.elements);
-  currentX += iterResult.width + 2;
+  if (iterResult.height !== undefined && iterResult.lastLineY !== undefined) {
+    maxRight = Math.max(maxRight, iterStartX + iterResult.width);
+    currentY = iterResult.lastLineY - (padding + fontSize * 0.85);
+    currentX = iterStartX + (iterResult.lastLineWidth ?? iterResult.width);
+  } else {
+    currentX = iterStartX + iterResult.width;
+  }
+  currentX += 2;
 
   // ]
-  elements.push(svgText(currentX, textY, ']', {
-    fill: COLORS.textPrimary,
-    fontSize,
-    fontWeight: '700',
-  }));
-  currentX += measureText(']', fontSize, true);
+  elements.push(svgText(currentX, baseline(), ']', { fill: COLORS.textPrimary, fontSize, fontWeight: '700' }));
+  currentX += bracketW;
+  maxRight = Math.max(maxRight, currentX);
+
+  const totalHeight = (currentY - y) + Math.max(fontSize + padding * 2, elemResult.height);
 
   return {
     svg: elements.join('\n'),
-    width: currentX - x,
-    height: Math.max(fontSize + padding * 2, elemResult.height),
+    width: maxRight - x,
+    height: totalHeight,
   };
 }
 
 // Render end block (PromptEndsHere when condition)
-function renderEndBlock(block: EndBlock, x: number, y: number): RenderResult {
+function renderEndBlock(block: EndBlock, x: number, y: number, maxWidth?: number): RenderResult {
   const elements: string[] = [];
   const lineHeight = getLineHeight(FONT_SIZES.normal);
   const fontSize = FONT_SIZES.normal;
@@ -1520,9 +1560,31 @@ function renderEndBlock(block: EndBlock, x: number, y: number): RenderResult {
   // Line Y position: align with middle of text (baseline - half of x-height)
   const lineY = textY - fontSize * 0.35;
 
-  // Dashed line starts from left edge, extends to where text begins
   const lineStartX = x;
-  const dashLength = 80;
+
+  // Fixed prefix after the dashed line: "PromptEndsHere when".
+  const promptW = measureText('PromptEndsHere', fontSize, true);
+  const whenW = measureText('when', fontSize, true);
+  const dashGap = 6;
+  const fixedPrefix = dashGap + promptW + 4 + whenW + 4;
+
+  // The dashed line can shrink so the text fits; the text is what matters most.
+  const MAX_DASH = 80;
+  const MIN_DASH = 12;
+  const condOneLine = sliceWidth(block.condition, 0, block.condition.length, fontSize);
+
+  let dashLength = MAX_DASH;
+  let condMaxWidth: number | undefined;
+  if (maxWidth) {
+    // Shrink the dash to whatever room the text leaves (clamped).
+    dashLength = Math.max(MIN_DASH, Math.min(MAX_DASH, maxWidth - fixedPrefix - condOneLine));
+    // If even the shortest dash can't make the condition fit, wrap the condition.
+    const condAvail = maxWidth - (MIN_DASH + fixedPrefix);
+    if (MIN_DASH + fixedPrefix + condOneLine > maxWidth && condAvail > 40) {
+      dashLength = MIN_DASH;
+      condMaxWidth = condAvail;
+    }
+  }
 
   // Dashed line (left side) - darker color to match text
   elements.push(svgLine(lineStartX, lineY, lineStartX + dashLength, lineY, {
@@ -1531,33 +1593,33 @@ function renderEndBlock(block: EndBlock, x: number, y: number): RenderResult {
     strokeDasharray: '4,4',
   }));
 
-  let currentX = lineStartX + dashLength + 6;
+  let currentX = lineStartX + dashLength + dashGap;
 
   // "PromptEndsHere" keyword
   elements.push(svgText(currentX, textY, 'PromptEndsHere', {
     fill: COLORS.textPrimary,
-    fontSize: FONT_SIZES.normal,
+    fontSize,
     fontWeight: '800',
   }));
-  currentX += measureText('PromptEndsHere', FONT_SIZES.normal, true) + 4;
+  currentX += promptW + 4;
 
   // "when" keyword
   elements.push(svgText(currentX, textY, 'when', {
     fill: COLORS.textPrimary,
-    fontSize: FONT_SIZES.normal,
+    fontSize,
     fontWeight: '800',
   }));
-  currentX += measureText('when', FONT_SIZES.normal, true) + 4;
+  currentX += whenW + 4;
 
-  // Condition - render with proper styling (context vars with boxes, indices in blue, etc.)
-  const condResult = renderExpressionTokensSvg(block.condition, currentX, textY, FONT_SIZES.normal);
+  // Condition - render with proper styling, wrapping at operators if needed.
+  const condResult = renderExpressionTokensSvg(block.condition, currentX, textY, fontSize, condMaxWidth, y);
   elements.push(...condResult.elements);
   currentX += condResult.width;
 
   return {
     svg: elements.join('\n'),
     width: currentX - x,
-    height: lineHeight,
+    height: condResult.height !== undefined ? condResult.height : lineHeight,
   };
 }
 
@@ -1894,11 +1956,6 @@ function renderRolesFragInvocation(block: RolesFragInvocation, x: number, y: num
 
 // Render role message body (content inside a role) with wrapping support
 function renderRoleBody(body: RoleBuildingBlock[], startX: number, startY: number, maxWidth?: number): RenderResult {
-  console.log('[renderRoleBody]', {
-    hasMaxWidth: !!maxWidth,
-    maxWidth,
-    bodyLength: body.length
-  });
 
   const elements: string[] = [];
   let currentY = startY;
@@ -1906,7 +1963,6 @@ function renderRoleBody(body: RoleBuildingBlock[], startX: number, startY: numbe
   const contentX = startX + SPACING.rolePadding;
   const effectiveMaxWidth = maxWidth || 800; // Default max width
 
-  console.log('[renderRoleBody] effectiveMaxWidth:', effectiveMaxWidth);
 
   // Group consecutive inline blocks for flow layout
   let inlineGroup: RoleBuildingBlock[] = [];
@@ -1936,7 +1992,6 @@ function renderRoleBody(body: RoleBuildingBlock[], startX: number, startY: numbe
       flushInlineGroup();
 
       // Render block-level element on its own line
-      console.log('[renderRoleBody] rendering block:', block.kind, 'with effectiveMaxWidth:', effectiveMaxWidth);
       const result = renderRoleBuildingBlock(block, contentX, currentY, effectiveMaxWidth);
       elements.push(result.svg);
       overallMaxWidth = Math.max(overallMaxWidth, result.width);
@@ -2014,29 +2069,25 @@ function renderExpressionTokensSvg(
   fontSize: number,
   maxWidth?: number,
   startY?: number
-): { elements: string[]; width: number; height?: number; lastLineY?: number } {
+): { elements: string[]; width: number; height?: number; lastLineY?: number; lastLineWidth?: number } {
 
   // TWO-PASS ALGORITHM for wrapping:
   // Pass 1: Calculate width and find logical operator positions
   // Pass 2: If too wide, determine break points and render with wrapping
 
   if (maxWidth) {
-    // Pass 1: Render to calculate width and track logical operators
-    const pass1Result = renderExpressionTokensPass1(tokens, fontSize);
-
-    console.log('[PASS 1] width:', pass1Result.width, 'maxWidth:', maxWidth, 'exceeds:', pass1Result.width > maxWidth);
-    console.log('[PASS 1] logical operators at:', pass1Result.logicalOpPositions);
-
-    // If it fits, return the single-line render
-    if (pass1Result.width <= maxWidth) {
+    // If the whole expression fits on one line, render it as-is.
+    const fullWidth = sliceWidth(tokens, 0, tokens.length, fontSize);
+    if (fullWidth <= maxWidth) {
       return renderExpressionTokensOneLine(tokens, startX, textY, fontSize);
     }
 
-    // Pass 2: Determine break points
-    const breakPoints = determineBreakPoints(pass1Result.logicalOpPositions, pass1Result.tokenWidths, maxWidth, startX);
-    console.log('[PASS 2] break points:', breakPoints);
-
-    // Render with breaks
+    // Otherwise break at operator / range boundaries (break-before: the operator
+    // leads the continuation line).
+    const breakPoints = determineBreakPoints(tokens, maxWidth, fontSize);
+    if (breakPoints.length === 0) {
+      return renderExpressionTokensOneLine(tokens, startX, textY, fontSize);
+    }
     return renderExpressionTokensWithBreaks(tokens, startX, textY, fontSize, breakPoints);
   }
 
@@ -2044,72 +2095,77 @@ function renderExpressionTokensSvg(
   return renderExpressionTokensOneLine(tokens, startX, textY, fontSize);
 }
 
-// Helper: Calculate width and track logical operator positions (Pass 1)
-function renderExpressionTokensPass1(
-  tokens: ExpressionToken[],
-  fontSize: number
-): { width: number; logicalOpPositions: number[]; tokenWidths: number[] } {
-  console.log('[PASS 1] tokens:', tokens.map(t => ({ type: t.type, value: t.value })));
-
-  // Use actual rendering to get correct width (including context vars, functions, etc.)
-  const actualRender = renderExpressionTokensOneLine(tokens, 0, 0, fontSize);
-  const totalWidth = actualRender.width;
-
-  // Track logical operator positions and cumulative widths
-  const logicalOpPositions: number[] = [];
-  const tokenWidths: number[] = [];
-
-  // Now render chunk by chunk to track widths at each logical operator
-  for (let i = 0; i < tokens.length; i++) {
-    const tok = tokens[i];
-
-    // Check if this is a logical operator we can break at
-    if (tok.type === 'LOGIC_OP' && (tok.value === '&&' || tok.value === '||')) {
-      console.log(`[PASS 1] Found logical operator at ${i}:`, tok.value);
-      logicalOpPositions.push(i);
-      // Render up to and including this operator to get width
-      const chunkTokens = tokens.slice(0, i + 1);
-      const chunkRender = renderExpressionTokensOneLine(chunkTokens, 0, 0, fontSize);
-      tokenWidths[i] = chunkRender.width;
-    } else if (tok.type === 'KEYWORD' && (tok.value === 'and' || tok.value === 'or')) {
-      console.log(`[PASS 1] Found logical keyword at ${i}:`, tok.value);
-      logicalOpPositions.push(i);
-      // Render up to and including this keyword to get width
-      const chunkTokens = tokens.slice(0, i + 1);
-      const chunkRender = renderExpressionTokensOneLine(chunkTokens, 0, 0, fontSize);
-      tokenWidths[i] = chunkRender.width;
-    }
+// A token a line may break *before*, so the operator/range leads the next line.
+// Covers logical operators (&&, ||, and, or), range dots (...), and the range
+// "every" step keyword — i.e. every natural stopping point in conditions,
+// list-comprehension iterables and ForEach ranges. Note: && and || arrive as
+// two single-char LOGIC_OP tokens (combined only at render time), so we detect
+// the first char of such a pair and break before it. Comparison operators
+// (==, !=, <=, ...) are deliberately NOT break points.
+function isBreakCandidate(tokens: ExpressionToken[], i: number): boolean {
+  const tok = tokens[i];
+  if (tok.type === 'LOGIC_OP') {
+    if (tok.value === '&&' || tok.value === '||') return true;
+    const next = tokens[i + 1];
+    return !!next && next.type === 'LOGIC_OP' &&
+      ((tok.value === '&' && next.value === '&') || (tok.value === '|' && next.value === '|'));
   }
-
-  return { width: totalWidth, logicalOpPositions, tokenWidths };
+  if (tok.type === 'KEYWORD' && (tok.value === 'and' || tok.value === 'or' || tok.value === 'every')) {
+    return true;
+  }
+  return tok.type === 'RANGE';
 }
 
-// Helper: Determine where to break lines
+// Width of rendering tokens[a..b) on a single line.
+function sliceWidth(tokens: ExpressionToken[], a: number, b: number, fontSize: number): number {
+  if (b <= a) return 0;
+  return renderExpressionTokensOneLine(tokens.slice(a, b), 0, 0, fontSize).width;
+}
+
+// Greedy line breaking. Returns the token indices at which a new line starts
+// (break-before semantics), choosing the furthest break candidate that keeps
+// each line within maxWidth.
 function determineBreakPoints(
-  logicalOpPositions: number[],
-  tokenWidths: number[],
+  tokens: ExpressionToken[],
   maxWidth: number,
-  startX: number
+  fontSize: number
 ): number[] {
+  const candidates: number[] = [];
+  for (let i = 1; i < tokens.length; i++) {
+    if (isBreakCandidate(tokens, i)) candidates.push(i);
+  }
+  if (candidates.length === 0) return [];
+
   const breakPoints: number[] = [];
-  let lineStartWidth = 0;
+  let lineStart = 0;
+  let ci = 0;
 
-  for (let i = logicalOpPositions.length - 1; i >= 0; i--) {
-    const opIndex = logicalOpPositions[i];
-    const widthAtOp = tokenWidths[opIndex] - lineStartWidth;
+  while (ci < candidates.length) {
+    // Stop once the remainder of the expression fits on the current line.
+    if (sliceWidth(tokens, lineStart, tokens.length, fontSize) <= maxWidth) break;
 
-    console.log(`[determineBreakPoints] op at ${opIndex}, width: ${widthAtOp}, maxWidth: ${maxWidth}`);
-
-    // If this operator position is past maxWidth, skip it
-    if (widthAtOp > maxWidth) {
-      continue;
+    // Extend the current line to the furthest candidate that still fits.
+    let chosen = -1;
+    while (
+      ci < candidates.length &&
+      sliceWidth(tokens, lineStart, candidates[ci], fontSize) <= maxWidth
+    ) {
+      chosen = candidates[ci];
+      ci++;
     }
 
-    // This operator fits! Break after it
-    breakPoints.unshift(opIndex); // Add to beginning to keep in order
-    lineStartWidth = tokenWidths[opIndex];
+    if (chosen === -1) {
+      // Even the first segment overflows; break before the next candidate anyway.
+      if (ci < candidates.length) {
+        chosen = candidates[ci];
+        ci++;
+      } else {
+        break;
+      }
+    }
 
-    console.log(`[determineBreakPoints] Breaking after token ${opIndex}`);
+    breakPoints.push(chosen);
+    lineStart = chosen;
   }
 
   return breakPoints;
@@ -2121,7 +2177,7 @@ function renderExpressionTokensOneLine(
   startX: number,
   textY: number,
   fontSize: number
-): { elements: string[]; width: number; height?: number; lastLineY?: number } {
+): { elements: string[]; width: number; height?: number; lastLineY?: number; lastLineWidth?: number } {
   // This is the existing rendering logic without wrapping
   const elements: string[] = [];
   let currentX = startX;
@@ -2749,7 +2805,8 @@ function renderExpressionTokensOneLine(
     elements,
     width: currentX - startX,
     height: undefined,
-    lastLineY: undefined
+    lastLineY: undefined,
+    lastLineWidth: currentX - startX
   };
 }
 
@@ -2760,37 +2817,28 @@ function renderExpressionTokensWithBreaks(
   textY: number,
   fontSize: number,
   breakPoints: number[]
-): { elements: string[]; width: number; height?: number; lastLineY?: number } {
-  // Strategy: Render each line segment separately using renderExpressionTokensOneLine
+): { elements: string[]; width: number; height?: number; lastLineY?: number; lastLineWidth?: number } {
+  // Strategy: Render each line segment separately using renderExpressionTokensOneLine.
+  // breakPoints are break-before indices, so they are the line-start boundaries.
   const elements: string[] = [];
   let currentTextY = textY;
   let maxRenderedWidth = 0;
   const lineHeight = getLineHeight(fontSize);
 
-  console.log('[renderWithBreaks] Starting render with', breakPoints.length, 'break points:', breakPoints);
+  const boundaries = [0, ...breakPoints, tokens.length];
+  let lastLineWidth = 0;
+  for (let k = 0; k < boundaries.length - 1; k++) {
+    const lineTokens = tokens.slice(boundaries[k], boundaries[k + 1]);
+    if (lineTokens.length === 0) continue;
 
-  // Split tokens into line segments based on break points
-  let lineStartIdx = 0;
+    const lineResult = renderExpressionTokensOneLine(lineTokens, startX, currentTextY, fontSize);
+    elements.push(...lineResult.elements);
+    maxRenderedWidth = Math.max(maxRenderedWidth, lineResult.width);
+    lastLineWidth = lineResult.width;
 
-  for (let i = 0; i <= breakPoints.length; i++) {
-    const lineEndIdx = i < breakPoints.length ? breakPoints[i] + 1 : tokens.length;
-    const lineTokens = tokens.slice(lineStartIdx, lineEndIdx);
-
-    if (lineTokens.length > 0) {
-      console.log(`[renderWithBreaks] Rendering line ${i}: tokens ${lineStartIdx} to ${lineEndIdx-1}`);
-
-      // Render this line segment
-      const lineResult = renderExpressionTokensOneLine(lineTokens, startX, currentTextY, fontSize);
-      elements.push(...lineResult.elements);
-      maxRenderedWidth = Math.max(maxRenderedWidth, lineResult.width);
-
-      // Move to next line
-      if (i < breakPoints.length) {
-        currentTextY += lineHeight;
-      }
+    if (k < boundaries.length - 2) {
+      currentTextY += lineHeight;
     }
-
-    lineStartIdx = lineEndIdx;
   }
 
   const totalHeight = currentTextY - textY + fontSize;
@@ -2799,7 +2847,8 @@ function renderExpressionTokensWithBreaks(
     elements,
     width: maxRenderedWidth,
     height: breakPoints.length > 0 ? totalHeight : undefined,
-    lastLineY: breakPoints.length > 0 ? currentTextY : undefined
+    lastLineY: breakPoints.length > 0 ? currentTextY : undefined,
+    lastLineWidth
   };
 }
 
@@ -2842,23 +2891,15 @@ function renderControlFlowHeader(
   // Track width before tokens
   maxRenderedWidth = Math.max(maxRenderedWidth, currentX - x);
 
-  // Condition/expression - render tokens with proper coloring and wrapping support
-  // Calculate available width: total maxWidth minus width already used (currentX - x) minus padding (8)
+  // Condition/expression - render tokens with proper coloring and wrapping support.
+  // Calculate available width: total maxWidth minus width already used minus a
+  // small right margin.
+  const tokenStartX = currentX;
   const tokensMaxWidth = maxWidth ? maxWidth - (currentX - x) - 8 : undefined;
-
-  if (maxWidth) {
-    console.log('[renderControlFlowHeader]', {
-      keyword,
-      maxWidth,
-      usedWidth: currentX - x,
-      tokensMaxWidth,
-      tokens: tokens.map(t => t.value).join('')
-    });
-  }
 
   const tokenResult = renderExpressionTokensSvg(
     tokens,
-    currentX,
+    tokenStartX,
     textY,
     keywordFontSize,
     tokensMaxWidth,
@@ -2866,27 +2907,31 @@ function renderControlFlowHeader(
   );
   elements.push(...tokenResult.elements);
 
-  if (tokenResult.height !== undefined) {
-    // Multi-line expression - use height from token result
-    currentY += tokenResult.height;
-    maxRenderedWidth = Math.max(maxRenderedWidth, tokenResult.width);
-    currentX = x + tokenResult.width;
-  } else {
-    // Single-line expression
-    currentX += tokenResult.width;
-    maxRenderedWidth = Math.max(maxRenderedWidth, currentX - x);
+  // Lines render starting at tokenStartX, so the widest line's right edge is
+  // tokenStartX + tokenResult.width (NOT x + width — that lands on top of the
+  // content because it ignores the symbol/keyword offset).
+  const multiLine = tokenResult.height !== undefined;
+  const tokensRight = tokenStartX + tokenResult.width;
+  if (multiLine) {
+    currentY += tokenResult.height as number;
   }
+  maxRenderedWidth = Math.max(maxRenderedWidth, tokensRight - x);
+  currentX = tokensRight;
 
-  // Suffix (like ":") - on last line of expression
+  // Suffix (like ":"). When the condition wrapped, float it just past the
+  // widest line and vertically center it across the lines so it never overlaps
+  // a variable box; the banner (driven by maxRenderedWidth) then extends past it.
   if (suffix) {
-    const suffixY = tokenResult.lastLineY !== undefined ? tokenResult.lastLineY : textY;
-    elements.push(svgText(currentX, suffixY, suffix, {
+    const suffixWidth = measureText(suffix, keywordFontSize, true);
+    const suffixX = multiLine ? tokensRight + 6 : tokensRight;
+    const lastLineY = tokenResult.lastLineY !== undefined ? tokenResult.lastLineY : textY;
+    const suffixY = multiLine ? (textY + lastLineY) / 2 : textY;
+    elements.push(svgText(suffixX, suffixY, suffix, {
       fill: COLORS.textPrimary,
       fontSize: keywordFontSize,
       fontWeight: '600',
     }));
-    const suffixWidth = measureText(suffix, keywordFontSize, true);
-    currentX += suffixWidth;
+    currentX = suffixX + suffixWidth;
     maxRenderedWidth = Math.max(maxRenderedWidth, currentX - x);
   }
 
@@ -2895,16 +2940,14 @@ function renderControlFlowHeader(
     ? tokenResult.height + keywordFontSize + 6
     : keywordFontSize + 6;
 
-  // Background box encompasses all lines
-  const boxWidth = maxRenderedWidth + 8;
-  const bgRect = svgRect(x, y, boxWidth, headerHeight, {
-    fill: COLORS.controlHeaderBg,
-    rx: 2,
-  });
-
+  // The grey banner background is NOT drawn here. The caller draws it spanning
+  // the whole block's content width (so the banner reads as a full-width header
+  // that stops at the block's own right edge, matching the HTML render). We just
+  // return the header's text and its natural content width/height.
+  const contentWidth = maxRenderedWidth + 8;
   return {
-    svg: bgRect + '\n' + elements.join('\n'),
-    width: boxWidth,
+    svg: elements.join('\n'),
+    width: contentWidth,
     height: headerHeight,
   };
 }
@@ -2931,14 +2974,14 @@ function renderLoopHeader(
   indexValue: IndexValue,
   iterable: Iterable,
   x: number,
-  y: number
+  y: number,
+  maxWidth?: number
 ): RenderResult {
   const elements: string[] = [];
   // Use larger font size for keyword and expressions
   const keywordFontSize = FONT_SIZES.header + 2; // 9px instead of 7px
   const symbolFontSize = 11; // Larger symbol
   const fontSize = keywordFontSize; // Same size for expressions
-  const headerHeight = keywordFontSize + 6;
   let currentX = x + 5; // Add padding inside box
   const textY = y + keywordFontSize + 1;
 
@@ -2975,150 +3018,163 @@ function renderLoopHeader(
   }));
   currentX += measureText(': ', fontSize, true);
 
-  // Iterable - render with proper token coloring
+  // Iterable - render with proper token coloring, wrapping at range/operator
+  // stopping points (..., every, &&/||) if it would overflow the block width.
   const iterTokens = iterableToTokens(iterable);
-  const tokenResult = renderExpressionTokensSvg(iterTokens, currentX, textY, fontSize);
+  const iterMaxWidth = maxWidth ? Math.max(60, maxWidth - (currentX - x) - 8) : undefined;
+  const tokenResult = renderExpressionTokensSvg(iterTokens, currentX, textY, fontSize, iterMaxWidth, y);
   elements.push(...tokenResult.elements);
   currentX += tokenResult.width;
 
-  // Background
-  const bgRect = svgRect(x, y, currentX - x + 8, headerHeight, {
-    fill: COLORS.controlHeaderBg,
-    rx: 2,
-  });
+  // Grow the header height when the iterable wrapped to multiple lines.
+  const headerHeight = tokenResult.height !== undefined
+    ? tokenResult.height + 6
+    : keywordFontSize + 6;
+
+  // The grey banner background is drawn by the caller (spanning the whole
+  // block's content width), not here. Return text + natural content width.
+  const contentWidth = currentX - x + 8;
+  return {
+    svg: elements.join('\n'),
+    width: contentWidth,
+    height: headerHeight,
+  };
+}
+
+// Compose a control-flow block: a header banner on top, indented children
+// below, and a left border down the side. SVG counterpart of renderPrompt.ts's
+// wrapBlock (which nests an HTML header + children in <div>s). The header is
+// expected to have already been rendered at (x + 8, y) by the caller.
+function wrapBlock(
+  header: RenderResult,
+  children: (PromptBlock | RoleBuildingBlock)[],
+  x: number,
+  y: number,
+  opts: {
+    renderChild: (child: any, cx: number, cy: number, mw?: number) => RenderResult;
+    childMaxWidth?: number;
+    childGap: number;
+    drawBanner: boolean;
+  }
+): RenderResult {
+  const elements: string[] = [];
+  const headerX = x + 8;
+  const childX = x + SPACING.indentSize + 8;
+  let currentY = y;
+  let contentRight = 0;
+
+  // Header (already rendered at headerX, y by the caller)
+  elements.push(header.svg);
+  contentRight = Math.max(contentRight, headerX + header.width);
+  const bannerHeight = header.height;
+  currentY += header.height + 5;
+
+  // Indented body
+  for (const child of children) {
+    const childResult = opts.renderChild(child, childX, currentY, opts.childMaxWidth);
+    elements.push(childResult.svg);
+    contentRight = Math.max(contentRight, childX + childResult.width);
+    currentY += childResult.height + opts.childGap;
+  }
+
+  const totalHeight = currentY - y;
+
+  // Left border
+  elements.push(svgLine(headerX, y, headerX, y + totalHeight, {
+    stroke: COLORS.controlBorder,
+    strokeWidth: 1,
+  }));
+
+  let svg = elements.join('\n');
+  if (opts.drawBanner) {
+    // Header banner spans the block's full content width, drawn behind content
+    const bannerSvg = controlHeaderBanner(headerX, y, contentRight, bannerHeight, header.width);
+    svg = bannerSvg + '\n' + svg;
+  }
 
   return {
-    svg: bgRect + '\n' + elements.join('\n'),
-    width: currentX - x + 8,
-    height: headerHeight,
+    svg,
+    width: contentRight - x,
+    height: totalHeight,
   };
 }
 
 // Render loop (outside role)
 function renderLoopOutsideRole(block: LoopBlockOutsideRole, x: number, y: number, maxWidth?: number): RenderResult {
-  const elements: string[] = [];
-  let currentY = y;
-
-  // Header
-  const headerResult = renderLoopHeader(block.index.value, block.iterable, x + 8, currentY);
-  elements.push(headerResult.svg);
-  currentY += headerResult.height + 5;
-
-  // Body - pass adjusted maxWidth for indentation
+  const header = renderLoopHeader(block.index.value, block.iterable, x + 8, y, maxWidth);
   const childMaxWidth = maxWidth ? maxWidth - SPACING.indentSize - 8 : undefined;
-  let resultMaxWidth = headerResult.width;
-  for (const child of block.body) {
-    const childResult = renderTopLevelBlock(child, x + SPACING.indentSize + 8, currentY, childMaxWidth);
-    elements.push(childResult.svg);
-    resultMaxWidth = Math.max(resultMaxWidth, childResult.width + SPACING.indentSize);
-    currentY += childResult.height + SPACING.blockGap;
-  }
-
-  const totalHeight = currentY - y;
-
-  // Left border
-  elements.push(svgLine(x + 8, y, x + 8, y + totalHeight, {
-    stroke: COLORS.controlBorder,
-    strokeWidth: 1,
-  }));
-
-  return {
-    svg: elements.join('\n'),
-    width: resultMaxWidth + 8,
-    height: totalHeight,
-  };
+  return wrapBlock(header, block.body, x, y, {
+    renderChild: (child, cx, cy, mw) => renderTopLevelBlock(child, cx, cy, mw),
+    childMaxWidth,
+    childGap: SPACING.blockGap,
+    drawBanner: true,
+  });
 }
 
 // Render loop (inside role)
 function renderLoopInsideRole(block: LoopBlockInsideRole, x: number, y: number, maxWidthParam?: number): RenderResult {
-  const elements: string[] = [];
-  let currentY = y;
-
-  console.log('[renderLoopInsideRole]', {
-    hasMaxWidthParam: !!maxWidthParam,
-    maxWidthParam,
-    bodyLength: block.body.length
-  });
-
-  // Header
-  const headerResult = renderLoopHeader(block.index.value, block.iterable, x + 8, currentY);
-  elements.push(headerResult.svg);
-  currentY += headerResult.height + 5;
-
-  // Body - calculate maxWidth for children
+  const header = renderLoopHeader(block.index.value, block.iterable, x + 8, y, maxWidthParam);
   const childMaxWidth = maxWidthParam ? maxWidthParam - SPACING.indentSize - 8 : undefined;
-  console.log('[renderLoopInsideRole] childMaxWidth:', childMaxWidth);
-
-  let maxWidth = headerResult.width;
-  for (const child of block.body) {
-    console.log('[renderLoopInsideRole] rendering child:', child.kind);
-    const childResult = renderRoleBuildingBlock(child, x + SPACING.indentSize + 8, currentY, childMaxWidth);
-    elements.push(childResult.svg);
-    maxWidth = Math.max(maxWidth, childResult.width + SPACING.indentSize);
-    currentY += childResult.height + SPACING.elementGap;
-  }
-
-  const totalHeight = currentY - y;
-
-  // Left border
-  elements.push(svgLine(x + 8, y, x + 8, y + totalHeight, {
-    stroke: COLORS.controlBorder,
-    strokeWidth: 1,
-  }));
-
-  return {
-    svg: elements.join('\n'),
-    width: maxWidth + 8,
-    height: totalHeight,
-  };
+  return wrapBlock(header, block.body, x, y, {
+    renderChild: (child, cx, cy, mw) => renderRoleBuildingBlock(child, cx, cy, mw),
+    childMaxWidth,
+    childGap: SPACING.elementGap,
+    drawBanner: true,
+  });
 }
 
 // Render conditional (outside role)
 function renderConditionalOutsideRole(block: ConditionalBlockOutsideRole, x: number, y: number, maxWidthParam?: number): RenderResult {
   const elements: string[] = [];
+  const banners: { y: number; height: number; hw: number }[] = [];
   let currentY = y;
-  let resultMaxWidth = 0;
+  const headerX = x + 8;
+  const childX = x + SPACING.indentSize + 8;
+  let contentRight = 0;
   const childMaxWidth = maxWidthParam ? maxWidthParam - SPACING.indentSize - 8 : undefined;
 
   // If block
-  const ifHeader = renderControlFlowHeader('If', '◇', block.Ifcondition, ':', x + 8, currentY, maxWidthParam);
+  const ifHeader = renderControlFlowHeader('If', '◇', block.Ifcondition, ':', headerX, currentY, maxWidthParam);
+  banners.push({ y: currentY, height: ifHeader.height, hw: ifHeader.width });
   elements.push(ifHeader.svg);
-  resultMaxWidth = Math.max(resultMaxWidth, ifHeader.width);
+  contentRight = Math.max(contentRight, headerX + ifHeader.width);
   currentY += ifHeader.height + 5;
 
   for (const child of block.IfBody) {
-    const childResult = renderTopLevelBlock(child, x + SPACING.indentSize + 8, currentY, childMaxWidth);
+    const childResult = renderTopLevelBlock(child, childX, currentY, childMaxWidth);
     elements.push(childResult.svg);
-    resultMaxWidth = Math.max(resultMaxWidth, childResult.width + SPACING.indentSize);
+    contentRight = Math.max(contentRight, childX + childResult.width);
     currentY += childResult.height + SPACING.blockGap;
   }
 
   // ElseIf blocks
   for (let i = 0; i < block.elseif.length; i++) {
-    const elseifHeader = renderControlFlowHeader('ElseIf', '◇', block.elseif[i], ':', x + 8, currentY, maxWidthParam);
+    const elseifHeader = renderControlFlowHeader('ElseIf', '◇', block.elseif[i], ':', headerX, currentY, maxWidthParam);
+    banners.push({ y: currentY, height: elseifHeader.height, hw: elseifHeader.width });
     elements.push(elseifHeader.svg);
-    resultMaxWidth = Math.max(resultMaxWidth, elseifHeader.width);
+    contentRight = Math.max(contentRight, headerX + elseifHeader.width);
     currentY += elseifHeader.height + 5;
 
     for (const child of block.elseifBody[i]) {
-      const childResult = renderTopLevelBlock(child, x + SPACING.indentSize + 8, currentY, childMaxWidth);
+      const childResult = renderTopLevelBlock(child, childX, currentY, childMaxWidth);
       elements.push(childResult.svg);
-      resultMaxWidth = Math.max(resultMaxWidth, childResult.width + SPACING.indentSize);
+      contentRight = Math.max(contentRight, childX + childResult.width);
       currentY += childResult.height + SPACING.blockGap;
     }
   }
 
   // Else block
   if (block.elseBody && block.elseBody.length > 0) {
-    const elseHeader = renderControlFlowHeader('Else', '◇', [], ':', x + 8, currentY, maxWidthParam);
+    const elseHeader = renderControlFlowHeader('Else', '◇', [], ':', headerX, currentY, maxWidthParam);
+    banners.push({ y: currentY, height: elseHeader.height, hw: elseHeader.width });
     elements.push(elseHeader.svg);
-    resultMaxWidth = Math.max(resultMaxWidth, elseHeader.width);
+    contentRight = Math.max(contentRight, headerX + elseHeader.width);
     currentY += elseHeader.height + 5;
 
     for (const child of block.elseBody) {
-      const childResult = renderTopLevelBlock(child, x + SPACING.indentSize + 8, currentY, childMaxWidth);
+      const childResult = renderTopLevelBlock(child, childX, currentY, childMaxWidth);
       elements.push(childResult.svg);
-      resultMaxWidth = Math.max(resultMaxWidth, childResult.width + SPACING.indentSize);
+      contentRight = Math.max(contentRight, childX + childResult.width);
       currentY += childResult.height + SPACING.blockGap;
     }
   }
@@ -3126,14 +3182,19 @@ function renderConditionalOutsideRole(block: ConditionalBlockOutsideRole, x: num
   const totalHeight = currentY - y;
 
   // Left border
-  elements.push(svgLine(x + 8, y, x + 8, y + totalHeight, {
+  elements.push(svgLine(headerX, y, headerX, y + totalHeight, {
     stroke: COLORS.controlBorder,
     strokeWidth: 1,
   }));
 
+  // Header banner(s) span the block's full content width, drawn behind content
+  const bannerSvg = banners
+    .map((b) => controlHeaderBanner(headerX, b.y, contentRight, b.height, b.hw))
+    .join('\n');
+
   return {
-    svg: elements.join('\n'),
-    width: resultMaxWidth + 8,
+    svg: bannerSvg + '\n' + elements.join('\n'),
+    width: contentRight - x,
     height: totalHeight,
   };
 }
@@ -3141,59 +3202,57 @@ function renderConditionalOutsideRole(block: ConditionalBlockOutsideRole, x: num
 // Render conditional (inside role)
 function renderConditionalInsideRole(block: ConditionalBlockInsideRole, x: number, y: number, maxWidthParam?: number): RenderResult {
   const elements: string[] = [];
+  const banners: { y: number; height: number; hw: number }[] = [];
   let currentY = y;
-  let maxWidth = 0;
-
-  console.log('[renderConditionalInsideRole]', {
-    hasMaxWidthParam: !!maxWidthParam,
-    maxWidthParam,
-    condition: block.Ifcondition.map(t => t.value).join('')
-  });
+  const headerX = x + 8;
+  const childX = x + SPACING.indentSize + 8;
+  let contentRight = 0;
 
   // If block
-  const ifHeader = renderControlFlowHeader('If', '◇', block.Ifcondition, ':', x + 8, currentY, maxWidthParam);
+  const ifHeader = renderControlFlowHeader('If', '◇', block.Ifcondition, ':', headerX, currentY, maxWidthParam);
+  banners.push({ y: currentY, height: ifHeader.height, hw: ifHeader.width });
   elements.push(ifHeader.svg);
-  maxWidth = Math.max(maxWidth, ifHeader.width);
+  contentRight = Math.max(contentRight, headerX + ifHeader.width);
   currentY += ifHeader.height + 5;
 
   // Calculate maxWidth for children (account for indentation)
   const childMaxWidth = maxWidthParam ? maxWidthParam - SPACING.indentSize - 8 : undefined;
-  console.log('[renderConditionalInsideRole] childMaxWidth for IfBody:', childMaxWidth, 'from maxWidthParam:', maxWidthParam);
 
   for (const child of block.IfBody) {
-    console.log('[renderConditionalInsideRole] rendering IfBody child:', child.kind, 'with childMaxWidth:', childMaxWidth);
-    const childResult = renderRoleBuildingBlock(child, x + SPACING.indentSize + 8, currentY, childMaxWidth);
+    const childResult = renderRoleBuildingBlock(child, childX, currentY, childMaxWidth);
     elements.push(childResult.svg);
-    maxWidth = Math.max(maxWidth, childResult.width + SPACING.indentSize);
+    contentRight = Math.max(contentRight, childX + childResult.width);
     currentY += childResult.height + SPACING.elementGap;
   }
 
   // ElseIf blocks
   for (let i = 0; i < block.elseif.length; i++) {
-    const elseifHeader = renderControlFlowHeader('ElseIf', '◇', block.elseif[i], ':', x + 8, currentY, maxWidthParam);
+    const elseifHeader = renderControlFlowHeader('ElseIf', '◇', block.elseif[i], ':', headerX, currentY, maxWidthParam);
+    banners.push({ y: currentY, height: elseifHeader.height, hw: elseifHeader.width });
     elements.push(elseifHeader.svg);
-    maxWidth = Math.max(maxWidth, elseifHeader.width);
+    contentRight = Math.max(contentRight, headerX + elseifHeader.width);
     currentY += elseifHeader.height + 5;
 
     for (const child of block.elseifBody[i]) {
-      const childResult = renderRoleBuildingBlock(child, x + SPACING.indentSize + 8, currentY, childMaxWidth);
+      const childResult = renderRoleBuildingBlock(child, childX, currentY, childMaxWidth);
       elements.push(childResult.svg);
-      maxWidth = Math.max(maxWidth, childResult.width + SPACING.indentSize);
+      contentRight = Math.max(contentRight, childX + childResult.width);
       currentY += childResult.height + SPACING.elementGap;
     }
   }
 
   // Else block
   if (block.elseBody && block.elseBody.length > 0) {
-    const elseHeader = renderControlFlowHeader('Else', '◇', [], ':', x + 8, currentY, maxWidthParam);
+    const elseHeader = renderControlFlowHeader('Else', '◇', [], ':', headerX, currentY, maxWidthParam);
+    banners.push({ y: currentY, height: elseHeader.height, hw: elseHeader.width });
     elements.push(elseHeader.svg);
-    maxWidth = Math.max(maxWidth, elseHeader.width);
+    contentRight = Math.max(contentRight, headerX + elseHeader.width);
     currentY += elseHeader.height + 5;
 
     for (const child of block.elseBody) {
-      const childResult = renderRoleBuildingBlock(child, x + SPACING.indentSize + 8, currentY, childMaxWidth);
+      const childResult = renderRoleBuildingBlock(child, childX, currentY, childMaxWidth);
       elements.push(childResult.svg);
-      maxWidth = Math.max(maxWidth, childResult.width + SPACING.indentSize);
+      contentRight = Math.max(contentRight, childX + childResult.width);
       currentY += childResult.height + SPACING.elementGap;
     }
   }
@@ -3201,14 +3260,19 @@ function renderConditionalInsideRole(block: ConditionalBlockInsideRole, x: numbe
   const totalHeight = currentY - y;
 
   // Left border
-  elements.push(svgLine(x + 8, y, x + 8, y + totalHeight, {
+  elements.push(svgLine(headerX, y, headerX, y + totalHeight, {
     stroke: COLORS.controlBorder,
     strokeWidth: 1,
   }));
 
+  // Header banner(s) span the block's full content width, drawn behind content
+  const bannerSvg = banners
+    .map((b) => controlHeaderBanner(headerX, b.y, contentRight, b.height, b.hw))
+    .join('\n');
+
   return {
-    svg: elements.join('\n'),
-    width: maxWidth + 8,
+    svg: bannerSvg + '\n' + elements.join('\n'),
+    width: contentRight - x,
     height: totalHeight,
   };
 }
@@ -3216,8 +3280,13 @@ function renderConditionalInsideRole(block: ConditionalBlockInsideRole, x: numbe
 // Render switch (outside role)
 function renderSwitchOutsideRole(block: SwitchBlockOutsideRole, x: number, y: number, maxWidthParam?: number): RenderResult {
   const elements: string[] = [];
+  // Case/Default banners each span only their own case's content width.
+  const caseBanners: { y: number; height: number; right: number; hw: number }[] = [];
   let currentY = y;
-  let resultMaxWidth = 0;
+  const switchHeaderX = x + 8;
+  const caseHeaderX = x + SPACING.indentSize + 8;
+  const caseBodyX = x + SPACING.indentSize * 2 + 8;
+  let contentRight = 0;
   const childMaxWidth = maxWidthParam ? maxWidthParam - SPACING.indentSize * 2 - 8 : undefined;
 
   // Switch header - wrap expression in parens
@@ -3226,54 +3295,55 @@ function renderSwitchOutsideRole(block: SwitchBlockOutsideRole, x: number, y: nu
     ...block.expression,
     { type: 'SYMBOL', value: ')' },
   ];
-  const switchHeader = renderControlFlowHeader('Switch', '⎇', switchTokens, ':', x + 8, currentY, maxWidthParam);
+  const switchHeader = renderControlFlowHeader('Switch', '⎇', switchTokens, ':', switchHeaderX, currentY, maxWidthParam);
+  const switchBanner = { y: currentY, height: switchHeader.height, hw: switchHeader.width };
   elements.push(switchHeader.svg);
-  resultMaxWidth = Math.max(resultMaxWidth, switchHeader.width);
+  contentRight = Math.max(contentRight, switchHeaderX + switchHeader.width);
   currentY += switchHeader.height + 4;
 
-  // Cases
-  for (const c of block.cases) {
+  // Cases (and default) — each gets a banner spanning only its own content.
+  const renderCase = (match: ExpressionToken[], keyword: string, body: PromptBlock[]) => {
     const caseMaxWidth = maxWidthParam ? maxWidthParam - SPACING.indentSize : undefined;
-    const caseHeader = renderControlFlowHeader('Case', '', c.match, '', x + SPACING.indentSize + 8, currentY, caseMaxWidth);
+    const caseHeader = renderControlFlowHeader(keyword, '', match, keyword === 'Default' ? ':' : '', caseHeaderX, currentY, caseMaxWidth);
+    const banner = { y: currentY, height: caseHeader.height, hw: caseHeader.width };
     elements.push(caseHeader.svg);
-    resultMaxWidth = Math.max(resultMaxWidth, caseHeader.width + SPACING.indentSize);
+    let caseRight = caseHeaderX + caseHeader.width;
     currentY += caseHeader.height + 5;
 
-    for (const child of c.body) {
-      const childResult = renderTopLevelBlock(child, x + SPACING.indentSize * 2 + 8, currentY, childMaxWidth);
+    for (const child of body) {
+      const childResult = renderTopLevelBlock(child, caseBodyX, currentY, childMaxWidth);
       elements.push(childResult.svg);
-      resultMaxWidth = Math.max(resultMaxWidth, childResult.width + SPACING.indentSize * 2);
+      caseRight = Math.max(caseRight, caseBodyX + childResult.width);
       currentY += childResult.height + SPACING.blockGap;
     }
+    caseBanners.push({ ...banner, right: caseRight });
+    contentRight = Math.max(contentRight, caseRight);
+  };
+
+  for (const c of block.cases) {
+    renderCase(c.match, 'Case', c.body);
   }
-
-  // Default case
   if (block.defaultCase) {
-    const caseMaxWidth = maxWidthParam ? maxWidthParam - SPACING.indentSize : undefined;
-    const defaultHeader = renderControlFlowHeader('Default', '', [], ':', x + SPACING.indentSize + 8, currentY, caseMaxWidth);
-    elements.push(defaultHeader.svg);
-    resultMaxWidth = Math.max(resultMaxWidth, defaultHeader.width + SPACING.indentSize);
-    currentY += defaultHeader.height + 5;
-
-    for (const child of block.defaultCase.body) {
-      const childResult = renderTopLevelBlock(child, x + SPACING.indentSize * 2 + 8, currentY, childMaxWidth);
-      elements.push(childResult.svg);
-      resultMaxWidth = Math.max(resultMaxWidth, childResult.width + SPACING.indentSize * 2);
-      currentY += childResult.height + SPACING.blockGap;
-    }
+    renderCase([], 'Default', block.defaultCase.body);
   }
 
   const totalHeight = currentY - y;
 
   // Left border
-  elements.push(svgLine(x + 8, y, x + 8, y + totalHeight, {
+  elements.push(svgLine(switchHeaderX, y, switchHeaderX, y + totalHeight, {
     stroke: COLORS.controlBorder,
     strokeWidth: 1,
   }));
 
+  // Banners (behind content): Switch spans the whole block; each case its own.
+  const bannerSvg = [
+    controlHeaderBanner(switchHeaderX, switchBanner.y, contentRight, switchBanner.height, switchBanner.hw),
+    ...caseBanners.map((b) => controlHeaderBanner(caseHeaderX, b.y, b.right, b.height, b.hw)),
+  ].join('\n');
+
   return {
-    svg: elements.join('\n'),
-    width: resultMaxWidth + 8,
+    svg: bannerSvg + '\n' + elements.join('\n'),
+    width: contentRight - x,
     height: totalHeight,
   };
 }
@@ -3281,8 +3351,13 @@ function renderSwitchOutsideRole(block: SwitchBlockOutsideRole, x: number, y: nu
 // Render switch (inside role)
 function renderSwitchInsideRole(block: SwitchBlockInsideRole, x: number, y: number, maxWidthParam?: number): RenderResult {
   const elements: string[] = [];
+  // Case/Default banners each span only their own case's content width.
+  const caseBanners: { y: number; height: number; right: number; hw: number }[] = [];
   let currentY = y;
-  let maxWidth = 0;
+  const switchHeaderX = x + 8;
+  const caseHeaderX = x + SPACING.indentSize + 8;
+  const caseBodyX = x + SPACING.indentSize * 2 + 8;
+  let contentRight = 0;
 
   // Switch header - wrap expression in parens
   const switchTokens: ExpressionToken[] = [
@@ -3290,60 +3365,56 @@ function renderSwitchInsideRole(block: SwitchBlockInsideRole, x: number, y: numb
     ...block.expression,
     { type: 'SYMBOL', value: ')' },
   ];
-  const switchHeader = renderControlFlowHeader('Switch', '⎇', switchTokens, ':', x + 8, currentY, maxWidthParam);
+  const switchHeader = renderControlFlowHeader('Switch', '⎇', switchTokens, ':', switchHeaderX, currentY, maxWidthParam);
+  const switchBanner = { y: currentY, height: switchHeader.height, hw: switchHeader.width };
   elements.push(switchHeader.svg);
-  maxWidth = Math.max(maxWidth, switchHeader.width);
+  contentRight = Math.max(contentRight, switchHeaderX + switchHeader.width);
   currentY += switchHeader.height + 4;
 
-  // Cases
-  for (const c of block.cases) {
+  // Cases (and default) — each gets a banner spanning only its own content.
+  const renderCase = (match: ExpressionToken[], keyword: string, body: RoleBuildingBlock[]) => {
     const caseMaxWidth = maxWidthParam ? maxWidthParam - SPACING.indentSize : undefined;
-    const caseHeader = renderControlFlowHeader('Case', '', c.match, '', x + SPACING.indentSize + 8, currentY, caseMaxWidth);
+    const caseHeader = renderControlFlowHeader(keyword, '', match, keyword === 'Default' ? ':' : '', caseHeaderX, currentY, caseMaxWidth);
+    const banner = { y: currentY, height: caseHeader.height, hw: caseHeader.width };
     elements.push(caseHeader.svg);
-    maxWidth = Math.max(maxWidth, caseHeader.width + SPACING.indentSize);
+    let caseRight = caseHeaderX + caseHeader.width;
     currentY += caseHeader.height + 5;
 
-    // Calculate maxWidth for case body children (account for double indentation)
     const caseBodyMaxWidth = maxWidthParam ? maxWidthParam - SPACING.indentSize * 2 - 8 : undefined;
-
-    for (const child of c.body) {
-      const childResult = renderRoleBuildingBlock(child, x + SPACING.indentSize * 2 + 8, currentY, caseBodyMaxWidth);
+    for (const child of body) {
+      const childResult = renderRoleBuildingBlock(child, caseBodyX, currentY, caseBodyMaxWidth);
       elements.push(childResult.svg);
-      maxWidth = Math.max(maxWidth, childResult.width + SPACING.indentSize * 2);
+      caseRight = Math.max(caseRight, caseBodyX + childResult.width);
       currentY += childResult.height + SPACING.elementGap;
     }
+    caseBanners.push({ ...banner, right: caseRight });
+    contentRight = Math.max(contentRight, caseRight);
+  };
+
+  for (const c of block.cases) {
+    renderCase(c.match, 'Case', c.body);
   }
-
-  // Default case
   if (block.defaultCase) {
-    const caseMaxWidth = maxWidthParam ? maxWidthParam - SPACING.indentSize : undefined;
-    const defaultHeader = renderControlFlowHeader('Default', '', [], ':', x + SPACING.indentSize + 8, currentY, caseMaxWidth);
-    elements.push(defaultHeader.svg);
-    maxWidth = Math.max(maxWidth, defaultHeader.width + SPACING.indentSize);
-    currentY += defaultHeader.height + 5;
-
-    // Calculate maxWidth for default body children (account for double indentation)
-    const defaultBodyMaxWidth = maxWidthParam ? maxWidthParam - SPACING.indentSize * 2 - 8 : undefined;
-
-    for (const child of block.defaultCase.body) {
-      const childResult = renderRoleBuildingBlock(child, x + SPACING.indentSize * 2 + 8, currentY, defaultBodyMaxWidth);
-      elements.push(childResult.svg);
-      maxWidth = Math.max(maxWidth, childResult.width + SPACING.indentSize * 2);
-      currentY += childResult.height + SPACING.elementGap;
-    }
+    renderCase([], 'Default', block.defaultCase.body);
   }
 
   const totalHeight = currentY - y;
 
   // Left border
-  elements.push(svgLine(x + 8, y, x + 8, y + totalHeight, {
+  elements.push(svgLine(switchHeaderX, y, switchHeaderX, y + totalHeight, {
     stroke: COLORS.controlBorder,
     strokeWidth: 1,
   }));
 
+  // Banners (behind content): Switch spans the whole block; each case its own.
+  const bannerSvg = [
+    controlHeaderBanner(switchHeaderX, switchBanner.y, contentRight, switchBanner.height, switchBanner.hw),
+    ...caseBanners.map((b) => controlHeaderBanner(caseHeaderX, b.y, b.right, b.height, b.hw)),
+  ].join('\n');
+
   return {
-    svg: elements.join('\n'),
-    width: maxWidth + 8,
+    svg: bannerSvg + '\n' + elements.join('\n'),
+    width: contentRight - x,
     height: totalHeight,
   };
 }
@@ -3491,12 +3562,22 @@ function renderTopLevelBlock(block: PromptBlock, x: number, y: number, maxWidth?
     case 'name-def':
       return renderNameDef(block, x, y, maxWidth);
     case 'end-block':
-      return renderEndBlock(block, x, y);
+      return renderEndBlock(block, x, y, maxWidth);
     case 'roles-frag-invocation':
       return renderRolesFragInvocation(block, x, y, maxWidth);
     default:
       return { svg: '', width: 0, height: 0 };
   }
+}
+
+// Render a single prompt body item. Mark blocks get the bracketed-mark
+// renderer; everything else falls through to renderTopLevelBlock. SVG
+// counterpart of renderPrompt.ts's renderPromptBodyItem.
+function renderPromptBodyItem(item: PromptBlock, x: number, y: number, maxWidth?: number): RenderResult {
+  if (item.kind === 'mark-block') {
+    return renderMarkBlock(item, x, y, maxWidth);
+  }
+  return renderTopLevelBlock(item, x, y, maxWidth);
 }
 
 // Render prompt body
@@ -3507,7 +3588,7 @@ function renderPromptBody(body: PromptBody, x: number, y: number, maxWidthParam?
     let resultMaxWidth = 0;
 
     for (const item of body.body) {
-      const result = renderTopLevelBlock(item, x, currentY, maxWidthParam);
+      const result = renderPromptBodyItem(item, x, currentY, maxWidthParam);
       elements.push(result.svg);
       resultMaxWidth = Math.max(resultMaxWidth, result.width);
       currentY += result.height + SPACING.blockGap;
@@ -3528,10 +3609,7 @@ function renderPromptTitle(title: PromptTitle, x: number, y: number, containerWi
   const elements: string[] = [];
 
   // Index suffix
-  let indexText = '';
-  if (title.indices.length > 0) {
-    indexText = '[' + title.indices.map(indexToText).join(',') + ']';
-  }
+  const indexText = renderIndexList(title.indices);
   const fullTitle = title.name + indexText;
 
   const titleWidth = measureText(fullTitle, FONT_SIZES.title, true);
@@ -3644,6 +3722,18 @@ export function renderPromptsSvg(blocks: (Prompt | CommentBlock | StrFragDef | R
   // Title should span across but leave same padding on right as on left
   const titleWidth = totalWidth - startX - startX;
 
+  // Wrapping budget for body content. IMPORTANT: this is the slider width (the
+  // real constraint), NOT the shrink-wrapped totalWidth. Pass 1 measures content
+  // unwrapped, so totalWidth collapses to roughly the natural width when content
+  // is narrower than the slider; budgeting off that would force nested content
+  // to wrap below its natural width even though there is horizontal room. Using
+  // the slider width means content only wraps when it genuinely exceeds it, and
+  // nesting reduces the budget by just the indent at each level. Subtract the
+  // left + right padding (2 * startX) so the budget's right edge lands inside the
+  // canvas — otherwise nested content (e.g. the PromptEndsHere line) thinks it has
+  // ~startX more room than exists and clips at the right instead of fitting.
+  const wrapWidth = ((maxWidth && maxWidth > 0) ? maxWidth : totalWidth) - startX * 2;
+
   // Second pass: render everything with consistent title width
   const elements: string[] = [];
   let currentY = 20;
@@ -3669,10 +3759,9 @@ export function renderPromptsSvg(blocks: (Prompt | CommentBlock | StrFragDef | R
       const borderStartY = currentY + titleResult.height;
       currentY += titleResult.height + SPACING.blockGap;
 
-      // Body - pass maxWidth for wrapping
-      // Title: starts at startX, has width titleWidth, ends at (startX + titleWidth)
-      // Body: starts at startX, should end at same place, so maxWidth = titleWidth + small buffer
-      const bodyMaxWidth = titleWidth + 20; // Slightly more room than title for better wrapping
+      // Body - wrap at the slider width (see wrapWidth note above), so content
+      // uses available horizontal space and only wraps when it must.
+      const bodyMaxWidth = wrapWidth;
       const bodyResult = renderPromptBody(block.body, startX, currentY, bodyMaxWidth);
 
       // Container left border (from bottom of title through body)
@@ -3687,7 +3776,7 @@ export function renderPromptsSvg(blocks: (Prompt | CommentBlock | StrFragDef | R
       currentY += bodyResult.height + SPACING.blockGap;
       lastWasPrompt = true;
     } else if (block.kind === 'comment-block') {
-      const commentMaxWidth = titleWidth + 20; // Same as body
+      const commentMaxWidth = wrapWidth; // Same as body
       const commentResult = renderComment(block.text, startX, currentY, false, commentMaxWidth);
       elements.push(commentResult.svg);
       currentY += commentResult.height + SPACING.elementGap;

@@ -34,12 +34,33 @@ const EXAMPLE_CONFIG = {
   fig1_right: { file: 'ACDL_examples/React_variants/fig1-right.acdl', label: 'ReAct with Tool-RAG', group: 'ReAct Patterns' },
 
   // Real-World Systems
-  opencode: { file: 'ACDL_examples/complex_examples/OpenCode.acdl', label: 'OpenCode (Claude Code-like)', group: 'Real-World Systems' },
-  openclaw: { file: 'ACDL_examples/complex_examples/OpenClaw.acdl', label: 'OpenClaw (Letta-like)', group: 'Real-World Systems' },
+  opencode: { file: 'ACDL_examples/complex_examples/OpenCode.acdl', label: 'OpenCode', group: 'Real-World Systems' },
+  openclaw: { file: 'ACDL_examples/complex_examples/OpenClaw.acdl', label: 'OpenClaw', group: 'Real-World Systems' },
   pokemon: { file: 'ACDL_examples/complex_examples/pokemon.acdl', label: 'Pokemon Agent', group: 'Real-World Systems' },
   multiagent: { file: 'ACDL_examples/complex_examples/MultiAgent.acdl', label: 'Multi-Agent Simulation', group: 'Real-World Systems' },
   mintagent: { file: 'ACDL_examples/MintAgent_variants/mint-original.acdl', label: 'MintAgent', group: 'Real-World Systems' },
 };
+
+// Load the JetBrains Mono fonts as base64 so the browser SVG renderer has the
+// same glyph metrics and embeddable @font-face as the Node CLI. Without this the
+// website PDF export computes its layout from guessed widths and text spills out
+// of its boxes (see src/svg-layout.ts loadFonts/getFontBase64).
+function loadFontsBase64() {
+  const fontsDir = path.join(rootDir, 'fonts');
+  const readBase64 = (file) => {
+    const fontPath = path.join(fontsDir, file);
+    try {
+      return fs.readFileSync(fontPath).toString('base64');
+    } catch (err) {
+      console.warn(`  Warning: Could not load font ${file}: ${err.message}`);
+      return '';
+    }
+  };
+  return {
+    regular: readBase64('JetBrainsMono-Regular.ttf'),
+    bold: readBase64('JetBrainsMono-Bold.ttf'),
+  };
+}
 
 // Load prompts from files
 function loadPrompts() {
@@ -193,9 +214,13 @@ export { EditorView };
     console.log('  Loading prompts...');
     const prompts = loadPrompts();
 
+    // 5b. Load fonts for the SVG/PDF export renderer
+    console.log('  Loading fonts...');
+    const fonts = loadFontsBase64();
+
     // 6. Transform the HTML
     console.log('  Transforming HTML...');
-    html = transformHTML(html, bundledJS, editorJS, cssContent, prompts);
+    html = transformHTML(html, bundledJS, editorJS, cssContent, prompts, fonts);
 
     // 7. Write output to dist/website/visualizer.html
     const websiteDir = path.join(rootDir, 'dist', 'website');
@@ -233,7 +258,7 @@ export { EditorView };
  * truth for export behaviour, so the standalone/website visualizer always
  * matches what `npm run dev` produces and can no longer drift out of sync.
  */
-function transformHTML(html, bundledJS, editorJS, cssContent, prompts) {
+function transformHTML(html, bundledJS, editorJS, cssContent, prompts, fonts) {
   // 1. Replace the external CSS link with inlined CSS
   // Match: <link rel="stylesheet" href="./styles.css" />
   // Note: We use replacer functions instead of strings to avoid issues with
@@ -256,7 +281,7 @@ function transformHTML(html, bundledJS, editorJS, cssContent, prompts) {
     );
   }
   html = html.replace(moduleScriptRe, () =>
-    generateStandaloneScripts(bundledJS, editorJS, prompts)
+    generateStandaloneScripts(bundledJS, editorJS, prompts, fonts)
   );
 
   // Sanity check: the export/trim logic must survive verbatim from
@@ -285,8 +310,13 @@ function transformHTML(html, bundledJS, editorJS, cssContent, prompts) {
 /**
  * Generate the standalone-specific script blocks that replace the Vite module imports
  */
-function generateStandaloneScripts(bundledJS, editorJS, prompts) {
+function generateStandaloneScripts(bundledJS, editorJS, prompts, fonts) {
   return `
+  <!-- Embedded fonts for the SVG/PDF export renderer (read by src/svg-layout.ts) -->
+  <script>
+window.__ACDL_FONTS__ = ${JSON.stringify(fonts || {})};
+  </script>
+
   <!-- Bundled Parser and Renderer -->
   <script>
 ${bundledJS}

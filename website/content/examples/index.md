@@ -111,10 +111,11 @@ title: Examples - ACDL
               <div class="role-msg user">
                 <span class="role-badge">Role: User</span>
                 <div class="role-body">
+                  <div style="margin-bottom: 6px;"><span class="name-kw">Name</span> <span class="name-var">docs</span> <span class="name-assign">:=</span> <span class="fn">k_relevant_docs(<span class="ctx">env.user_input[<span class="idx">@T</span>]</span>)</span></div>
                   <div class="ctrl-block">
-                    <div class="ctrl-header">↻ ForEach i : 1 ... $docs.len</div>
-                    <span class="ctx">$docs[i].source</span><br>
-                    <span class="ctx">$docs[i].content</span>
+                    <div class="ctrl-header">↻ ForEach <span class="idx">i</span> : 1 ... <span class="name-var">docs.len</span></div>
+                    <span class="name-var">docs[</span><span class="idx">i</span><span class="name-var">].source</span><br>
+                    <span class="name-var">docs[</span><span class="idx">i</span><span class="name-var">].content</span>
                   </div>
                   <span class="tpl">ANSWER_Q_FROM_DOCS</span><br>
                   <span class="ctx">env.user_input[<span class="idx">@T</span>]</span>
@@ -285,7 +286,9 @@ title: Examples - ACDL
     }
     <span class="role">S</span>: {
         <span class="keyword">Name</span> tools := retrieve_tools(<span class="context">env.context</span>[<span class="context">@T</span>])
-        <span class="keyword">ForEach</span>(tool: $tools) { $tool.description }
+        <span class="keyword">ForEach</span>(tool: $tools) {
+            $tool.description
+        }
         <span class="template">USE_TOOLS_TO_SOLVE_TASK</span>
     }
 }</pre>
@@ -319,9 +322,10 @@ title: Examples - ACDL
               <div class="role-msg system">
                 <span class="role-badge">Role: System</span>
                 <div class="role-body">
+                  <div style="margin-bottom: 6px;"><span class="name-kw">Name</span> <span class="name-var">tools</span> <span class="name-assign">:=</span> <span class="fn">retrieve_tools(<span class="ctx">env.context[<span class="idx">@T</span>]</span>)</span></div>
                   <div class="ctrl-block">
-                    <div class="ctrl-header">↻ ForEach tool : $tools</div>
-                    <span class="ctx">$tool.description</span>
+                    <div class="ctrl-header">↻ ForEach <span class="idx">tool</span> : <span class="name-var">tools</span></div>
+                    <span class="idx">tool.description</span>
                   </div>
                   <span class="tpl">USE_TOOLS_TO_SOLVE_TASK</span>
                 </div>
@@ -355,7 +359,7 @@ title: Examples - ACDL
             <pre><span class="template">OpenCodeMain</span>[<span class="context">@T.I</span>]: {
   <span class="role">S</span>: {
     <span class="template">SYSTEM_PROMPT</span>
-    <span class="template">ENV_INFO</span>(<span class="context">env.working_directory</span>[<span class="context">@1</span>], ...)
+    <span class="template">ENV_INFO</span>(<span class="context">env.working_directory</span>[<span class="context">@1</span>], <span class="context">env.is_dir_a_repo</span>[<span class="context">@1</span>], <span class="context">env.platform</span>[<span class="context">@1</span>], <span class="context">env.date</span>[<span class="context">@1</span>])
   }
   <span class="keyword">Mark</span> 2 {
   <span class="keyword">Name</span> C := <span class="context">sys.last_compaction_time</span>[<span class="context">@T</span>]
@@ -369,7 +373,9 @@ title: Examples - ACDL
       <span class="context">env.user_input</span>[<span class="context">@t</span>]
       <span class="keyword">Mark</span> 3 {
       <span class="keyword">If</span> <span class="context">@T</span> == <span class="context">@t</span> {
-        <span class="keyword">If</span> <span class="context">sys.is_plan_mode</span>[<span class="context">@t</span>] { <span class="template">PLAN_MODE_REMINDER</span> }
+        <span class="keyword">If</span> <span class="context">sys.is_plan_mode</span>[<span class="context">@t</span>] {
+          <span class="template">PLAN_MODE_REMINDER</span>
+        }
         <span class="keyword">If</span> <span class="context">sys.is_build_mode</span>[<span class="context">@t</span>] &amp;&amp; <span class="context">sys.prev_is_plan</span>[<span class="context">@t</span>] {
           <span class="template">LEAVE_PLAN_MODE_REMINDER</span>
         }
@@ -402,62 +408,75 @@ title: Examples - ACDL
                 <span class="role-badge">Role: System</span>
                 <div class="role-body">
                   <span class="tpl">SYSTEM_PROMPT</span><br>
-                  <span class="tpl">ENV_INFO</span>(<span class="ctx">env.working_directory[<span class="idx">@1</span>]</span>, ...)
+                  <span class="tpl">ENV_INFO(<span class="ctx">env.working_directory[<span class="idx">@1</span>]</span>, <span class="ctx">env.is_dir_a_repo[<span class="idx">@1</span>]</span>, <span class="ctx">env.platform[<span class="idx">@1</span>]</span>, <span class="ctx">env.date[<span class="idx">@1</span>]</span>)</span>
                 </div>
               </div>
-              <div style="background: #e8f4fd; border: 1px solid #0969da; border-radius: 3px; padding: 2px 6px; margin: 4px 0; font-size: 8px; color: #0969da; font-weight: 600;">Mark 2</div>
+              <div class="mark-block">
+              <div style="margin: 4px 0;"><span class="name-kw">Name</span> <span class="name-var">C</span> <span class="name-assign">:=</span> <span class="ctx">sys.last_compaction_time[<span class="idx">@T</span>]</span></div>
               <div class="ctrl-block">
-                <div class="ctrl-header">? If <span class="idx">@$C</span> &gt; 1</div>
+                <div class="ctrl-header">◇ If <span class="idx">@</span><span class="name-var">C</span> &gt; 1:</div>
                 <div class="role-msg user">
                   <span class="role-badge">Role: User</span>
                   <div class="role-body"><span class="tpl">WHAT_DID_WE_DO</span></div>
                 </div>
                 <div class="role-msg assistant">
                   <span class="role-badge">Role: Assistant</span>
-                  <div class="role-body"><span class="ctx">sys.conversation_summary[<span class="idx">@$C</span>]</span></div>
+                  <div class="role-body"><span class="ctx">sys.conversation_summary[<span class="idx">@</span><span class="name-var">C</span>]</span></div>
                 </div>
               </div>
+              <div class="mark-bracket"><div class="mark-line"></div><span class="mark-num">2</span></div>
+              </div>
               <div class="ctrl-block">
-                <div class="ctrl-header">↻ ForEach <span class="idx">@t</span> : <span class="idx">@$C</span> ... <span class="idx">@T</span></div>
+                <div class="ctrl-header">↻ ForEach <span class="idx">@t</span> : <span class="idx">@</span><span class="name-var">C</span> ... <span class="idx">@T</span></div>
                 <div class="role-msg user">
                   <span class="role-badge">Role: User</span>
                   <div class="role-body">
                     <span class="ctx">env.user_input[<span class="idx">@t</span>]</span>
-                    <div style="background: #e8f4fd; border: 1px solid #0969da; border-radius: 3px; padding: 2px 6px; margin: 4px 0; font-size: 8px; color: #0969da; font-weight: 600;">Mark 3</div>
+                    <div class="mark-block">
                     <div class="ctrl-block">
-                      <div class="ctrl-header">? If <span class="idx">@T</span> == <span class="idx">@t</span></div>
+                      <div class="ctrl-header">◇ If <span class="idx">@T</span> == <span class="idx">@t</span>:</div>
                       <div class="ctrl-block">
-                        <div class="ctrl-header">? If sys.is_plan_mode[<span class="idx">@t</span>]</div>
+                        <div class="ctrl-header">◇ If <span class="ctx">sys.is_plan_mode[<span class="idx">@t</span>]</span>:</div>
                         <span class="tpl">PLAN_MODE_REMINDER</span>
                       </div>
                       <div class="ctrl-block">
-                        <div class="ctrl-header">? If sys.is_build_mode[<span class="idx">@t</span>] && sys.prev_is_plan[<span class="idx">@t</span>]</div>
+                        <div class="ctrl-header">◇ If <span class="ctx">sys.is_build_mode[<span class="idx">@t</span>]</span> && <span class="ctx">sys.prev_is_plan[<span class="idx">@t</span>]</span>:</div>
                         <span class="tpl">LEAVE_PLAN_MODE_REMINDER</span>
                       </div>
                     </div>
+                    <div class="mark-bracket"><div class="mark-line"></div><span class="mark-num">3</span></div>
+                    </div>
                   </div>
                 </div>
-                <div style="background: #fff3cd; border: 1px solid #e5990b; border-radius: 3px; padding: 2px 6px; margin: 4px 0; font-size: 8px; color: #856404; font-weight: 500;">PromptEndsHere when (<span class="idx">@T</span> == <span class="idx">@t</span> && <span class="idx">@T</span>.0)</div>
-                <div style="background: #e8f4fd; border: 1px solid #0969da; border-radius: 3px; padding: 2px 6px; margin: 4px 0; font-size: 8px; color: #0969da; font-weight: 600;">Mark 1</div>
+                <div class="end-block">
+                  <div class="end-line"></div>
+                  <span class="end-text">PromptEndsHere when (<span class="idx">@T</span> == <span class="idx">@t</span> && <span class="idx">@T</span>.0)</span>
+                </div>
+                <div class="mark-block">
                 <div class="ctrl-block">
                   <div class="ctrl-header">↻ ForEach <span class="idx">@i</span> : 1 ... <span class="idx">@t</span>.substeps</div>
                   <div class="role-msg assistant">
                     <span class="role-badge">Role: Assistant</span>
                     <div class="role-body">
                       <div class="ctrl-block">
-                        <div class="ctrl-header">↻ ForEach tool : sys.tool_requests[<span class="idx">@t.i</span>]</div>
-                        <span class="ctx">tool.id_name_and_args</span>
+                        <div class="ctrl-header">↻ ForEach <span class="idx">tool</span> : <span class="ctx">sys.tool_requests[<span class="idx">@t.i</span>]</span></div>
+                        <span class="idx">tool.id_name_and_args</span>
                       </div>
                     </div>
                   </div>
                   <div class="ctrl-block">
-                    <div class="ctrl-header">↻ ForEach tool : tool_requests[<span class="idx">@t.i</span>]</div>
+                    <div class="ctrl-header">↻ ForEach <span class="idx">tool</span> : <span class="ctx">tool_requests[<span class="idx">@t.i</span>]</span></div>
                     <div class="role-msg tool">
                       <span class="role-badge">Role: Tool</span>
-                      <div class="role-body"><span class="ctx">tool.id_and_response</span></div>
+                      <div class="role-body"><span class="idx">tool.id_and_response</span></div>
                     </div>
                   </div>
-                  <div style="background: #fff3cd; border: 1px solid #e5990b; border-radius: 3px; padding: 2px 6px; margin: 4px 0; font-size: 8px; color: #856404; font-weight: 500;">PromptEndsHere when (<span class="idx">@T</span> == <span class="idx">@t</span> && <span class="idx">@T</span>.I)</div>
+                  <div class="end-block">
+                    <div class="end-line"></div>
+                    <span class="end-text">PromptEndsHere when (<span class="idx">@T</span> == <span class="idx">@t</span> && <span class="idx">@T</span>.I)</span>
+                  </div>
+                </div>
+                <div class="mark-bracket"><div class="mark-line"></div><span class="mark-num">1</span></div>
                 </div>
                 <div class="role-msg assistant">
                   <span class="role-badge">Role: Assistant</span>
@@ -486,7 +505,10 @@ title: Examples - ACDL
   <span class="keyword">Mark</span> 2 {
   <span class="keyword">Name</span> C := <span class="context">sys.last_compaction_time</span>[<span class="context">@T</span>]
   <span class="keyword">If</span> (<span class="context">@$C</span> &gt; 1) {
-    <span class="role">U</span>: { <span class="template">THIS_IS_A_SUMMARY</span>  <span class="context">sys.conversation_summary</span>[<span class="context">@$C</span>] }
+    <span class="role">U</span>: {
+      <span class="template">THIS_IS_A_SUMMARY</span>
+      <span class="context">sys.conversation_summary</span>[<span class="context">@$C</span>]
+    }
     <span class="role">A</span>: <span class="context">resp.response</span>[<span class="context">@$C</span>]
   }
   }
@@ -500,8 +522,15 @@ title: Examples - ACDL
       }
       <span class="keyword">Mark</span> 5 {
       <span class="keyword">Switch</span> <span class="context">env.input_source</span>[<span class="context">@t</span>] {
-        <span class="keyword">Case</span> user: { <span class="keyword">Mark</span> 4 { <span class="context">sys.date_time</span>[<span class="context">@t</span>] } <span class="context">env.user_query</span>[<span class="context">@t</span>] }
-        <span class="keyword">Case</span> heartbeat_timer: { <span class="template">HEARTBEAT_INSTRUCTIONS</span> }
+        <span class="keyword">Case</span> user: {
+          <span class="keyword">Mark</span> 4 {
+            <span class="context">sys.date_time</span>[<span class="context">@t</span>]
+          }
+          <span class="context">env.user_query</span>[<span class="context">@t</span>]
+        }
+        <span class="keyword">Case</span> heartbeat_timer: {
+          <span class="template">HEARTBEAT_INSTRUCTIONS</span>
+        }
       }
       }
     }
@@ -529,65 +558,87 @@ title: Examples - ACDL
               <div class="prompt-title">OpenClaw[<span class="idx">@T.I</span>]:</div>
               <div class="role-msg system">
                 <span class="role-badge">Role: System</span>
-                <div class="role-body"><span class="tpl">SystemPrompt</span>()</div>
+                <div class="role-body"><span class="tpl">SystemPrompt()</span></div>
               </div>
-              <div style="background: #e8f4fd; border: 1px solid #0969da; border-radius: 3px; padding: 2px 6px; margin: 4px 0; font-size: 8px; color: #0969da; font-weight: 600;">Mark 2</div>
+              <div class="mark-block">
+              <div style="margin: 4px 0;"><span class="name-kw">Name</span> <span class="name-var">C</span> <span class="name-assign">:=</span> <span class="ctx">sys.last_compaction_time[<span class="idx">@T</span>]</span></div>
               <div class="ctrl-block">
-                <div class="ctrl-header">? If <span class="idx">@$C</span> &gt; 1</div>
+                <div class="ctrl-header">◇ If <span class="idx">@</span><span class="name-var">C</span> &gt; 1:</div>
                 <div class="role-msg user">
                   <span class="role-badge">Role: User</span>
                   <div class="role-body">
                     <span class="tpl">THIS_IS_A_SUMMARY</span><br>
-                    <span class="ctx">sys.conversation_summary[<span class="idx">@$C</span>]</span>
+                    <span class="ctx">sys.conversation_summary[<span class="idx">@</span><span class="name-var">C</span>]</span>
                   </div>
                 </div>
                 <div class="role-msg assistant">
                   <span class="role-badge">Role: Assistant</span>
-                  <div class="role-body"><span class="ctx">resp.response[<span class="idx">@$C</span>]</span></div>
+                  <div class="role-body"><span class="ctx">resp.response[<span class="idx">@</span><span class="name-var">C</span>]</span></div>
                 </div>
               </div>
+              <div class="mark-bracket"><div class="mark-line"></div><span class="mark-num">2</span></div>
+              </div>
               <div class="ctrl-block">
-                <div class="ctrl-header">↻ ForEach t : <span class="idx">@$C</span> + 1 ... <span class="idx">@T</span></div>
+                <div class="ctrl-header">↻ ForEach <span class="idx">t</span> : <span class="idx">@</span><span class="name-var">C</span> + 1 ... <span class="idx">@T</span></div>
                 <div class="role-msg user">
                   <span class="role-badge">Role: User</span>
                   <div class="role-body">
-                    <div style="background: #e8f4fd; border: 1px solid #0969da; border-radius: 3px; padding: 2px 6px; margin: 4px 0; font-size: 8px; color: #0969da; font-weight: 600;">Mark 6</div>
+                    <div class="mark-block">
                     <div class="ctrl-block">
-                      <div class="ctrl-header">↻ ForEach m : 1 ... sys.pending_messages[<span class="idx">@t</span>].len</div>
+                      <div class="ctrl-header">↻ ForEach <span class="idx">m</span> : 1 ... <span class="ctx">sys.pending_messages[<span class="idx">@t</span>].len</span></div>
                       <span class="ctx">sys.pending_messages[<span class="idx">@t</span>][m].date_time</span><br>
                       <span class="ctx">sys.pending_messages[<span class="idx">@t</span>][m].message</span>
                     </div>
-                    <div style="background: #e8f4fd; border: 1px solid #0969da; border-radius: 3px; padding: 2px 6px; margin: 4px 0; font-size: 8px; color: #0969da; font-weight: 600;">Mark 5</div>
+                    <div class="mark-bracket"><div class="mark-line"></div><span class="mark-num">6</span></div>
+                    </div>
+                    <div class="mark-block">
                     <div class="ctrl-block">
-                      <div class="ctrl-header">⇢ Switch env.input_source[<span class="idx">@t</span>]</div>
+                      <div class="ctrl-header">⇢ Switch <span class="ctx">env.input_source[<span class="idx">@t</span>]</span></div>
                       <div style="padding-left: 8px; border-left: 1px dashed #adb5bd;">
-                        <span class="cmt">Case user:</span> <span style="background: #e8f4fd; border: 1px solid #0969da; border-radius: 3px; padding: 1px 4px; font-size: 7px; color: #0969da; font-weight: 600;">Mark 4</span> <span class="ctx">sys.date_time[<span class="idx">@t</span>]</span> <span class="ctx">env.user_query[<span class="idx">@t</span>]</span><br>
-                        <span class="cmt">Case heartbeat_timer:</span> <span class="tpl">HEARTBEAT_INSTRUCTIONS</span>
+                        <div class="cmt">Case user:</div>
+                        <div style="padding-left: 10px;">
+                          <span style="display:inline-flex;align-items:center;"><span class="ctx">sys.date_time[<span class="idx">@t</span>]</span><span style="display:inline-block;width:3px;align-self:stretch;border:2px solid #000;border-left:none;border-radius:0 2px 2px 0;margin-left:2px;"></span><span class="mark-num">4</span></span><br>
+                          <span class="ctx">env.user_query[<span class="idx">@t</span>]</span>
+                        </div>
+                        <div class="cmt">Case heartbeat_timer:</div>
+                        <div style="padding-left: 10px;">
+                          <span class="tpl">HEARTBEAT_INSTRUCTIONS</span>
+                        </div>
                       </div>
+                    </div>
+                    <div class="mark-bracket"><div class="mark-line"></div><span class="mark-num">5</span></div>
                     </div>
                   </div>
                 </div>
-                <div style="background: #fff3cd; border: 1px solid #e5990b; border-radius: 3px; padding: 2px 6px; margin: 4px 0; font-size: 8px; color: #856404; font-weight: 500;">PromptEndsHere when (<span class="idx">@t</span> == <span class="idx">@T</span> && T.0)</div>
-                <div style="background: #e8f4fd; border: 1px solid #0969da; border-radius: 3px; padding: 2px 6px; margin: 4px 0; font-size: 8px; color: #0969da; font-weight: 600;">Mark 1</div>
+                <div class="end-block">
+                  <div class="end-line"></div>
+                  <span class="end-text">PromptEndsHere when (<span class="idx">@t</span> == <span class="idx">@T</span> && <span class="idx">@T</span>.0)</span>
+                </div>
+                <div class="mark-block">
                 <div class="ctrl-block">
-                  <div class="ctrl-header">↻ ForEach i : 1 ... <span class="idx">@t</span>.substeps</div>
+                  <div class="ctrl-header">↻ ForEach <span class="idx">i</span> : 1 ... <span class="idx">@t</span>.substeps</div>
                   <div class="role-msg assistant">
                     <span class="role-badge">Role: Assistant</span>
                     <div class="role-body">
                       <div class="ctrl-block">
-                        <div class="ctrl-header">↻ ForEach tool : sys.tool_requests[<span class="idx">@t.i</span>]</div>
-                        <span class="ctx">tool.id_name_and_arg</span>
+                        <div class="ctrl-header">↻ ForEach <span class="idx">tool</span> : <span class="ctx">sys.tool_requests[<span class="idx">@t.i</span>]</span></div>
+                        <span class="idx">tool.id_name_and_arg</span>
                       </div>
                     </div>
                   </div>
                   <div class="ctrl-block">
-                    <div class="ctrl-header">↻ ForEach tool : sys.tool_requests[<span class="idx">@t.i</span>]</div>
+                    <div class="ctrl-header">↻ ForEach <span class="idx">tool</span> : <span class="ctx">sys.tool_requests[<span class="idx">@t.i</span>]</span></div>
                     <div class="role-msg tool">
                       <span class="role-badge">Role: Tool</span>
-                      <div class="role-body"><span class="ctx">tool.id_and_response</span></div>
+                      <div class="role-body"><span class="idx">tool.id_and_response</span></div>
                     </div>
                   </div>
-                  <div style="background: #fff3cd; border: 1px solid #e5990b; border-radius: 3px; padding: 2px 6px; margin: 4px 0; font-size: 8px; color: #856404; font-weight: 500;">PromptEndsHere when (<span class="idx">@t</span> == <span class="idx">@T</span> && <span class="idx">@T</span>.I)</div>
+                  <div class="end-block">
+                    <div class="end-line"></div>
+                    <span class="end-text">PromptEndsHere when (<span class="idx">@t</span> == <span class="idx">@T</span> && <span class="idx">@T</span>.I)</span>
+                  </div>
+                </div>
+                <div class="mark-bracket"><div class="mark-line"></div><span class="mark-num">1</span></div>
                 </div>
                 <div class="role-msg assistant">
                   <span class="role-badge">Role: Assistant</span>
@@ -614,7 +665,12 @@ title: Examples - ACDL
           <div class="example-card-code">
             <pre><span class="template">Pokemon</span>[<span class="context">@T</span>]: {
   <span class="role">U</span>: <span class="context">env.image.HUD</span> <span class="comment">// heads up display screenshot</span>
-  <span class="role">S</span>: { <span class="template">INTRO</span> <span class="template">GOAL</span> <span class="template">CONVENTIONS</span> <span class="template">AVAILABLE_TOOLS</span> }
+  <span class="role">S</span>: {
+    <span class="template">INTRO</span>
+    <span class="template">GOAL</span>
+    <span class="template">CONVENTIONS</span>
+    <span class="template">AVAILABLE_TOOLS</span>
+  }
   <span class="role">A</span>: {
     <span class="keyword">If</span> <span class="context">@T</span>&gt;1 {
       <span class="keyword">ForEach</span>(i: range(<span class="context">@T</span>-(<span class="context">@T</span>%100),<span class="context">@T</span>-1)) {
@@ -645,27 +701,31 @@ title: Examples - ACDL
               <div class="role-msg system">
                 <span class="role-badge">Role: System</span>
                 <div class="role-body">
-                  <span class="tpl">INTRO</span> <span class="tpl">GOAL</span> <span class="tpl">CONVENTIONS</span> <span class="tpl">AVAILABLE_TOOLS</span>
+                  <span class="tpl">INTRO</span><br>
+                  <span class="tpl">GOAL</span><br>
+                  <span class="tpl">CONVENTIONS</span><br>
+                  <span class="tpl">AVAILABLE_TOOLS</span>
                 </div>
               </div>
               <div class="role-msg assistant">
                 <span class="role-badge">Role: Assistant</span>
                 <div class="role-body">
                   <div class="ctrl-block">
-                    <div class="ctrl-header">? If <span class="idx">@T</span> &gt; 1</div>
+                    <div class="ctrl-header">◇ If <span class="idx">@T</span> &gt; 1:</div>
                     <div class="ctrl-block">
-                      <div class="ctrl-header">↻ ForEach i : <span class="idx">@T</span>-(<span class="idx">@T</span>%100) ... <span class="idx">@T</span>-1</div>
+                      <div class="ctrl-header">↻ ForEach <span class="idx">i</span> : <span class="idx">@T</span>-(<span class="idx">@T</span>%100) ... <span class="idx">@T</span>-1</div>
                       <span class="ctx">resp.action[<span class="idx">@i</span>]</span>
                     </div>
                     <div class="ctrl-block">
-                      <div class="ctrl-header">? If <span class="idx">@T</span>%100 == 0</div>
-                      <span class="ctx">summarize($actions)</span>
+                      <div class="ctrl-header">◇ If <span class="idx">@T</span>%100 == 0:</div>
+                      <div style="margin-bottom: 6px;"><span class="name-kw">Name</span> <span class="name-var">actions</span> <span class="name-assign">:=</span> [<span class="ctx">resp.action[<span class="idx">@t</span>]</span> | <span class="idx">t</span> ∈ <span class="idx">@T</span>-100 ... <span class="idx">@T</span>]</div>
+                      <span class="fn">summarize(<span class="name-var">actions</span>)</span>
                     </div>
                   </div>
                 </div>
               </div>
               <div class="ctrl-block">
-                <div class="ctrl-header">? If <span class="idx">@T</span>%25 == 0</div>
+                <div class="ctrl-header">◇ If <span class="idx">@T</span>%25 == 0:</div>
                 <div class="role-msg assistant">
                   <span class="role-badge">Role: Assistant</span>
                   <div class="role-body"><span class="ctx">critique_performance(sys.history[<span class="idx">@T</span>])</span></div>
@@ -712,12 +772,14 @@ title: Examples - ACDL
     <span class="context">sys</span>[agent].inventory[<span class="context">@T</span>]
     <span class="comment">// whom I see and what I know</span>
     <span class="keyword">ForEach</span>(a: <span class="context">env.seen_actors</span>[<span class="context">@T</span>]) {
-      a.name  a.description
+      a.name
+      a.description
       retrieve(<span class="context">sys</span>[agent].memory[<span class="context">@T</span>], a.name)
     }
     <span class="keyword">If</span> <span class="context">sys</span>[agent].in_conversation[<span class="context">@T</span>] {
       <span class="keyword">ForEach</span>(convTurn: <span class="context">sys</span>[agent].conversation[<span class="context">@T</span>]) {
-        convTurn.speaker  convTurn.content
+        convTurn.speaker
+        convTurn.content
       }
     }
   }
@@ -749,15 +811,17 @@ title: Examples - ACDL
                   <span class="ctx">sys[agent].inventory[<span class="idx">@T</span>]</span>
                   <span class="cmt">// whom I see and what I know</span>
                   <div class="ctrl-block">
-                    <div class="ctrl-header">↻ ForEach a : env.seen_actors[<span class="idx">@T</span>]</div>
-                    <span class="ctx">a.name</span> <span class="ctx">a.description</span><br>
+                    <div class="ctrl-header">↻ ForEach <span class="idx">a</span> : <span class="ctx">env.seen_actors[<span class="idx">@T</span>]</span></div>
+                    <span class="idx">a.name</span><br>
+                    <span class="idx">a.description</span><br>
                     <span class="ctx">retrieve(sys[agent].memory[<span class="idx">@T</span>], a.name)</span>
                   </div>
                   <div class="ctrl-block">
-                    <div class="ctrl-header">? If sys[agent].in_conversation[<span class="idx">@T</span>]</div>
+                    <div class="ctrl-header">◇ If <span class="ctx">sys[<span class="idx">agent</span>].in_conversation[<span class="idx">@T</span>]</span>:</div>
                     <div class="ctrl-block">
-                      <div class="ctrl-header">↻ ForEach convTurn : sys[agent].conversation[<span class="idx">@T</span>]</div>
-                      <span class="ctx">convTurn.speaker</span> <span class="ctx">convTurn.content</span>
+                      <div class="ctrl-header">↻ ForEach <span class="idx">convTurn</span> : <span class="ctx">sys[<span class="idx">agent</span>].conversation[<span class="idx">@T</span>]</span></div>
+                      <span class="idx">convTurn.speaker</span><br>
+                      <span class="idx">convTurn.content</span>
                     </div>
                   </div>
                 </div>
@@ -767,7 +831,7 @@ title: Examples - ACDL
                 <div class="role-body">
                   <span class="ctx">sys[agent].available_actions</span>
                   <div class="ctrl-block">
-                    <div class="ctrl-header">? If sys[agent].in_conversation[<span class="idx">@T</span>]</div>
+                    <div class="ctrl-header">◇ If <span class="ctx">sys[<span class="idx">agent</span>].in_conversation[<span class="idx">@T</span>]</span>:</div>
                     <span class="tpl">CONTINUE_THE_CONVERSATION</span>
                   </div>
                 </div>

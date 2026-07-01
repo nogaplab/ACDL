@@ -108,13 +108,53 @@ let regularFont: opentype.Font | null = null;
 let boldFont: opentype.Font | null = null;
 let fontsLoaded = false;
 
-// Load fonts synchronously (Node.js only - browser uses fallback measurement)
+// In the browser the .ttf files are not on disk. The standalone/website build
+// injects the JetBrains Mono fonts as base64 on `window.__ACDL_FONTS__` so that
+// glyph metrics (measureText) and the embedded @font-face match the Node CLI
+// exactly — otherwise the SVG layout is computed with guessed widths and the
+// rasterized text spills out of its boxes.
+function getBrowserFonts(): { regular?: string; bold?: string } | undefined {
+  if (!isBrowser) return undefined;
+  return (window as any).__ACDL_FONTS__;
+}
+
+// Decode a base64 string into an ArrayBuffer for opentype.parse() in the browser.
+function base64ToArrayBuffer(base64: string): ArrayBuffer {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes.buffer;
+}
+
+// Load fonts so measureText() can use real JetBrains Mono metrics.
+// Node.js: read the .ttf files from disk. Browser: parse the base64 fonts the
+// build injected on window.__ACDL_FONTS__.
 export function loadFonts(): void {
   if (fontsLoaded) return;
+
+  if (isBrowser) {
+    const fonts = getBrowserFonts();
+    if (!fonts) {
+      // Fonts not injected yet. The standalone build sets them synchronously,
+      // but the dev build fetches them async — don't latch, so a later call
+      // (e.g. at PDF-export time) can pick them up once they arrive.
+      return;
+    }
+    fontsLoaded = true;
+    try {
+      if (fonts.regular) regularFont = opentype.parse(base64ToArrayBuffer(fonts.regular));
+      if (fonts.bold) boldFont = opentype.parse(base64ToArrayBuffer(fonts.bold));
+    } catch (e) {
+      // Failed to parse injected fonts, will use fallback measurement
+    }
+    return;
+  }
+
   fontsLoaded = true;
 
-  // Skip font loading in browser environment - will use fallback measurement
-  if (isBrowser || !fs || !path) {
+  if (!fs || !path) {
     return;
   }
 
@@ -134,10 +174,16 @@ export function loadFonts(): void {
   }
 }
 
-// Get font base64 for embedding (Node.js only)
+// Get font base64 for embedding as @font-face in the SVG.
+// Node.js: read from disk. Browser: return the build-injected base64.
 export function getFontBase64(fontType: 'regular' | 'bold'): string {
-  // Cannot load fonts in browser environment
-  if (isBrowser || !fs || !path) {
+  if (isBrowser) {
+    const fonts = getBrowserFonts();
+    if (!fonts) return '';
+    return (fontType === 'bold' ? fonts.bold : fonts.regular) || '';
+  }
+
+  if (!fs || !path) {
     return '';
   }
 

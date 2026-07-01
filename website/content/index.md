@@ -151,7 +151,11 @@ title: ACDL - Agentic Context Description Language
           <p>Four chat roles (System, User, Assistant, Tool) and a completion format. Each message carries exactly one role with visual color-coding.</p>
         </div>
         <div class="feature-card">
-          <div class="feature-icon icon-blue">@T</div>
+          <div class="feature-icons">
+            <span class="feature-icon icon-blue">@T</span>
+            <span class="feature-icon icon-blue">@T.i</span>
+            <span class="feature-icon icon-blue">x[@T]</span>
+          </div>
           <h3>Time Indexing</h3>
           <p>Explicit indices describe context evolution. @T is the current step, with sub-steps (@T.I) and history iteration support.</p>
         </div>
@@ -175,7 +179,10 @@ title: ACDL - Agentic Context Description Language
           <p>ForEach loops, If/ElseIf/Else conditions, and Switch/Case constructs determine context based on runtime state.</p>
         </div>
         <div class="feature-card">
-          <div class="feature-icon icon-blue">ABC</div>
+          <div class="feature-icons">
+            <span class="feature-icon icon-blue">ABC</span>
+            <span class="feature-icon icon-blue">ABC(a,b)</span>
+          </div>
           <h3>Templates</h3>
           <p>ALL_CAPS placeholders for text blocks. Separates architecture from prose, with optional parameterization.</p>
         </div>
