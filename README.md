@@ -45,6 +45,8 @@ The language and rendering pipeline live here:
 - **`render-to-svg.ts` / `render-to-png.ts` / `render-to-pdf.ts`** — export renderers
   for the respective formats.
 - **`main-cli.ts`** — command-line entry point.
+- **`diff.ts` / `main-diff.ts`** — structural diff between two `.acdl` files (see
+  [Diffing ACDL files](#diffing-acdl-files)).
 - **`main-ui.ts` / `ui.ts` / `index.html` / `styles.css`** — the browser-based editor
   and live preview.
 - **`editor/`** — CodeMirror integration: ACDL language definition, theme, and linting.
@@ -69,6 +71,44 @@ npm run render-png
 npm run render-pdf
 ```
 
+## Diffing ACDL files
+
+Comparing two `.acdl` specs with a plain text `diff` is noisy: reindentation,
+reordered role lines, and cosmetic whitespace all show up as changes. ACDL ships a
+**structural diff** instead — it parses both files and compares them at the level you
+actually read ACDL at (content lines and block headers), then prints a folded,
+source-like report. Only meaningful edits surface: a role changing (`U` → `T`), an
+index changing (`@t` → `@T`), a loop range changing, a block being wrapped in a `Mark`.
+
+```bash
+# compare two specs (no Bun needed — runs on plain Node via esbuild)
+node scripts/diff.mjs a.acdl b.acdl
+
+# or through npm
+npm run diff -- a.acdl b.acdl
+
+# machine-readable output for tooling / CI
+node scripts/diff.mjs a.acdl b.acdl --json
+```
+
+The exit code is `0` when the two files are structurally identical and `1` when they
+differ, so it drops into scripts and pre-commit checks. Example:
+
+```text
+React1[@T]  →  React2[@T.I]
+  system:
+  ~ TASK_DESC  →  INSTRUCTIONS_AND_TOOLS
+  - AVAILABLE_TOOLS
++ Mark 1
+  + ForEach(t: 1...@T-1)
+    + user: env.user_question[@t]
+  user:
+  ~ env.user_input[@1]  →  env.user_question[@T]
+```
+
+The same diff is available interactively in the **VS Code extension** (`ACDL: Diff…`)
+and on the website as a live, in-browser tool.
+
 ## VS Code extension
 
 [`extension/`](extension/) contains a Visual Studio Code extension that brings ACDL support
@@ -77,6 +117,7 @@ to the editor:
 - **Syntax highlighting** for `.acdl` files
 - **Real-time diagnostics** and validation as you type
 - **Preview panel** to visualize a prompt (`ACDL: Show Preview`)
+- **Structural diff** between two `.acdl` files (`ACDL: Diff…`, or right-click two files)
 - **Go-to-definition** for labels and templates
 
 Build it with:

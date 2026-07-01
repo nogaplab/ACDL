@@ -916,11 +916,11 @@ var Parser = class {
     this.consume("SYMBOL", "$");
     const varName = this.consume("IDENT").value;
     const indices = this.parseOptionalIndices();
-    let path2;
+    let path3;
     if (this.match("SYMBOL", ".")) {
-      path2 = this.parsePathDesc();
+      path3 = this.parsePathDesc();
     }
-    return nameRef({ name: varName, indices, path: path2 });
+    return nameRef({ name: varName, indices, path: path3 });
   }
   /* ───────────────── Fragment Invocations ───────────────── */
   /**
@@ -962,13 +962,13 @@ var Parser = class {
     const baseTok = this.consume("KEYWORD");
     const base = baseTok.value;
     const indices = this.parseOptionalIndices();
-    let path2;
+    let path3;
     if (this.match("SYMBOL", ".")) {
-      path2 = this.parsePathDesc();
+      path3 = this.parsePathDesc();
     }
     const nextTok = this.peek();
     const comment = nextTok.type === "COMMENT" && nextTok.line === this.lastConsumedLine ? this.consume("COMMENT").value : void 0;
-    return contextVar({ base, indices, path: path2, comment });
+    return contextVar({ base, indices, path: path3, comment });
   }
   parsePathDesc() {
     const tok = this.peek();
@@ -1009,11 +1009,11 @@ var Parser = class {
       const comment = nextTok.type === "COMMENT" && nextTok.line === this.lastConsumedLine ? this.consume("COMMENT").value : void 0;
       return func({ name, arguments: args, indices, comment });
     }
-    let path2;
+    let path3;
     if (this.match("SYMBOL", ".")) {
-      path2 = this.parsePathDesc();
+      path3 = this.parsePathDesc();
     }
-    return otherIndex(identifier({ name, path: path2 }));
+    return otherIndex(identifier({ name, path: path3 }));
   }
   parseTextArgs() {
     const args = [];
@@ -1054,22 +1054,22 @@ var Parser = class {
     }
     if (tok.type === "NUMBER") {
       const name = this.consume("NUMBER").value;
-      let path2;
+      let path3;
       if (this.match("SYMBOL", ".")) {
-        path2 = this.parsePathDesc();
+        path3 = this.parsePathDesc();
       }
-      return identifier({ name, path: path2 });
+      return identifier({ name, path: path3 });
     }
     if (tok.type === "IDENT") {
       if (this.peekNext().value === "(") {
         return this.parseTemplateOrFunc();
       }
       const name = this.consume("IDENT").value;
-      let path2;
+      let path3;
       if (this.match("SYMBOL", ".")) {
-        path2 = this.parsePathDesc();
+        path3 = this.parsePathDesc();
       }
-      return otherIndex(identifier({ name, path: path2 }));
+      return otherIndex(identifier({ name, path: path3 }));
     }
     throw new Error(`[${tok.line}:${tok.col}] Unexpected token in arguments: ${tok.type} (${tok.value})`);
   }
@@ -1130,11 +1130,11 @@ var Parser = class {
     }
     if (tok.type === "NUMBER") {
       const name = this.consume("NUMBER").value;
-      let path2;
+      let path3;
       if (this.match("SYMBOL", ".")) {
-        path2 = this.parsePathDesc();
+        path3 = this.parsePathDesc();
       }
-      return identifier({ name, path: path2 });
+      return identifier({ name, path: path3 });
     }
     if (tok.type === "IDENT") {
       const name = this.consume("IDENT").value;
@@ -1145,11 +1145,11 @@ var Parser = class {
         const indices = this.parseOptionalIndices();
         return func({ name, arguments: args, indices });
       }
-      let path2;
+      let path3;
       if (this.match("SYMBOL", ".")) {
-        path2 = this.parsePathDesc();
+        path3 = this.parsePathDesc();
       }
-      return identifier({ name, path: path2 });
+      return identifier({ name, path: path3 });
     }
     throw new Error(`[${tok.line}:${tok.col}] Unexpected token in index: ${tok.type} (${tok.value})`);
   }
@@ -1851,9 +1851,9 @@ function renderPromptTitle(title) {
   const indexSuffix = renderIndexList(title.indices);
   return `<div class="prompt-title"><h1>${escapeHtml(title.name)}${indexSuffix}</h1></div>`;
 }
-function renderPathDesc(path2) {
+function renderPathDesc(path3) {
   const segments = [];
-  let current = path2;
+  let current = path3;
   while (current) {
     const segIndexText = current.indices.length > 0 ? renderIndexList(current.indices) : "";
     segments.push(`${escapeHtml(current.base)}${segIndexText}`);
@@ -2157,28 +2157,28 @@ function renderRangeExpr(range) {
 function renderLoopOutsideRole(block) {
   const indexHtml = `<span class="loop-var">${renderIndexContent(block.index.value)}</span>`;
   const iterableHtml = `<span class="loop-iterable">${renderIterable(block.iterable)}</span>`;
-  const header = `<span class="keyword">ForEach</span> ${indexHtml}: ${iterableHtml}`;
+  const header2 = `<span class="keyword">ForEach</span> ${indexHtml}: ${iterableHtml}`;
   const bodyHtml = block.body.map(
     (child) => `<div class="loop-child">${renderTopLevelBlock(child)}</div>`
   ).join("\n");
   return wrapBlock(
     "loop-block-outside-role",
-    header,
+    header2,
     bodyHtml
   );
 }
 function renderLoopInsideRole(block) {
   const indexHtml = `<span class="loop-var">${renderIndexContent(block.index.value)}</span>`;
   const iterableHtml = `<span class="loop-iterable">${renderIterable(block.iterable)}</span>`;
-  const header = `<span class="keyword">ForEach</span> ${indexHtml}: ${iterableHtml}`;
+  const header2 = `<span class="keyword">ForEach</span> ${indexHtml}: ${iterableHtml}`;
   const bodyHtml = block.body.map(
     (child) => `<div class="role-loop-child">${renderRoleBuildingBlock(child)}</div>`
   ).join("\n");
-  return wrapBlock("loop-block-inside-role", header, bodyHtml);
+  return wrapBlock("loop-block-inside-role", header2, bodyHtml);
 }
 function renderSwitchOutsideRole(block) {
   const exprHtml = `<span class="switch-expr">${renderExpressionTokens(block.expression)}</span>`;
-  const header = `<span class="keyword">Switch</span>(${exprHtml}):`;
+  const header2 = `<span class="keyword">Switch</span>(${exprHtml}):`;
   const casesHtml = block.cases.map((c) => {
     const bodyHtml = c.body.map(
       (child) => `<div class="switch-child">${renderTopLevelBlock(child)}</div>`
@@ -2201,13 +2201,13 @@ function renderSwitchOutsideRole(block) {
   })() : "";
   return wrapBlock(
     "switch-block-outside-role",
-    header,
+    header2,
     `${casesHtml}${defaultHtml}`
   );
 }
 function renderSwitchInsideRole(block) {
   const exprHtml = `<span class="switch-expr">${renderExpressionTokens(block.expression)}</span>`;
-  const header = `<span class="keyword">Switch</span>(${exprHtml}):`;
+  const header2 = `<span class="keyword">Switch</span>(${exprHtml}):`;
   const casesHtml = block.cases.map((c) => {
     const bodyHtml = c.body.map(
       (child) => `<div class="role-switch-child">${renderRoleBuildingBlock(child)}</div>`
@@ -2230,7 +2230,7 @@ function renderSwitchInsideRole(block) {
   })() : "";
   return wrapBlock(
     "switch-block-inside-role",
-    header,
+    header2,
     `${casesHtml}${defaultHtml}`
   );
 }
@@ -2798,11 +2798,595 @@ function findFirstOccurrence(document, word, currentPosition) {
   return void 0;
 }
 
+// src/diff.ts
+var vscode4 = __toESM(require("vscode"));
+var fs2 = __toESM(require("fs"));
+var path2 = __toESM(require("path"));
+
+// ../src/diff.ts
+function diffFiles(srcA, srcB) {
+  const [a, b] = muteConsole(() => [
+    new Parser(srcA).parseFile(),
+    new Parser(srcB).parseFile()
+  ]);
+  const out = [];
+  if (a.length === 1 && b.length === 1) {
+    diffPair(a[0], b[0], 0, out);
+  } else {
+    diffList(a, b, 0, out);
+  }
+  return out;
+}
+function diffList(a, b, depth, out) {
+  const keep = lcs(a.map(sig), b.map(sig));
+  let i = 0;
+  let j = 0;
+  for (const [mi, mj] of keep) {
+    while (i < mi) emitSubtree(a[i++], "remove", depth, out);
+    while (j < mj) emitSubtree(b[j++], "add", depth, out);
+    diffPair(a[i++], b[j++], depth, out);
+  }
+  while (i < a.length) emitSubtree(a[i++], "remove", depth, out);
+  while (j < b.length) emitSubtree(b[j++], "add", depth, out);
+}
+function diffPair(a, b, depth, out) {
+  if (!isNode(a) || !isNode(b) || a.kind !== b.kind) {
+    changeIfDiff(ser(a), ser(b), depth, out);
+    return;
+  }
+  switch (a.kind) {
+    case "prompt": {
+      changeIfDiff(
+        ser(a.title),
+        ser(b.title),
+        depth,
+        out,
+        /*asHeader*/
+        true
+      );
+      diffBody(a.body, b.body, depth, out);
+      return;
+    }
+    case "role-message": {
+      const kids = [];
+      diffList(a.body, b.body, depth + 1, kids);
+      const roleChanged = a.role !== b.role;
+      if (kids.length === 0) {
+        if (roleChanged) change(ser(a), ser(b), depth, out);
+        return;
+      }
+      out.push(header(roleChanged ? `${a.role}: \u2192 ${b.role}:` : `${a.role}:`, depth, roleChanged));
+      out.push(...kids);
+      return;
+    }
+    case "loop-block-outside-role":
+    case "loop-block-inside-role":
+      diffContainer(
+        `ForEach(${ser(a.index)}: ${ser(a.iterable)})`,
+        `ForEach(${ser(b.index)}: ${ser(b.iterable)})`,
+        a.body,
+        b.body,
+        depth,
+        out
+      );
+      return;
+    case "mark-block":
+    case "mark-block-inside-role":
+      diffContainer(`Mark ${a.markNumber}`, `Mark ${b.markNumber}`, a.body, b.body, depth, out);
+      return;
+    case "conditional-block-outside-role":
+    case "conditional-block-inside-role":
+      diffContainer(
+        `If(${serFlat(a.Ifcondition)})`,
+        `If(${serFlat(b.Ifcondition)})`,
+        a.IfBody,
+        b.IfBody,
+        depth,
+        out
+      );
+      changeIfDiff(serElse(a), serElse(b), depth + 1, out);
+      return;
+    case "switch-block-outside-role":
+    case "switch-block-inside-role":
+      diffContainer(
+        `Switch(${serFlat(a.expression)})`,
+        `Switch(${serFlat(b.expression)})`,
+        a.cases,
+        b.cases,
+        depth,
+        out
+      );
+      return;
+    case "case-block-outside-role":
+    case "case-block-inside-role":
+      diffContainer(`case ${serFlat(a.match)}`, `case ${serFlat(b.match)}`, a.body, b.body, depth, out);
+      return;
+    case "str-frag-def":
+    case "roles-frag-def":
+      diffContainer(
+        `${a.kind === "str-frag-def" ? "StrFrag" : "RolesFrag"} ${a.name}`,
+        `${b.kind === "str-frag-def" ? "StrFrag" : "RolesFrag"} ${b.name}`,
+        a.body,
+        b.body,
+        depth,
+        out
+      );
+      return;
+    default:
+      changeIfDiff(ser(a), ser(b), depth, out);
+      return;
+  }
+}
+function diffContainer(headA, headB, aBody, bBody, depth, out) {
+  const kids = [];
+  diffList(aBody ?? [], bBody ?? [], depth + 1, kids);
+  const headChanged = headA !== headB;
+  if (headChanged) change(headA, headB, depth, out);
+  else if (kids.length) out.push(header(headA, depth, false));
+  out.push(...kids);
+}
+function diffBody(a, b, depth, out) {
+  const aBlocks = a?.kind === "chat-prompt-body" ? a.body : a?.message?.body ?? [];
+  const bBlocks = b?.kind === "chat-prompt-body" ? b.body : b?.message?.body ?? [];
+  diffList(aBlocks, bBlocks, depth, out);
+}
+function emitSubtree(node, op, depth, out) {
+  const kids = childBlocks(node);
+  if (kids && kids.length) {
+    out.push({ op, depth, text: containerHeader(node) });
+    for (const k of kids) emitSubtree(k, op, depth + 1, out);
+  } else {
+    out.push({ op, depth, text: ser(node) });
+  }
+}
+function childBlocks(node) {
+  if (!isNode(node)) return null;
+  switch (node.kind) {
+    case "role-message":
+      return node.body.length === 1 && isAtomic(node.body[0]) ? null : node.body;
+    case "loop-block-outside-role":
+    case "loop-block-inside-role":
+    case "mark-block":
+    case "mark-block-inside-role":
+    case "str-frag-def":
+    case "roles-frag-def":
+      return node.body;
+    case "prompt":
+      return node.body?.kind === "chat-prompt-body" ? node.body.body : node.body?.message?.body ?? null;
+    default:
+      return null;
+  }
+}
+function containerHeader(node) {
+  switch (node.kind) {
+    case "role-message":
+      return `${node.role}:`;
+    case "loop-block-outside-role":
+    case "loop-block-inside-role":
+      return `ForEach(${ser(node.index)}: ${ser(node.iterable)})`;
+    case "mark-block":
+    case "mark-block-inside-role":
+      return `Mark ${node.markNumber}`;
+    case "str-frag-def":
+      return `StrFrag ${node.name}`;
+    case "roles-frag-def":
+      return `RolesFrag ${node.name}`;
+    case "prompt":
+      return ser(node.title);
+    default:
+      return ser(node);
+  }
+}
+function isAtomic(node) {
+  return isNode(node) && childBlocks(node) === null;
+}
+function header(text, depth, changed) {
+  return changed ? { op: "change", depth, before: text.split(" \u2192 ")[0], after: text.split(" \u2192 ")[1] ?? text } : { op: "context", depth, text };
+}
+function change(before, after, depth, out) {
+  out.push({ op: "change", depth, before, after });
+}
+function changeIfDiff(before, after, depth, out, asHeader = false) {
+  if (before === after) {
+    if (asHeader) out.push({ op: "context", depth, text: before });
+    return;
+  }
+  out.push({ op: "change", depth, before, after });
+}
+function serElse(cond) {
+  const parts = [];
+  (cond.elseif ?? []).forEach((c, i) => {
+    parts.push(`elseif(${serFlat(c)}){${(cond.elseifBody?.[i] ?? []).map(ser).join("; ")}}`);
+  });
+  if (cond.elseBody) parts.push(`else{${cond.elseBody.map(ser).join("; ")}}`);
+  return parts.join(" ");
+}
+function escapeHtml3(s) {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+function formatDiffHtml(lines) {
+  const real = lines.filter((l) => l.op !== "context");
+  if (real.length === 0) {
+    return `<div class="acdl-diff acdl-diff-empty">No structural differences.</div>`;
+  }
+  const rows = lines.map((l) => {
+    const pad = `style="padding-left:${l.depth * 1.5 + 0.5}em"`;
+    switch (l.op) {
+      case "context":
+        return `<div class="dl dl-context" ${pad}><span class="mk"> </span><span class="tx">${escapeHtml3(l.text)}</span></div>`;
+      case "add":
+        return `<div class="dl dl-add" ${pad}><span class="mk">+</span><span class="tx">${escapeHtml3(l.text)}</span></div>`;
+      case "remove":
+        return `<div class="dl dl-remove" ${pad}><span class="mk">-</span><span class="tx">${escapeHtml3(l.text)}</span></div>`;
+      case "change":
+        return `<div class="dl dl-change" ${pad}><span class="mk">~</span><span class="tx"><span class="old">${escapeHtml3(
+          l.before ?? ""
+        )}</span><span class="arw">\u2192</span><span class="new">${escapeHtml3(l.after ?? "")}</span></span></div>`;
+    }
+  }).join("\n");
+  const n = (op) => real.filter((l) => l.op === op).length;
+  const summary = `<div class="dl-summary">${real.length} change(s): <span class="s-add">+${n("add")} added</span>, <span class="s-remove">\u2212${n("remove")} removed</span>, <span class="s-change">~${n("change")} modified</span></div>`;
+  return `<div class="acdl-diff">
+${rows}
+${summary}
+</div>`;
+}
+var DIFF_CSS = `
+.acdl-diff {
+  font-family: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+  font-size: 13px;
+  line-height: 1.7;
+  --diff-add: #1a7f37;
+  --diff-add-bg: rgba(26,127,55,0.08);
+  --diff-remove: #cf222e;
+  --diff-remove-bg: rgba(207,34,46,0.08);
+  --diff-change: #9a6700;
+  --diff-change-bg: rgba(154,103,0,0.08);
+  --diff-context: #6e7781;
+}
+.acdl-diff .dl { white-space: pre-wrap; word-break: break-word; border-radius: 3px; }
+.acdl-diff .mk { display: inline-block; width: 1.2em; font-weight: 700; opacity: 0.85; }
+.acdl-diff .dl-context { color: var(--diff-context); }
+.acdl-diff .dl-add { color: var(--diff-add); background: var(--diff-add-bg); }
+.acdl-diff .dl-remove { color: var(--diff-remove); background: var(--diff-remove-bg); }
+.acdl-diff .dl-change { color: var(--diff-change); background: var(--diff-change-bg); }
+.acdl-diff .dl-change .old { text-decoration: line-through; opacity: 0.7; }
+.acdl-diff .dl-change .arw { margin: 0 0.5em; opacity: 0.6; }
+.acdl-diff .dl-change .new { font-weight: 600; }
+.acdl-diff .dl-summary { margin-top: 1em; padding-top: 0.6em; border-top: 1px solid rgba(128,128,128,0.25); font-size: 12px; color: var(--diff-context); }
+.acdl-diff .s-add { color: var(--diff-add); }
+.acdl-diff .s-remove { color: var(--diff-remove); }
+.acdl-diff .s-change { color: var(--diff-change); }
+.acdl-diff-empty { color: var(--diff-context); font-style: italic; }
+`;
+function sig(node) {
+  if (!isNode(node)) return `raw:${serFlat(node)}`;
+  switch (node.kind) {
+    case "prompt":
+      return `prompt:${node.title?.name ?? ""}`;
+    case "role-message":
+      return `role:${node.role}`;
+    case "mark-block":
+    case "mark-block-inside-role":
+      return `mark:${node.markNumber}`;
+    case "name-def":
+      return `namedef:${node.name}`;
+    case "str-frag-def":
+    case "roles-frag-def":
+    case "str-frag-invocation":
+    case "roles-frag-invocation":
+      return `frag:${node.name}`;
+    default:
+      return node.kind;
+  }
+}
+function lcs(a, b) {
+  const n = a.length;
+  const m = b.length;
+  const dp = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0));
+  for (let i2 = n - 1; i2 >= 0; i2--) {
+    for (let j2 = m - 1; j2 >= 0; j2--) {
+      dp[i2][j2] = a[i2] === b[j2] ? dp[i2 + 1][j2 + 1] + 1 : Math.max(dp[i2 + 1][j2], dp[i2][j2 + 1]);
+    }
+  }
+  const pairs = [];
+  let i = 0;
+  let j = 0;
+  while (i < n && j < m) {
+    if (a[i] === b[j]) {
+      pairs.push([i, j]);
+      i++;
+      j++;
+    } else if (dp[i + 1][j] >= dp[i][j + 1]) {
+      i++;
+    } else {
+      j++;
+    }
+  }
+  return pairs;
+}
+function isNode(x) {
+  return x !== null && typeof x === "object" && !Array.isArray(x) && typeof x.kind === "string";
+}
+function muteConsole(fn) {
+  const orig = console.log;
+  console.log = () => {
+  };
+  try {
+    return fn();
+  } finally {
+    console.log = orig;
+  }
+}
+function ser(n) {
+  if (n == null) return "";
+  if (Array.isArray(n)) return serFlat(n);
+  if (!isNode(n)) return String(n);
+  switch (n.kind) {
+    case "prompt":
+      return `${ser(n.title)}: {\u2026}`;
+    case "title":
+      return `${n.name}${serIndices(n.indices)}`;
+    case "identifier":
+      return `${n.name}${n.path ? "." + serPath(n.path) : ""}`;
+    case "context-var":
+      return `${n.base}${serIndices(n.indices)}${serPathChain(n.path)}${serComment(n.comment)}`;
+    case "path-desc":
+      return serPath(n);
+    case "time-index":
+      return `@${ser(n.value)}`;
+    case "other-index":
+      return ser(n.value);
+    case "arithmetic":
+      return `${ser(n.left)}${n.operator.join("")}${ser(n.right)}`;
+    case "name-ref":
+      return `$${n.name}${serIndices(n.indices)}${serPathChain(n.path)}`;
+    case "name-def":
+      return `name ${n.name} := ${ser(n.value)}`;
+    case "function":
+      return `${n.name}(${(n.arguments ?? []).map(ser).join(", ")})${serIndices(n.indices)}`;
+    case "template":
+      return n.arguments?.length ? `${n.name}[${n.arguments.map(ser).join(", ")}]` : n.name;
+    case "list-comprehension":
+      return `[${ser(n.element)} for ${n.variable} in ${ser(n.iterable)}]`;
+    case "str-frag-invocation":
+    case "roles-frag-invocation":
+      return `Frag ${n.name}[${(n.arguments ?? []).map(ser).join(", ")}]`;
+    case "str-frag-def":
+      return `StrFrag ${n.name}[${(n.params ?? []).map(ser).join(", ")}]: {\u2026}`;
+    case "roles-frag-def":
+      return `RolesFrag ${n.name}[${(n.params ?? []).map(ser).join(", ")}]: {\u2026}`;
+    case "role-message":
+      return `${n.role}: ${serBodyPreview(n.body)}`;
+    case "comment-block":
+      return `// ${n.text}`;
+    case "mark-block":
+    case "mark-block-inside-role":
+      return `Mark ${n.markNumber} {\u2026}`;
+    case "loop-block-outside-role":
+    case "loop-block-inside-role":
+      return `ForEach(${ser(n.index)}: ${ser(n.iterable)}) {\u2026}`;
+    case "conditional-block-outside-role":
+    case "conditional-block-inside-role":
+      return `If(${serFlat(n.Ifcondition)}) {\u2026}`;
+    case "switch-block-outside-role":
+    case "switch-block-inside-role":
+      return `Switch(${serFlat(n.expression)}) {\u2026}`;
+    case "case-block-outside-role":
+    case "case-block-inside-role":
+      return `case ${serFlat(n.match)}: {\u2026}`;
+    case "default-case-block-outside-role":
+    case "default-case-block-inside-role":
+      return `default: {\u2026}`;
+    case "end-block":
+      return `END if ${serFlat(n.condition)}`;
+    case "range-expr":
+      return `${serFlat(n.start)}...${serFlat(n.end)}${n.step ? ` every ${serFlat(n.step)}` : ""}`;
+    case "iterable":
+      return serFlat(n.tokens);
+    case "chat-prompt-body":
+    case "completion-prompt-body":
+      return "{\u2026}";
+    default:
+      return n.kind;
+  }
+}
+function serIndices(indices) {
+  if (!indices || indices.length === 0) return "";
+  return `[${indices.map(ser).join(",")}]`;
+}
+function serPath(path3) {
+  const segs = [];
+  let cur = path3;
+  while (cur) {
+    segs.push(`${cur.base}${serIndices(cur.indices)}`);
+    cur = cur.next;
+  }
+  return segs.join(".");
+}
+function serPathChain(path3) {
+  return path3 ? "." + serPath(path3) : "";
+}
+function serComment(c) {
+  return c ? ` // ${c}` : "";
+}
+function serFlat(x) {
+  if (x == null) return "";
+  if (!Array.isArray(x)) return isNode(x) ? ser(x) : String(x);
+  if (x.length > 0 && x.every((el) => el && typeof el === "object" && "value" in el && !("kind" in el))) {
+    return joinExprTokens(x);
+  }
+  return x.map((el) => Array.isArray(el) ? serFlat(el) : isNode(el) ? ser(el) : String(el)).join(" ").replace(/\s+/g, " ").trim();
+}
+var NO_SPACE_BEFORE = /* @__PURE__ */ new Set([".", ",", "]", ")", "[", "("]);
+var NO_SPACE_AFTER = /* @__PURE__ */ new Set([".", "@", "[", "("]);
+function joinExprTokens(tokens) {
+  let out = "";
+  let prev = "";
+  for (const tok of tokens) {
+    const v = String(tok.value);
+    const glue = out === "" || NO_SPACE_BEFORE.has(v) || NO_SPACE_AFTER.has(prev);
+    out += (glue ? "" : " ") + v;
+    prev = v;
+  }
+  return out;
+}
+function serBodyPreview(body) {
+  if (!body || body.length === 0) return "(empty)";
+  const first = ser(body[0]);
+  return body.length === 1 ? first : `${first} \u2026 (+${body.length - 1})`;
+}
+
+// src/diff.ts
+var diffPanel;
+function registerDiffCommand(context) {
+  context.subscriptions.push(
+    vscode4.commands.registerCommand("acdl.diff", async () => {
+      const active = vscode4.window.activeTextEditor;
+      if (!active || active.document.languageId !== "acdl") {
+        vscode4.window.showWarningMessage("Open an .acdl file to diff, then run ACDL: Diff.");
+        return;
+      }
+      const other = await pickOtherFile(active.document.uri);
+      if (!other) return;
+      showDiff(
+        { name: labelFor(active.document.uri), text: active.document.getText() },
+        { name: labelFor(other), text: readFile(other) },
+        context
+      );
+    })
+  );
+  context.subscriptions.push(
+    vscode4.commands.registerCommand(
+      "acdl.diffSelected",
+      async (clicked, selected) => {
+        const acdl = (selected ?? [clicked]).filter((u) => u?.fsPath.endsWith(".acdl"));
+        if (acdl.length >= 2) {
+          showDiff(
+            { name: labelFor(acdl[0]), text: readFile(acdl[0]) },
+            { name: labelFor(acdl[1]), text: readFile(acdl[1]) },
+            context
+          );
+          return;
+        }
+        const base = acdl[0] ?? clicked;
+        const other = await pickOtherFile(base);
+        if (!other) return;
+        showDiff(
+          { name: labelFor(base), text: readFile(base) },
+          { name: labelFor(other), text: readFile(other) },
+          context
+        );
+      }
+    )
+  );
+}
+async function pickOtherFile(exclude) {
+  const seen = /* @__PURE__ */ new Set([exclude.toString()]);
+  const items = [];
+  for (const doc of vscode4.workspace.textDocuments) {
+    if (doc.languageId === "acdl" && !seen.has(doc.uri.toString())) {
+      seen.add(doc.uri.toString());
+      items.push({ label: `$(file) ${labelFor(doc.uri)}`, description: "open", uri: doc.uri });
+    }
+  }
+  const found = await vscode4.workspace.findFiles("**/*.acdl", "**/node_modules/**", 200);
+  for (const uri of found) {
+    if (!seen.has(uri.toString())) {
+      seen.add(uri.toString());
+      items.push({
+        label: `$(file) ${path2.basename(uri.fsPath)}`,
+        description: vscode4.workspace.asRelativePath(uri),
+        uri
+      });
+    }
+  }
+  items.push({ label: "$(folder-opened) Browse\u2026", description: "pick a file", uri: void 0 });
+  const chosen = await vscode4.window.showQuickPick(items, {
+    title: `Diff ${labelFor(exclude)} against\u2026`,
+    placeHolder: "Select the .acdl file to compare against",
+    matchOnDescription: true
+  });
+  if (!chosen) return void 0;
+  if (chosen.uri) return chosen.uri;
+  const picked = await vscode4.window.showOpenDialog({
+    canSelectMany: false,
+    filters: { ACDL: ["acdl"] },
+    openLabel: "Diff against this file"
+  });
+  return picked?.[0];
+}
+function readFile(uri) {
+  const open = vscode4.workspace.textDocuments.find((d) => d.uri.toString() === uri.toString());
+  if (open) return open.getText();
+  return fs2.readFileSync(uri.fsPath, "utf-8");
+}
+function labelFor(uri) {
+  return path2.basename(uri.fsPath);
+}
+function showDiff(a, b, context) {
+  if (!diffPanel) {
+    diffPanel = vscode4.window.createWebviewPanel(
+      "acdlDiff",
+      "ACDL Diff",
+      { viewColumn: vscode4.ViewColumn.Active, preserveFocus: false },
+      { enableScripts: false, retainContextWhenHidden: true }
+    );
+    diffPanel.onDidDispose(() => diffPanel = void 0, null, context.subscriptions);
+  }
+  diffPanel.title = `ACDL Diff: ${a.name} \u2192 ${b.name}`;
+  diffPanel.webview.html = renderDiffHtml(a, b);
+  diffPanel.reveal(diffPanel.viewColumn, false);
+}
+function renderDiffHtml(a, b) {
+  let body;
+  try {
+    body = formatDiffHtml(diffFiles(a.text, b.text));
+  } catch (err) {
+    body = `<div class="acdl-diff-error">Could not parse: ${escapeHtml4(err?.message ?? String(err))}</div>`;
+  }
+  return `<!DOCTYPE html>
+<html><head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline';">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  :root { color-scheme: light dark; }
+  body {
+    margin: 0; padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    color: #1f2328; background: #ffffff;
+  }
+  .acdl-diff-head {
+    position: sticky; top: 0; z-index: 5;
+    padding: 10px 16px;
+    background: #f6f8fa; border-bottom: 1px solid #d0d7de;
+    font-size: 13px; font-weight: 600;
+  }
+  .acdl-diff-head .from { opacity: 0.7; }
+  .acdl-diff-head .arw { margin: 0 8px; opacity: 0.5; }
+  .acdl-diff-body { padding: 14px 16px; }
+  .acdl-diff-error {
+    padding: 16px; font-family: monospace; white-space: pre-wrap;
+    color: var(--vscode-errorForeground, #cf222e);
+  }
+  ${DIFF_CSS}
+</style>
+</head><body>
+  <div class="acdl-diff-head"><span class="from">${escapeHtml4(a.name)}</span><span class="arw">\u2192</span><span>${escapeHtml4(b.name)}</span></div>
+  <div class="acdl-diff-body">${body}</div>
+</body></html>`;
+}
+function escapeHtml4(text) {
+  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
 // src/extension.ts
 function activate(context) {
   registerDiagnostics(context);
   registerPreviewCommand(context);
   registerDefinitionProvider(context);
+  registerDiffCommand(context);
 }
 function deactivate() {
 }

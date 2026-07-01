@@ -13,7 +13,7 @@ title: VSCode Extension - ACDL
         </svg>
         Install from Marketplace
       </a>
-      <a href="{{BASE}}acdl-language-0.1.2.vsix" download="acdl-language-0.1.2.vsix" class="btn btn-secondary">
+      <a href="{{BASE}}acdl-language-0.2.0.vsix" download="acdl-language-0.2.0.vsix" class="btn btn-secondary">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
           <polyline points="7 10 12 15 17 10"></polyline>
@@ -53,7 +53,7 @@ title: VSCode Extension - ACDL
         <div class="install-card">
           <h3>Command Line</h3>
           <div class="install-code">
-            code --install-extension acdl-language-0.1.2.vsix
+            code --install-extension acdl-language-0.2.0.vsix
           </div>
         </div>
         <div class="install-card">

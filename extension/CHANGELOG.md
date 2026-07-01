@@ -2,6 +2,15 @@
 
 All notable changes to the ACDL Language Support extension will be documented in this file.
 
+## [0.2.0] - 2026-07-02
+
+### Added
+
+- Structural diff between two `.acdl` files, shown as a folded, source-like report in a panel:
+  - `ACDL: Diff…` (command palette / editor title bar) — diff the active file against one you pick
+  - Right-click two selected `.acdl` files in the Explorer → `ACDL: Diff`
+- The diff compares files at the level you read ACDL (content lines and block headers), so reindentation and reordering don't add noise — only real changes (role, index, loop range, added/removed blocks) surface.
+
 ## [0.1.2] - 2026-06-09
 
 ### Added

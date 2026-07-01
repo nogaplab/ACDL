@@ -117,6 +117,18 @@ try {
   process.exit(1);
 }
 
+// Build the standalone diff tool
+console.log('\nBuilding standalone diff tool...\n');
+try {
+  execSync('node scripts/build-diff-tool.js', {
+    cwd: path.join(__dirname, '..'),
+    stdio: 'inherit'
+  });
+} catch (error) {
+  console.error('Failed to build standalone diff tool:', error.message);
+  process.exit(1);
+}
+
 // Build the VSCode extension VSIX
 console.log('\nBuilding VSCode extension...\n');
 try {

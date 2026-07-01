@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "cli": "bun run src/main-cli.ts",
+    "diff": "node scripts/diff.mjs",
     "render-pdf": "bun run src/render-to-pdf.ts",
     "render-png": "bun run src/render-to-png.ts",
     "render-svg": "bun run src/render-to-svg.ts",

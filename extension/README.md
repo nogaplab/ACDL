@@ -9,6 +9,7 @@ ACDL is a domain-specific language for describing and visualizing agentic prompt
 - **Syntax Highlighting** - Full syntax highlighting for ACDL files (`.acdl`)
 - **Diagnostics** - Real-time error checking and validation as you type
 - **Preview Panel** - Visualize your ACDL prompts with the preview command
+- **Structural Diff** - Compare two `.acdl` files with `ACDL: Diff…`, or right-click two files in the Explorer. Reports changes at the level you read ACDL (roles, indices, loops, added/removed blocks) instead of noisy text differences.
 - **Go-to-Definition** - Jump to label and template definitions
 
 ## Usage
@@ -16,6 +17,11 @@ ACDL is a domain-specific language for describing and visualizing agentic prompt
 1. Open any `.acdl` file
 2. Use the preview button in the editor title bar (or run `ACDL: Show Preview` from the command palette)
 3. Edit your ACDL code and see diagnostics in real-time
+
+### Diffing two files
+
+- Run `ACDL: Diff…` from the command palette (or the editor title bar) to compare the current file against another `.acdl` file you pick.
+- Or select two `.acdl` files in the Explorer, right-click, and choose `ACDL: Diff`.
 
 ## ACDL Syntax Overview
 
