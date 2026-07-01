@@ -425,6 +425,12 @@ footer a {
 
 footer a:hover { color: #fff; }
 
+footer .footer-contact {
+  margin-top: 8px;
+  font-size: 0.85rem;
+  color: rgba(255,255,255,0.35);
+}
+
 footer a.external::after {
   content: '';
   display: inline-block;
