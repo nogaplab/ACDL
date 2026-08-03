@@ -1,0 +1,105 @@
+WHAT IS AN ACDL SPECIFICATION?
+==============================
+
+ACDL (Agentic Context Description Language) is a small domain-specific language
+for describing how the context of an LLM agent is assembled. An ACDL
+specification -- a `.acdl` file -- is a compact, readable description of the
+*structure* of a prompt: which messages are sent, in which roles, in which
+order, and how that changes as a conversation or tool-use loop unfolds.
+
+An ACDL spec is NOT the prompt itself. It does not contain the actual English
+text of your instructions. It describes the *shape* of the message array that
+your agent builds before every model call -- the scaffolding, not the filling.
+
+
+THE CORE IDEA
+-------------
+
+Every agent, at turn @T, constructs a list of messages. Some parts are fixed
+(system instructions), some come from history (earlier turns), some are
+retrieved or computed (documents, tool results), and some depend on conditions
+(is the agent mid-tool-call? was the history compacted?). Written as code, this
+logic gets buried in string concatenation and loops. ACDL pulls it out and
+states it directly:
+
+    BasicRAG[@T]: {
+        S: INSTRUCTIONS
+        U: {
+            Name docs := k_relevant_docs(env.user_input[@T])
+            ForEach(i: range(1, $docs.len)) {
+                $docs[i].source
+                $docs[i].content
+            }
+            ANSWER_Q_FROM_DOCS
+            env.user_input[@T]
+        }
+    }
+
+Read top to bottom, this says: send a system message containing the
+INSTRUCTIONS template; then send one user message built from the retrieved
+documents, followed by an instruction template, followed by the user's current
+question.
+
+
+WHAT A SPEC IS MADE OF
+----------------------
+
+Header      `Name[@T, ...]` -- the agent's name and its parameters. `@T` is the
+            current turn; extra parameters (e.g. an agent id, a mode) are
+            listed alongside it. `@T.I` adds a substep index for agents that
+            take several tool-calling steps within one turn.
+
+Roles       `S:` system, `U:` user, `A:` assistant, `T:` tool. Each role line
+            emits one message. A role can take a single item or a block `{...}`
+            whose contents are concatenated into one message.
+
+Templates   ALL_CAPS identifiers such as `INSTRUCTIONS` or
+            `DOCUMENT_BLOCK(id, title)` stand for reusable blocks of literal
+            text. They are deliberately opaque -- the spec cares that the text
+            is there, not what it says.
+
+Context     Dotted paths naming where content comes from:
+variables     env.*   from the environment / user
+              sys.*   from the system or runtime (tool results, inventory)
+              resp.*  from the model's own earlier output
+            Indexed by time: `env.user_input[@T]` is this turn's input,
+            `resp.reasoning[@t]` is the model's reply at turn @t.
+
+Control     `ForEach(t: range(1, @T)) {...}` for history and list iteration,
+flow        `If cond {...} Else {...}` and `Switch/Case` for conditional
+            context. These are the parts most easily lost in prose
+            descriptions of a prompt.
+
+Bindings    `Name docs := retrieve(...)` names an intermediate value, later
+            referenced as `$docs` or `@$docs`. Useful for retrieval results
+            and for things like the last compaction turn.
+
+Comments    `// ...` for annotations that do not affect the structure.
+
+
+WHY WRITE ONE
+-------------
+
+- Communication. A spec fits on one page and can be read at a glance, whereas
+  the equivalent prompt-building code is spread across a codebase.
+
+- Visualization. ACDL renders a spec into a diagram (HTML / SVG / PNG / PDF),
+  making the layout of the context window visible.
+
+- Comparison. Two design variants -- pruned reasoning vs. full history, with
+  and without compaction -- can be written as two specs and compared with
+  ACDL's structural diff, which reports only meaningful changes (a role
+  changing, a loop range changing, a block being added) and ignores
+  reformatting.
+
+- Implementation. A spec maps mechanically onto code: roles become message
+  objects, `ForEach` becomes a loop, templates become constants or functions.
+  It works as a blueprint for a `build_messages()` function.
+
+
+IN SHORT
+--------
+
+An ACDL specification is a one-page, executable-in-spirit description of an
+agent's context: what goes into the model's input, where it comes from, and
+under what conditions -- separated from the wording of the prompt itself.
