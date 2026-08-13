@@ -15,13 +15,9 @@ function tokenize(stream: StringStream, state: AcdlState): string | null {
   // Whitespace
   if (stream.eatSpace()) return null;
 
-  // Comment: // to end-of-line (scanner also stops at })
+  // Comment: // to end-of-line, braces included (matches the scanner)
   if (stream.match("//")) {
-    // Consume until EOL or } (to match scanner behavior)
-    while (!stream.eol()) {
-      if (stream.peek() === "}") break;
-      stream.next();
-    }
+    stream.skipToEnd();
     state.afterDot = false;
     return "comment";
   }

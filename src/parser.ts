@@ -42,6 +42,22 @@ export class Parser {
   }
 
   /**
+   * The next token that is not a comment, without consuming anything.
+   * Comments are legal on any line, so structural lookahead (Case/Default/Else)
+   * must see past them rather than treating one as the end of a construct.
+   */
+  private peekSkippingComments(): Token {
+    let i = this.pos;
+    while (this.tokens[i] && this.tokens[i].type === "COMMENT") i++;
+    return this.tokens[i];
+  }
+
+  /** Consume any run of comment tokens at the current position. */
+  private skipComments(): void {
+    while (this.peek() && this.peek().type === "COMMENT") this.consume("COMMENT");
+  }
+
+  /**
    * Consumes a token of a specific type and/or value.
    * Since Token.value is (string | null), we use type assertions for IDENT values.
    */
@@ -1087,8 +1103,15 @@ export class Parser {
     const elseIfBodies: AST.PromptBlock[][] = [];
     let elseBody: AST.PromptBlock[] | undefined = undefined;
 
-    // 3. Handle ElseIf and Else chains
-    while (this.peek().type === "KEYWORD" && (this.peek().value === "ElseIf" || this.peek().value === "Else")) {
+    // 3. Handle ElseIf and Else chains.
+    // Look past any comments between the closing brace and the next keyword, but
+    // only consume them once an ElseIf/Else is confirmed — otherwise a trailing
+    // comment belonging to the following block would be swallowed here.
+    while (
+      this.peekSkippingComments()?.type === "KEYWORD" &&
+      (this.peekSkippingComments().value === "ElseIf" || this.peekSkippingComments().value === "Else")
+    ) {
+        this.skipComments();
         const type = this.consume().value;
 
         if (type === "ElseIf") {
@@ -1180,8 +1203,13 @@ export class Parser {
       const elseIfBodies: AST.RoleBuildingBlock[][] = [];
       let elseBody: AST.RoleBuildingBlock[] | undefined = undefined;
 
-      // 3. Handle ElseIf and Else chains
-      while (this.peek().type === "KEYWORD" && (this.peek().value === "ElseIf" || this.peek().value === "Else")) {
+      // 3. Handle ElseIf and Else chains (see parseConditionalOutside: look past
+      // comments, but only consume them once the keyword is confirmed).
+      while (
+        this.peekSkippingComments()?.type === "KEYWORD" &&
+        (this.peekSkippingComments().value === "ElseIf" || this.peekSkippingComments().value === "Else")
+      ) {
+          this.skipComments();
           const type = this.consume().value;
 
           if (type === "ElseIf") {
@@ -1237,7 +1265,9 @@ export class Parser {
     let defaultCase: AST.DefaultCaseBlockOutsideRole | undefined;
 
     // 2. Parse Case and Default blocks
-    while (this.peek().value !== "}") {
+    while (true) {
+      this.skipComments();
+      if (this.peek().value === "}") break;
       const kw = this.consume("KEYWORD").value;
 
       if (kw === "Case") {
@@ -1288,7 +1318,9 @@ export class Parser {
     let defaultCase: AST.DefaultCaseBlockInsideRole | undefined;
 
     // 2. Parse Case and Default blocks
-    while (this.peek().value !== "}") {
+    while (true) {
+      this.skipComments();
+      if (this.peek().value === "}") break;
       const kw = this.consume("KEYWORD").value;
 
       if (kw === "Case") {

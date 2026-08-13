@@ -171,7 +171,7 @@ var Scanner = class {
     this.advance();
     this.advance();
     let value = "";
-    while (!this.isEOF() && this.peek() !== "\n" && this.peek() !== "}") {
+    while (!this.isEOF() && this.peek() !== "\n") {
       value += this.advance();
     }
     return {
@@ -463,6 +463,20 @@ var Parser = class {
   }
   peekNext() {
     return this.tokens[this.pos + 1];
+  }
+  /**
+   * The next token that is not a comment, without consuming anything.
+   * Comments are legal on any line, so structural lookahead (Case/Default/Else)
+   * must see past them rather than treating one as the end of a construct.
+   */
+  peekSkippingComments() {
+    let i = this.pos;
+    while (this.tokens[i] && this.tokens[i].type === "COMMENT") i++;
+    return this.tokens[i];
+  }
+  /** Consume any run of comment tokens at the current position. */
+  skipComments() {
+    while (this.peek() && this.peek().type === "COMMENT") this.consume("COMMENT");
   }
   /**
    * Consumes a token of a specific type and/or value.
@@ -1255,7 +1269,8 @@ var Parser = class {
     const elseIfConditions = [];
     const elseIfBodies = [];
     let elseBody = void 0;
-    while (this.peek().type === "KEYWORD" && (this.peek().value === "ElseIf" || this.peek().value === "Else")) {
+    while (this.peekSkippingComments()?.type === "KEYWORD" && (this.peekSkippingComments().value === "ElseIf" || this.peekSkippingComments().value === "Else")) {
+      this.skipComments();
       const type = this.consume().value;
       if (type === "ElseIf") {
         const eiCondTokens = [];
@@ -1328,7 +1343,8 @@ var Parser = class {
     const elseIfConditions = [];
     const elseIfBodies = [];
     let elseBody = void 0;
-    while (this.peek().type === "KEYWORD" && (this.peek().value === "ElseIf" || this.peek().value === "Else")) {
+    while (this.peekSkippingComments()?.type === "KEYWORD" && (this.peekSkippingComments().value === "ElseIf" || this.peekSkippingComments().value === "Else")) {
+      this.skipComments();
       const type = this.consume().value;
       if (type === "ElseIf") {
         const eiCondTokens = [];
@@ -1373,7 +1389,9 @@ var Parser = class {
     this.consume("SYMBOL", "{");
     const cases = [];
     let defaultCase;
-    while (this.peek().value !== "}") {
+    while (true) {
+      this.skipComments();
+      if (this.peek().value === "}") break;
       const kw = this.consume("KEYWORD").value;
       if (kw === "Case") {
         const matchTokens = [];
@@ -1415,7 +1433,9 @@ var Parser = class {
     this.consume("SYMBOL", "{");
     const cases = [];
     let defaultCase;
-    while (this.peek().value !== "}") {
+    while (true) {
+      this.skipComments();
+      if (this.peek().value === "}") break;
       const kw = this.consume("KEYWORD").value;
       if (kw === "Case") {
         const matchTokens = [];

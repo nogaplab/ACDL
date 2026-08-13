@@ -89,7 +89,7 @@ Translate what you traced, using these mappings:
 | `{"role": "assistant", ...}` / `AIMessage` | `A:` |
 | `{"role": "tool", ...}` / `ToolMessage` | `T:` |
 | a single-string completion prompt (no roles) | `N:` |
-| `for t in range(...)` over history | `ForEach(t: range(...)) { ... }` (1-indexed, inclusive) |
+| `for t in range(...)` over history | `ForEach(t: range(...)) { ... }` (1-indexed, half-open) |
 | `for x in collection` | `ForEach(x: sys.collection) { ... }` |
 | `if` / `elif` / `else` | `If` / `ElseIf` / `Else` |
 | dispatch on a string/enum value | `Switch ... { Case ... Default ... }` |
@@ -109,10 +109,19 @@ Translate what you traced, using these mappings:
 **Template vs. context variable:** if the text is fixed at authoring time (it lives
 in the source or a prompt file), it is a template. If it is filled from runtime
 data, it is a context variable — or a template *taking* that context variable as an
-argument, when fixed text wraps a runtime value. `1-indexed and inclusive`: ACDL
-`range(1, @T-1)` covers turns 1 through `@T-1`; Python `range(0, n)` in the source
-usually maps to `range(1, @T-1)` or `range(1, @T)` — get the boundary right and
-say in a comment which turn the loop stops at.
+argument, when fixed text wraps a runtime value.
+
+**Prefer collection iteration over index ranges.** If the source loops a list only
+to read each element, write `ForEach(doc: $docs)` and reference `doc.source`, not a
+`range` over `$docs.len`. Use `range` when the loop variable is genuinely an index
+used elsewhere — substep indices like `sys.action[@t.i]` are the usual case.
+
+**Ranges are 1-indexed and half-open**, following the same rule as Python:
+`range(a, b)` covers `a` through `b-1`, including `a` and excluding `b`. Only the
+starting index differs from Python — ACDL counts from 1, not 0 — so a Python loop
+over `range(0, n)` becomes `range(1, n+1)`, and a history loop that must stop before
+the current turn is `range(1, @T)`, covering turns 1 through `@T-1`. Get the boundary
+right, and say in a comment which turn the loop stops at.
 
 **Naming:** names should describe the *role the content plays in the context*, not
 the identifier in the source. `env.user_query`, not `env.msg_str`. Templates should
@@ -128,6 +137,37 @@ collapse anything that is conditional, looped, or reordered at runtime.
 Use `Mark n { ... }` to bracket the meaningful regions of the context — setup,
 history, compaction, tool loop, current turn — so the rendered diagram reads well.
 Use `//` comments to record what each template contains and why a branch exists.
+
+**Cite the source inline, above every line you write.** Each role message, control
+flow header, template, and context variable gets a comment on the line *above* it
+naming the file and line range it came from:
+
+```acdl
+// <- agent/prompt.py:88  system=... assembled from three fragments
+S: {
+    // <- agent/prompt.py:41-59
+    TASK_INSTRUCTIONS
+    // <- agent/prompt.py:61, tool list built at agent/tools.py:12-30
+    AVAILABLE_TOOLS
+}
+// <- agent/loop.py:104-118  for turn in state.history[:-1]
+ForEach(t: range(1, @T)) {
+    // <- agent/loop.py:110
+    U: env.user_input[@t]
+}
+```
+
+Rules for these citations:
+- Use `// <-` as the marker so provenance is distinguishable from explanation.
+- A line range (`:41-59`) is right when a block comes from contiguous code; list
+  several locations when a single ACDL line is assembled from more than one place.
+- If a message is supplied by a framework or SDK rather than by the codebase, say
+  so in the comment instead of inventing a line number.
+- Anything you could not trace to a specific line does not get a citation — it gets
+  a `// UNVERIFIED:` comment saying what you assumed and why.
+
+This makes the spec checkable on its own. The evidence table in your report then
+carries the quoted text and the reasoning, not just the location.
 
 ## Phase 5 — Verify against the code
 
@@ -157,7 +197,8 @@ Produce two things.
 
 ### 1. The specification — a single `.acdl` file
 
-Well-commented, one spec per distinct prompt, marks on the meaningful regions.
+Well-commented, one spec per distinct prompt, marks on the meaningful regions, and a
+`// <-` source citation above every line you write.
 
 ### 2. An extraction report — markdown
 
@@ -182,7 +223,5 @@ Well-commented, one spec per distinct prompt, marks on the meaningful regions.
   design; put a short summary in a `//` comment instead.
 - Never invent structure that is not in the code — no "agents usually also do X".
 - Prefer a smaller, correct spec over a larger, speculative one.
-- If the code's structure genuinely does not fit ACDL, say so in the report rather
-  than distorting either one.
 - Read the actual source. Do not extract from README files, docs, or blog posts
   describing the agent; they describe intent, and the spec must describe the code.

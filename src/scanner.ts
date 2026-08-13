@@ -146,11 +146,10 @@ export class Scanner {
 
   let value = "";
 
-  while (
-    !this.isEOF() &&
-    this.peek() !== "\n" &&
-    this.peek() !== "}"
-  ) {
+  // A comment runs to end of line. Braces are ordinary comment text: stopping at
+  // "}" would make any comment quoting a code literal terminate early, leaving the
+  // remainder to be tokenized as source.
+  while (!this.isEOF() && this.peek() !== "\n") {
     value += this.advance();
   }
 

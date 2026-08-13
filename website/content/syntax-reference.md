@@ -272,7 +272,7 @@ PromptName2[idx1, idx2, ...]: {
       <h3>Iteration Examples</h3>
       <div class="code-and-render" style="grid-template-columns: 3fr 2fr;">
         <pre><span class="comment">// Iterating over all previous turns</span>
-<span class="keyword">ForEach</span>(<span class="context">t</span>: <span class="function">range</span>(1, <span class="context">@T</span>-1)) {
+<span class="keyword">ForEach</span>(<span class="context">t</span>: <span class="function">range</span>(1, <span class="context">@T</span>)) {
     <span class="context">env.observation</span>[<span class="context">@t</span>]
 }
 
@@ -282,8 +282,8 @@ PromptName2[idx1, idx2, ...]: {
 }
 
 <span class="comment">// Nested: substeps within each previous turn</span>
-<span class="keyword">ForEach</span>(<span class="context">@t</span>: <span class="function">range</span>(1, <span class="context">@T</span>-1)) {
-    <span class="keyword">ForEach</span>(<span class="context">i</span>: <span class="function">range</span>(1, <span class="context">@t</span>.substeps)) {
+<span class="keyword">ForEach</span>(<span class="context">@t</span>: <span class="function">range</span>(1, <span class="context">@T</span>)) {
+    <span class="keyword">ForEach</span>(<span class="context">i</span>: <span class="function">range</span>(1, <span class="context">@t</span>.substeps + 1)) {
         <span class="context">sys.action</span>[<span class="context">@t</span>.<span class="context">i</span>]
     }
 }</pre>
@@ -291,7 +291,7 @@ PromptName2[idx1, idx2, ...]: {
           <div class="render-label">Rendered Output</div>
           <div><span class="cmt">// Iterating over all previous turns</span></div>
           <div class="ctrl-block">
-            <div class="ctrl-header">ForEach <span class="idx">t</span> : <span class="idx">1</span> ... <span class="idx">@T</span>-1</div>
+            <div class="ctrl-header">ForEach <span class="idx">t</span> : <span class="idx">1</span> ... <span class="idx">@T</span></div>
             <span class="ctx">env.observation[<span class="idx">@t</span>]</span>
           </div>
           <div style="margin-top: 6px;"><span class="cmt">// Iterating over substeps</span></div>
@@ -301,9 +301,9 @@ PromptName2[idx1, idx2, ...]: {
           </div>
           <div style="margin-top: 6px;"><span class="cmt">// Nested: substeps within each turn</span></div>
           <div class="ctrl-block">
-            <div class="ctrl-header">ForEach <span class="idx">@t</span> : <span class="idx">1</span> ... <span class="idx">@T</span>-1</div>
+            <div class="ctrl-header">ForEach <span class="idx">@t</span> : <span class="idx">1</span> ... <span class="idx">@T</span></div>
             <div class="ctrl-block" style="margin-left: 6px;">
-              <div class="ctrl-header">ForEach <span class="idx">i</span> : <span class="idx">1</span> ... <span class="idx">@t</span>.substeps</div>
+              <div class="ctrl-header">ForEach <span class="idx">i</span> : <span class="idx">1</span> ... <span class="idx">@t</span>.substeps + 1</div>
               <span class="ctx">sys.action[<span class="idx">@t</span>.<span class="idx">i</span>]</span>
             </div>
           </div>
@@ -368,7 +368,7 @@ PromptName2[idx1, idx2, ...]: {
       </div>
 
       <div class="note">
-        <p><strong>Built-in Function:</strong> The <code>range(start, stop, step)</code> function generates numeric sequences for use in <code>ForEach</code> loops. The <code>step</code> argument is optional and defaults to 1. The range is <strong>inclusive</strong>, meaning <code>range(1, 2)</code> starts at 1 and ends at 2, including 2.</p>
+        <p><strong>Built-in Function:</strong> The <code>range(start, stop, step)</code> function generates numeric sequences for use in <code>ForEach</code> loops. The <code>step</code> argument is optional and defaults to 1. The range is <strong>half-open</strong>, following the same rule as Python: it includes <code>start</code> and excludes <code>stop</code>, so <code>range(1, 3)</code> yields 1 and 2. Only the starting index differs from Python — ACDL counts from 1, not 0 — so a history loop that stops before the current turn is <code>range(1, @T)</code>, and iterating a collection of <code>n</code> elements is <code>range(1, n + 1)</code>.</p>
       </div>
 
       <!-- CONTROL FLOW -->
@@ -386,14 +386,14 @@ PromptName2[idx1, idx2, ...]: {
 
       <h4>Top-level ForEach (produces multiple messages)</h4>
       <div class="code-and-render" style="grid-template-columns: 3fr 2fr;">
-        <pre><span class="keyword">ForEach</span>(<span class="context">@t</span>: <span class="function">range</span>(1, <span class="context">@T</span>-1)) {
+        <pre><span class="keyword">ForEach</span>(<span class="context">@t</span>: <span class="function">range</span>(1, <span class="context">@T</span>)) {
     <span class="role">U</span>: <span class="context">env.user_question</span>[<span class="context">@t</span>]
     <span class="role">A</span>: <span class="context">resp.answer</span>[<span class="context">@t</span>]
 }</pre>
         <div class="rendered-output">
           <div class="render-label">Rendered Output</div>
           <div class="ctrl-block">
-            <div class="ctrl-header">ForEach <span class="idx">@t</span> : <span class="idx">1</span> ... <span class="idx">@T</span>-1</div>
+            <div class="ctrl-header">ForEach <span class="idx">@t</span> : <span class="idx">1</span> ... <span class="idx">@T</span></div>
             <div class="role-msg user">
               <span class="role-badge">Role: User</span>
               <div class="role-body"><span class="ctx">env.user_question[<span class="idx">@t</span>]</span></div>
@@ -472,7 +472,7 @@ PromptName2[idx1, idx2, ...]: {
 
       <div class="code-and-render" style="grid-template-columns: 3fr 2fr;">
         <pre><span class="keyword">If</span> <span class="context">@T</span> &gt; 1 {
-    <span class="keyword">ForEach</span>(<span class="context">t</span>: <span class="function">range</span>(1, <span class="context">@T</span>-1)) {
+    <span class="keyword">ForEach</span>(<span class="context">t</span>: <span class="function">range</span>(1, <span class="context">@T</span>)) {
         <span class="role">U</span>: <span class="context">env.user_input</span>[<span class="context">@t</span>]
         <span class="role">A</span>: <span class="context">resp.answer</span>[<span class="context">@t</span>]
     }
@@ -482,7 +482,7 @@ PromptName2[idx1, idx2, ...]: {
           <div class="ctrl-block">
             <div class="ctrl-header cond">If <span class="idx">@T</span> &gt; 1</div>
             <div class="ctrl-block" style="margin-left: 6px;">
-              <div class="ctrl-header">ForEach <span class="idx">t</span> : <span class="idx">1</span> ... <span class="idx">@T</span>-1</div>
+              <div class="ctrl-header">ForEach <span class="idx">t</span> : <span class="idx">1</span> ... <span class="idx">@T</span></div>
               <div class="role-msg user">
                 <span class="role-badge">Role: User</span>
                 <div class="role-body"><span class="ctx">env.user_input[<span class="idx">@t</span>]</span></div>
@@ -555,7 +555,7 @@ PromptName2[idx1, idx2, ...]: {
     <span class="role">S</span>: <span class="template">INSTRUCTIONS</span>
     <span class="role">U</span>: <span class="context">env.user_input</span>[<span class="context">@T</span>]
     <span class="keyword">PromptEndsHere when</span> (<span class="context">@T</span> == 1)
-    <span class="keyword">ForEach</span>(<span class="context">@t</span>: <span class="function">range</span>(1, <span class="context">@T</span>-1)) {
+    <span class="keyword">ForEach</span>(<span class="context">@t</span>: <span class="function">range</span>(1, <span class="context">@T</span>)) {
         <span class="role">A</span>: <span class="context">resp.answer</span>[<span class="context">@t</span>]
     }
 }</pre>
@@ -634,9 +634,9 @@ PromptName2[idx1, idx2, ...]: {
 
       <div class="code-and-render" style="grid-template-columns: 3fr 2fr;">
         <pre><span class="keyword">Name</span> docs := <span class="function">k_relevant_docs</span>(<span class="context">env.query</span>[<span class="context">@T</span>])
-<span class="keyword">ForEach</span>(<span class="context">i</span>: <span class="function">range</span>(1, $docs.len)) {
-    $docs[<span class="context">i</span>].source
-    $docs[<span class="context">i</span>].content
+<span class="keyword">ForEach</span>(<span class="context">doc</span>: $docs) {
+    <span class="context">doc</span>.source
+    <span class="context">doc</span>.content
 }</pre>
         <div class="rendered-output" style="font-size: 8px;">
           <div class="render-label">Rendered Output</div>
@@ -644,16 +644,16 @@ PromptName2[idx1, idx2, ...]: {
             <span class="name-kw">Name</span> <span class="name-var">docs</span> <span class="name-assign">:=</span> <span class="fn" style="padding:1px 3px;font-size:8px;">k_relevant_docs(<span class="ctx" style="padding:1px 3px;font-size:8px;">env.query[<span class="idx">@T</span>]</span>)</span>
           </div>
           <div class="ctrl-block">
-            <div class="ctrl-header">ForEach <span class="idx">i</span> : 1..<span class="name-var">docs</span>.len</div>
-            <span class="name-var">docs</span>[<span class="idx">i</span>].source<br>
-            <span class="name-var">docs</span>[<span class="idx">i</span>].content
+            <div class="ctrl-header">ForEach <span class="idx">doc</span> : <span class="name-var">docs</span></div>
+            <span class="idx">doc</span>.source<br>
+            <span class="idx">doc</span>.content
           </div>
         </div>
       </div>
 
       <p>Once defined, the name is referenced using the <code>$</code> prefix: <code>$var_name</code>. Name definitions improve readability by replacing long or opaque expressions with descriptive identifiers. The bound expression can be any valid ACDL element&mdash;a context variable, function call, arithmetic expression, or string literal. Fields of the bound value can be accessed via dot notation on the reference.</p>
 
-      <p>Here, <code>$docs</code> binds the result of a retrieval function, avoiding repetition of the full function call. Its length and individual elements are then accessed via <code>$docs.len</code> and <code>$docs[i]</code>.</p>
+      <p>Here, <code>$docs</code> binds the result of a retrieval function, avoiding repetition of the full function call. A bound collection can be iterated directly, as above, which is preferred when the body only needs each element; <code>$docs.len</code> and <code>$docs[i]</code> remain available for the cases that genuinely need an index.</p>
 
       <h3>List Comprehensions</h3>
       <p>Name definitions also support list comprehensions, which construct a list by iterating over a range or collection:</p>
@@ -906,7 +906,7 @@ ToolAgent[<span class="context">@T</span>]: {
     <span class="context">env.datetime</span>[<span class="context">@T</span>]  <span class="comment">// Renders beside datetime</span>
 }
 <span class="comment">// This comment is at the top level</span>
-<span class="keyword">ForEach</span>(<span class="context">@t</span>: <span class="function">range</span>(1, <span class="context">@T</span>-1)) {
+<span class="keyword">ForEach</span>(<span class="context">@t</span>: <span class="function">range</span>(1, <span class="context">@T</span>)) {
     <span class="comment">// This comment is inside the loop body</span>
     <span class="role">U</span>: <span class="context">env.user_question</span>[<span class="context">@t</span>]  <span class="comment">// Beside the message</span>
     <span class="role">A</span>: <span class="context">resp.answer</span>[<span class="context">@t</span>]
@@ -926,7 +926,7 @@ ToolAgent[<span class="context">@T</span>]: {
           </div>
           <div><span class="cmt">// This comment is at the top level</span></div>
           <div class="ctrl-block">
-            <div class="ctrl-header">ForEach <span class="idx">@t</span> : <span class="idx">1</span> ... <span class="idx">@T</span>-1</div>
+            <div class="ctrl-header">ForEach <span class="idx">@t</span> : <span class="idx">1</span> ... <span class="idx">@T</span></div>
             <div class="ctrl-body">
               <div><span class="cmt">// This comment is inside the loop body</span></div>
               <div class="role-msg user">
@@ -970,7 +970,7 @@ ToolAgent[<span class="context">@T</span>]: {
         <span class="context">env.user_document</span>[<span class="context">@0</span>]
     }
     <span class="keyword">If</span> <span class="context">t</span> &gt; 1 {
-        <span class="keyword">ForEach</span>(<span class="context">@t</span>: <span class="function">range</span>(1, <span class="context">@T</span>-1)) {
+        <span class="keyword">ForEach</span>(<span class="context">@t</span>: <span class="function">range</span>(1, <span class="context">@T</span>)) {
             <span class="keyword">If</span> <span class="context">sys.tool</span>[<span class="context">@t</span>] == clarify {
                 <span class="role">U</span>: <span class="context">env.user_input</span>[<span class="context">@t</span>]
             }
@@ -995,7 +995,7 @@ ToolAgent[<span class="context">@T</span>]: {
           <div class="ctrl-block">
             <div class="ctrl-header cond">If <span class="idx">t</span> &gt; 1</div>
             <div class="ctrl-block" style="margin-left: 6px;">
-              <div class="ctrl-header">ForEach <span class="idx">@t</span> : <span class="idx">1</span> ... <span class="idx">@T</span>-1</div>
+              <div class="ctrl-header">ForEach <span class="idx">@t</span> : <span class="idx">1</span> ... <span class="idx">@T</span></div>
               <div class="ctrl-block" style="margin-left: 6px;">
                 <div class="ctrl-header cond">If <span class="ctx">sys.tool[<span class="idx">@t</span>]</span> == clarify</div>
                 <div class="role-msg user">

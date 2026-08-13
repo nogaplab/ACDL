@@ -29,9 +29,9 @@ BasicRAG[@T]: {
     S: INSTRUCTIONS
     U: {
         Name docs := k_relevant_docs(env.user_input[@T])
-        ForEach(i: range(1, $docs.len)) {
-            $docs[i].source
-            $docs[i].content
+        ForEach(doc: $docs) {
+            doc.source
+            doc.content
         }
         ANSWER_Q_FROM_DOCS
         env.user_input[@T]
@@ -183,7 +183,7 @@ Iteration:
 
 ```acdl
 // all previous turns
-ForEach(t: range(1, @T-1)) {
+ForEach(t: range(1, @T)) {
     env.observation[@t]
 }
 
@@ -193,8 +193,8 @@ ForEach(i: range(1, I)) {
 }
 
 // nested: substeps within each previous turn
-ForEach(@t: range(1, @T-1)) {
-    ForEach(i: range(1, @t.substeps)) {
+ForEach(@t: range(1, @T)) {
+    ForEach(i: range(1, @t.substeps + 1)) {
         sys.action[@t.i]
     }
 }
@@ -239,7 +239,10 @@ range(1, @T-1, 2)
 ```
 
 **Built-in:** `range(start, stop, step)` — `step` optional (default 1); the range
-is **inclusive**, so `range(1, 2)` yields 1 and 2.
+is **half-open**, following the same rule as Python: it includes `start` and excludes
+`stop`, so `range(1, 3)` yields 1 and 2. Only the starting index differs from Python —
+ACDL counts from 1, not 0 — so a history loop that stops before the current turn is
+`range(1, @T)`, and iterating a collection of `n` elements is `range(1, n + 1)`.
 
 ---
 
@@ -256,11 +259,15 @@ ForEach(variable: iterable) {
 }
 ```
 
-The iterable is a `range(...)` call or a collection-valued context variable.
+The iterable is a `range(...)` call or a collection-valued context variable. When
+the body only needs each element, iterate the collection directly — `ForEach(doc:
+$docs)` rather than a `range` over its length. It reads better and there is no
+bound to get wrong. Reach for `range` when the loop variable is genuinely an
+*index* used elsewhere, as substep indices are: `sys.action[@t.i]`.
 
 ```acdl
 // top level — produces multiple messages per iteration
-ForEach(@t: range(1, @T-1)) {
+ForEach(@t: range(1, @T)) {
     U: env.user_question[@t]
     A: resp.answer[@t]
 }
@@ -294,7 +301,7 @@ Conditionals may guard whole sections, including loops:
 
 ```acdl
 If @T > 1 {
-    ForEach(t: range(1, @T-1)) {
+    ForEach(t: range(1, @T)) {
         U: env.user_input[@t]
         A: resp.answer[@t]
     }
@@ -329,7 +336,7 @@ Prompt[@T]: {
     S: INSTRUCTIONS
     U: env.user_input[@T]
     PromptEndsHere when (@T == 1)
-    ForEach(@t: range(1, @T-1)) {
+    ForEach(@t: range(1, @T)) {
         A: resp.answer[@t]
     }
 }
@@ -345,9 +352,9 @@ repeated expression.
 
 ```acdl
 Name docs := k_relevant_docs(env.query[@T])
-ForEach(i: range(1, $docs.len)) {
-    $docs[i].source
-    $docs[i].content
+ForEach(doc: $docs) {
+    doc.source
+    doc.content
 }
 ```
 
@@ -363,7 +370,7 @@ If (@$C > 1) {
         sys.conversation_summary[@$C]
     }
 }
-ForEach(t: range(@$C + 1, @T)) { ... }
+ForEach(t: range(@$C + 1, @T + 1)) { ... }
 ```
 
 **List comprehensions:**
@@ -475,11 +482,11 @@ React2[@T.I]: {
     // History
     Mark 1 {
     // Chat loop (main loop)
-    ForEach(t: range(1, @T-1)) {
+    ForEach(t: range(1, @T)) {
         U: env.user_question[@t]
         Mark 2 {
         // ReAct loop (internal loop)
-        ForEach(i: range(1, @t.substeps)) {
+        ForEach(i: range(1, @t.substeps + 1)) {
             A: sys.tool_used[@t.i].name_and_args
             T: sys.tool_used[@t.i].tool_response
         }}
@@ -488,7 +495,7 @@ React2[@T.I]: {
     }
     // Last turn
     U: env.user_question[@T]
-    ForEach(i: range(1, @T.substeps)) {
+    ForEach(i: range(1, @T.substeps + 1)) {
         A: sys.tool_used[@T.i].name_and_args
         T: sys.tool_used[@T.i].tool_response
     }
@@ -515,13 +522,13 @@ OpenClaw[@T.I]: {
     }
     }
     // conversation history
-    ForEach(t: range(@$C + 1, @T)) {
+    ForEach(t: range(@$C + 1, @T + 1)) {
         U: {
             Mark 6 {
             // the pending_messages list is often empty
-            ForEach(m: range(1, sys.pending_messages[@t].len)) {
-                sys.pending_messages[@t][m].date_time
-                sys.pending_messages[@t][m].message
+            ForEach(m: sys.pending_messages[@t]) {
+                m.date_time
+                m.message
             }
             }
             Mark 5 {
@@ -538,7 +545,7 @@ OpenClaw[@T.I]: {
         }
         PromptEndsHere when (@t == @T && @T.0)
         // tool-using loop history
-        ForEach(i: range(1, @t.substeps)) {
+        ForEach(i: range(1, @t.substeps + 1)) {
             Mark 1 {
             // multiple requests in one assistant message
             A: {

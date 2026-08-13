@@ -405,7 +405,7 @@ Notice that this agent handles a single turn (the user's question) but takes mul
     }
     <span class="comment">// previous turns</span>
     <span class="keyword">ForEach</span>(<span class="context">@t</span>: range(1, <span class="context">@T</span>)) {
-        <span class="keyword">ForEach</span>(<span class="context">i</span>: range(1, <span class="context">@t.substeps</span>)) {
+        <span class="keyword">ForEach</span>(<span class="context">i</span>: range(1, <span class="context">@t.substeps + 1</span>)) {
             <span class="role">A</span>: <span class="context">sys.tool_used</span>[<span class="context">@t.i</span>]
             <span class="role">T</span>: <span class="context">sys.tool_used</span>[<span class="context">@t.i</span>].tool_response
         }
@@ -431,7 +431,7 @@ Notice that this agent handles a single turn (the user's question) but takes mul
     <div class="ctrl-block">
       <div class="ctrl-header">ForEach <span class="idx">@t</span> : 1 ... <span class="idx">@T</span></div>
       <div class="ctrl-block">
-        <div class="ctrl-header">ForEach <span class="idx">i</span> : 1 ... <span class="idx">@t.substeps</span></div>
+        <div class="ctrl-header">ForEach <span class="idx">i</span> : 1 ... <span class="idx">@t.substeps + 1</span></div>
         <div class="role-msg assistant">
           <span class="role-badge">Assistant</span>
           <div class="role-body"><span class="ctx">sys.tool_used[<span class="idx">@t.i</span>]</span></div>
