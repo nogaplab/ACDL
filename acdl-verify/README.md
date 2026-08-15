@@ -6,8 +6,50 @@ and checks that the message arrays it actually sends match what the spec predict
 Where [`acdl-agent`](../acdl-agent) reads code and writes a spec, `acdl-verify` reads a spec
 and tests it against behaviour. The two compose: extract, verify, correct, repeat.
 
-> **Status: design document.** Nothing here is implemented. This file defines the interface
-> so it can be argued with before any code exists.
+> **Status.** The proxy and Level A checking work end-to-end; everything else below is still
+> design. See *What runs today*.
+
+## What runs today
+
+Record a trace by driving a target entirely from a scenario file — no API key, no network:
+
+```bash
+bun run acdl-verify/proxy.ts \
+  --scenario acdl-verify/scenarios/acdl-agent-loop3.json \
+  --out      acdl-verify/traces/acdl-agent-loop3.jsonl \
+  --run      '.venv-linux/bin/python acdl-agent/acdl-agent.py --target acdl-tests/test1-supportbot'
+```
+
+Check a spec against that trace:
+
+```bash
+bun run acdl-verify/check.ts \
+  --spec  acdl-agent/acdl-agent.acdl \
+  --trace acdl-verify/traces/acdl-agent-loop3.jsonl
+```
+
+```
+spec   AcdlAgent[@T]  acdl-agent/acdl-agent.acdl:8
+trace  3 recorded call(s)
+
+  ✓ CONFIRMED   call 1   message count      2 messages, as predicted
+  ✓ CONFIRMED   call 1   role sequence      S U
+  ✓ CONFIRMED   call 3   role sequence      S U A T A T
+  ✓ CONFIRMED   call 3   prefix preserved   call 3 extends call 2 by 2 message(s)
+
+free choices (taken from the trace, therefore NOT verified):
+  - call 3: size of sys.tool_calls[@i] = 1 (collection length is not stated in the spec)
+```
+
+| File | What it is |
+|------|------------|
+| [`proxy.ts`](proxy.ts) | recording proxy: HTTP server, JSONL trace, scripted replies, `--run` driver, `--upstream` record mode |
+| [`evaluate.ts`](evaluate.ts) | ACDL AST → predicted message array; reports what it had to leave free |
+| [`check.ts`](check.ts) | Anthropic wire→ACDL normalization, Level A verdicts, prefix monotonicity |
+| [`scenarios/`](scenarios/) | scripted replies, one file per scenario |
+
+Not yet built: the binding map, Levels B and C, coverage instrumentation, mutation scoring as a
+command, the Docker sandbox, streaming support, and the LLM planning layer.
 
 ## What it claims, and what it does not
 

@@ -1,0 +1,398 @@
+// ===========================================================================
+// MINT-bench agent — context construction
+// Codebase: mint-bench/mint/  (MINT interactive-evaluation harness, fork that
+// adds CustomMINTAgent with six selectable context-construction strategies)
+//
+// TIME MODEL
+//   @T = "turn"  — one solve attempt, closed when the assistant emits a
+//                  <solution> block (mint/agents/custom_agent.py:134-139).
+//   I  = step within the turn — one <execute> / observation exchange;
+//        @t.substeps = number of completed steps in turn @t.
+//   One iteration of mint/main.py:74-89 = one agent LLM call = one step.
+//   The environment appends every observation to a single persistent list
+//   (State.history); each agent call re-derives its message array from that
+//   list, so the loop-over-history form below is what actually reaches the API.
+//
+// PROMPTS IN THIS FILE
+//   MintCustomAgent    — mint/agents/custom_agent.py:502-527 (the configured
+//                        agent in every configs/gpt-4-turbo-opt*/ experiment)
+//   MintRawHistoryAgent— mint/agents/openai_lm_agent.py:40-48 (upstream MINT
+//                        agent; sends State.history verbatim)
+//
+// NOT SPECIFIED
+//   * The "expert feedback" LLM (mint/prompt/templates/template_feedback_agent.txt,
+//     FeedbackPromptTemplate at mint/prompt/__init__.py:31-33). No agent class in
+//     this repo implements the call signature used at mint/envs/general_env.py:109-119,
+//     FeedbackPromptTemplate is never instantiated anywhere, and every shipped
+//     config sets pseudo_human_feedback="None" / agent_class="None"
+//     (configs/**/*.json:38-42), so feedback_agent is None and the call is never
+//     reached. Its *effect* on the context is still modelled: see the
+//     EXPERT_FEEDBACK branch in Frag EnvObservation.
+//   * LMAgent.add_system_message (mint/agents/base.py:34-45) would split the
+//     opening user message into S: + U: on "\n---\n", but it is dead code —
+//     nothing in the repo calls it.
+// ===========================================================================
+
+
+// ---------------------------------------------------------------------------
+// The single opening message. GeneralEnv.reset() renders ONE template into ONE
+// user message and makes it State.history[0]; it is messages[0] of every
+// context the agent ever sends, under every strategy.
+// <- mint/envs/general_env.py:271-292
+// ---------------------------------------------------------------------------
+StrFrag InitialTaskPrompt: {
+    // <- mint/prompt/__init__.py:22-28  template picked by env_config["use_tools"]
+    If sys.use_tools == true {
+        // <- mint/prompt/templates/template_with_tool.txt:1-10
+        // persona + <thought>/<execute>/<solution> output protocol + step budget
+        SOLVER_PROTOCOL_WITH_TOOL(sys.max_steps, sys.max_propose_solution)
+    }
+    Else {
+        // <- mint/prompt/templates/template_without_tool.txt:1-7  (no <execute> option)
+        // UNVERIFIED: unreachable in practice — Task.in_context_example raises
+        // NotImplementedError when use_tool is False (mint/tasks/base.py:47-52),
+        // so a use_tools=false config crashes in reset() before any LLM call.
+        SOLVER_PROTOCOL_NO_TOOL(sys.max_propose_solution)
+    }
+    // <- mint/tools/__init__.py:8-17  tool_desc; empty string when no tool is loaded
+    If sys.tool_set != empty {
+        // <- mint/tools/__init__.py:12  "Tool function available (already imported...)"
+        TOOL_LIST_HEADER
+        ForEach(tool: sys.tool_set) {
+            // <- mint/tools/__init__.py:14-15  numbered signature then description
+            tool.signature
+            tool.description
+        }
+    }
+    // <- mint/prompt/templates/template_with_tool.txt:14  literal "---" separator
+    SECTION_SEPARATOR
+    // <- mint/tasks/base.py:43-52 + mint/envs/general_env.py:285-288
+    // one full worked trajectory, read from
+    // mint/tasks/in_context_examples/<task_name>/*.txt
+    If sys.feedback_type != no_feedback {
+        // <- .../with_tool_and_feedback.txt  (example trajectory incl. expert turns)
+        IN_CONTEXT_EXAMPLE_WITH_FEEDBACK
+    }
+    Else {
+        // <- .../with_tool.txt
+        IN_CONTEXT_EXAMPLE
+    }
+    // <- mint/prompt/templates/template_with_tool.txt:18  literal "---" separator
+    SECTION_SEPARATOR
+    // <- mint/envs/general_env.py:289  literal "Task:\n" + Task.prompt (dataset row)
+    TASK_HEADER(env.task_prompt)
+}
+
+
+// ---------------------------------------------------------------------------
+// Text of one environment message. Every message the environment produces is a
+// StepOutput rendered by StepOutput.to_str() and appended to State.history with
+// role "user"; the strategies below re-route that same text into user, tool or
+// assistant messages.
+// <- mint/datatypes.py:81-106 (to_str), mint/envs/general_env.py:127-133 (log_output)
+// [step] is a step reference: @t.i for a tool step, @t for the answer step that
+// closes turn @t.
+// ---------------------------------------------------------------------------
+StrFrag EnvObservation[step]: {
+    // <- mint/datatypes.py:82  literal "Observation:\n"
+    OBSERVATION_HEADER
+    If sys.observation[step] != none {
+        // <- mint/datatypes.py:83-84; produced at mint/envs/general_env.py:135-149:
+        // PythonREPL stdout, a formatted traceback, or INVALID_INPUT_MESSAGE
+        // (mint/envs/general_env.py:18-23) when <execute>/<solution> failed to parse
+        sys.observation[step]
+    }
+    Else {
+        // <- mint/datatypes.py:85-87  a solution was proposed and judged incorrect
+        // (handle_propose_solution returns None on a clean parse: general_env.py:151-165)
+        ANSWER_IS_WRONG
+    }
+    // <- mint/datatypes.py:89-96, budget computed at mint/envs/general_env.py:234-241
+    If sys.count_down == true {
+        STEPS_AND_PROPOSALS_LEFT(sys.steps_left[step], sys.proposals_left[step])
+        // <- mint/datatypes.py:94-95
+        If sys.steps_left[step] < 2 {
+            TAKE_LAST_STEP_TO_PROPOSE
+        }
+    }
+    // <- mint/datatypes.py:97-104  "\nExpert feedback:\n" + text from the feedback
+    // LLM (mint/envs/general_env.py:101-120). Never emitted by any shipped config.
+    If sys.feedback_type != no_feedback {
+        EXPERT_FEEDBACK_HEADER
+        sys.expert_feedback[step]
+    }
+}
+
+
+// ---------------------------------------------------------------------------
+// The environment message that opens turn @t: the observation that followed the
+// <solution> of turn @t-1. Turn 1 has none — its opening message is the initial
+// task prompt, which the parser holds out separately.
+// <- mint/agents/custom_agent.py:156-169 (parser assigns it to turn.user_input),
+//    emitted at custom_agent.py:240-241 / 251-252 / 326-327 / 361-362 / 393-394 / 427-428
+// ---------------------------------------------------------------------------
+RolesFrag TurnOpening[@t]: {
+    If @t > 1 {
+        U: { Frag EnvObservation[@t-1] }
+    }
+}
+
+
+// ---------------------------------------------------------------------------
+// One completed tool step, rendered three different ways depending on strategy.
+// In all of them the model's <thought> is discarded — only the extracted code
+// survives. Steps whose assistant message contained no <execute> block are
+// dropped from the context entirely.
+// <- mint/agents/custom_agent.py:184-187 (_extract_execute), guards at :256, :300, :366, :398, :432
+// ---------------------------------------------------------------------------
+
+// opt1 / opt3 — OpenAI function-call shape.
+// <- mint/agents/custom_agent.py:194-219, 255-262, 365-372
+RolesFrag ToolStepAsToolCall[step]: {
+    If resp.execute_code[step] != none {
+        // <- custom_agent.py:198-211, 258  content is "<execute>...</execute>" only;
+        // carries a synthetic tool_call id with arguments literally "{}"
+        A: EXECUTE_BLOCK(resp.execute_code[step])
+        // <- custom_agent.py:213-219, 261-262  emitted even when the observation is empty
+        T: { Frag EnvObservation[step] }
+    }
+}
+
+// opt1A / opt3A — code and observation folded into ONE assistant message.
+// <- mint/agents/custom_agent.py:300-309, 397-406
+RolesFrag ToolStepAsAssistant[step]: {
+    If resp.execute_code[step] != none {
+        A: {
+            // <- custom_agent.py:303, 399
+            EXECUTE_BLOCK(resp.execute_code[step])
+            // <- custom_agent.py:304-305, 400-401  wrapped in <observation> tags
+            If sys.env_message[step] != none {
+                Frag EnvObservation[step]
+            }
+        }
+    }
+}
+
+// opt4 — code in an assistant message, observation in a separate user message.
+// <- mint/agents/custom_agent.py:431-444
+RolesFrag ToolStepSplitUser[step]: {
+    If resp.execute_code[step] != none {
+        // <- custom_agent.py:433-438
+        A: EXECUTE_BLOCK(resp.execute_code[step])
+        // <- custom_agent.py:439-444  wrapped in <observation> tags
+        If sys.env_message[step] != none {
+            U: { Frag EnvObservation[step] }
+        }
+    }
+}
+
+
+// ===========================================================================
+// MAIN AGENT — mint/agents/custom_agent.py:502-527
+// act() re-parses the flat State.history into turns/steps
+// (_parse_history_into_turns, custom_agent.py:87-177) and re-emits it under the
+// configured strategy (_apply_context_strategy, custom_agent.py:453-471).
+// Framework-supplied, not a message: the execute_python tool schema
+// (custom_agent.py:51-67) is attached to the request only when the built array
+// contains tool_calls, i.e. only for opt1 and opt3 (custom_agent.py:486, 496-497).
+// ===========================================================================
+MintCustomAgent[@T.I]: {
+
+    Mark 1 {
+    // <- custom_agent.py:230-231 / 275-276 / 321-322 / 356-357 / 388-389 / 422-423
+    // parsed["initial_task"] = State.history[0] (custom_agent.py:120)
+    U: { Frag InitialTaskPrompt }
+    }
+
+    // <- custom_agent.py:117-118 and 234-235: with no assistant output yet the
+    // parse yields zero turns and the builder returns immediately. (opt2/opt3/
+    // opt3A/opt4 have no explicit early return but their turn loop is empty.)
+    PromptEndsHere when (@T == 1 & @T.substeps == 0)
+
+    // <- custom_agent.py:453-471  dispatch on config["context_strategy"]
+    Switch sys.context_strategy {
+
+        // -------------------------------------------------------------------
+        // Collapsed history: finished turns keep only their opening message and
+        // their final answer — every tool call and observation of those turns
+        // is dropped. Only the current turn shows its tool loop.
+        // -------------------------------------------------------------------
+        Case "opt1" {
+            Mark 2 {
+            // <- custom_agent.py:238-245  turns[:-1]
+            ForEach(t: range(1, @T)) {
+                Frag TurnOpening[@t]
+                // <- custom_agent.py:244-245  raw assistant text, <thought> + <solution>
+                A: resp.answer_message[@t]
+            }
+            }
+            Mark 3 {
+            // <- custom_agent.py:248-252  turns[-1], the in-progress turn
+            Frag TurnOpening[@T]
+            // <- custom_agent.py:255-262
+            ForEach(i: range(1, @T.substeps + 1)) {
+                Frag ToolStepAsToolCall[@T.i]
+            }
+            }
+        }
+
+        // Same shape as opt1, assistant-role observations instead of tool role.
+        // <- custom_agent.py:266-311
+        Case "opt1A" {
+            Mark 2 {
+            // <- custom_agent.py:283-290
+            ForEach(t: range(1, @T)) {
+                Frag TurnOpening[@t]
+                A: resp.answer_message[@t]
+            }
+            }
+            Mark 3 {
+            // <- custom_agent.py:293-297
+            Frag TurnOpening[@T]
+            // <- custom_agent.py:300-309
+            ForEach(i: range(1, @T.substeps + 1)) {
+                Frag ToolStepAsAssistant[@T.i]
+            }
+            }
+        }
+
+        // -------------------------------------------------------------------
+        // Full history: every turn, including the current one, is expanded.
+        // opt2 packs a whole turn's tool loop into ONE assistant message.
+        // <- custom_agent.py:313-346
+        // -------------------------------------------------------------------
+        Case "opt2" {
+            Mark 2 {
+            // <- custom_agent.py:324  for turn in parsed["turns"] — includes turn @T
+            ForEach(t: range(1, @T + 1)) {
+                Frag TurnOpening[@t]
+                // <- custom_agent.py:331-340  all steps joined with "\n" into ONE message;
+                // the message is emitted only if at least one part was collected (:339)
+                If @t.substeps > 0 {
+                    A: {
+                        ForEach(i: range(1, @t.substeps + 1)) {
+                            // <- custom_agent.py:334-335
+                            If resp.execute_code[@t.i] != none {
+                                EXECUTE_BLOCK(resp.execute_code[@t.i])
+                            }
+                            // <- custom_agent.py:336-337  observation text, untagged
+                            If sys.env_message[@t.i] != none {
+                                Frag EnvObservation[@t.i]
+                            }
+                        }
+                    }
+                }
+                // <- custom_agent.py:343-344  `if turn["answer"]` — only finished turns
+                // have one, so the in-progress turn @T contributes none
+                If @t < @T {
+                    A: resp.answer_message[@t]
+                }
+            }
+            }
+        }
+
+        // Full history, one function-call exchange per step.
+        // <- custom_agent.py:348-378
+        Case "opt3" {
+            Mark 2 {
+            // <- custom_agent.py:359
+            ForEach(t: range(1, @T + 1)) {
+                Frag TurnOpening[@t]
+                // <- custom_agent.py:365-372
+                ForEach(i: range(1, @t.substeps + 1)) {
+                    Frag ToolStepAsToolCall[@t.i]
+                }
+                // <- custom_agent.py:375-376
+                If @t < @T {
+                    A: resp.answer_message[@t]
+                }
+            }
+            }
+        }
+
+        // Full history, code+observation folded into one assistant message per step.
+        // <- custom_agent.py:380-412
+        Case "opt3A" {
+            Mark 2 {
+            // <- custom_agent.py:391
+            ForEach(t: range(1, @T + 1)) {
+                Frag TurnOpening[@t]
+                // <- custom_agent.py:397-406
+                ForEach(i: range(1, @t.substeps + 1)) {
+                    Frag ToolStepAsAssistant[@t.i]
+                }
+                // <- custom_agent.py:409-410
+                If @t < @T {
+                    A: resp.answer_message[@t]
+                }
+            }
+            }
+        }
+
+        // Full history, observation returned as its own user message.
+        // <- custom_agent.py:414-450
+        Case "opt4" {
+            Mark 2 {
+            // <- custom_agent.py:425
+            ForEach(t: range(1, @T + 1)) {
+                Frag TurnOpening[@t]
+                // <- custom_agent.py:431-444
+                ForEach(i: range(1, @t.substeps + 1)) {
+                    Frag ToolStepSplitUser[@t.i]
+                }
+                // <- custom_agent.py:447-448
+                If @t < @T {
+                    A: resp.answer_message[@t]
+                }
+            }
+            }
+        }
+
+        // <- custom_agent.py:469-471  any unrecognised strategy falls back to opt1
+        Default {
+            Mark 2 {
+            ForEach(t: range(1, @T)) {
+                Frag TurnOpening[@t]
+                A: resp.answer_message[@t]
+            }
+            }
+            Mark 3 {
+            Frag TurnOpening[@T]
+            ForEach(i: range(1, @T.substeps + 1)) {
+                Frag ToolStepAsToolCall[@T.i]
+            }
+            }
+        }
+    }
+}
+
+
+// ===========================================================================
+// UPSTREAM MINT AGENT — mint/agents/openai_lm_agent.py:40-48
+// `messages = state.history` — the environment's persistent list is sent
+// verbatim, with no re-shaping at all. It therefore has no notion of turns:
+// the array is a flat alternation of raw assistant outputs and environment
+// messages, one pair per agent call. @T here is the current interaction step.
+// ===========================================================================
+MintRawHistoryAgent[@T]: {
+
+    Mark 1 {
+    // <- mint/envs/general_env.py:291  State.history[0]
+    U: { Frag InitialTaskPrompt }
+    }
+
+    Mark 2 {
+    // <- mint/main.py:74-89  one iteration appends exactly one A + one U
+    ForEach(t: range(1, @T)) {
+        // <- mint/envs/general_env.py:204-212  the model's untouched output,
+        // prefixed with "Assistant:\n" unless it already starts that way.
+        // Skipped entirely when action.value is empty (the error path).
+        A: prefixAssistantLabel(resp.raw_output[@t])
+        // <- mint/envs/general_env.py:260-268 -> log_output at :127-133
+        // Not appended once State.finished is true (general_env.py:128-129), so
+        // the final success / max-steps / API-error observation never reaches a
+        // context — the episode stops before the next agent call.
+        U: { Frag EnvObservation[@t] }
+    }
+    }
+}

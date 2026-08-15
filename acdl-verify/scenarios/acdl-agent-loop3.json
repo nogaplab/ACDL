@@ -1,0 +1,15 @@
+{
+  "name": "acdl-agent-loop3",
+  "_comment": [
+    "Drives acdl-agent.py through three model calls: two tool-using steps and a",
+    "final answer. Records @T = 1,2,3 of the tool loop in AcdlAgent[@T].",
+    "Tool names and argument shapes must match TOOLS in acdl-agent.py, or the",
+    "runner rejects the call before it reaches the loop."
+  ],
+  "replies": [
+    { "tool": "list_dir", "input": { "path": ".", "max_depth": 1 } },
+    { "tool": "read_file", "input": { "path": "supportbot.py", "limit": 40 } },
+    { "text": "Structure understood; stopping here for the trace." }
+  ],
+  "maxCalls": 20
+}

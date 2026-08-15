@@ -1,0 +1,406 @@
+// ============================================================================
+// opencode — context-assembly specification
+//
+// All paths are relative to the repository root of the analysed codebase.
+// Two agent implementations live side by side in this repo:
+//   * v1 — packages/opencode/src/session/**   (the shipped `opencode` binary)
+//   * v2 — packages/core/src/session/**       (served by packages/server)
+//
+// Model calls specified in this file:
+//   OpenCode[@T.I]      packages/opencode/src/session/prompt.ts:1272
+//   Compaction[@T]      packages/opencode/src/session/compaction.ts:388
+//   TitleGenerator[@T]  packages/opencode/src/session/prompt.ts:225
+//   RunnerV2[@T.I]      packages/core/src/session/runner/llm.ts:205
+//   CompactionV2[@T]    packages/core/src/session/compaction.ts:197
+//
+// Model calls found and deliberately NOT specified:
+//   packages/opencode/src/agent/agent.ts:397-435 — Agent.generate: a one-shot
+//     generateObject/streamObject call (system = agent/generate.txt, plus one
+//     user message) used by `opencode agent create`. No conversation context.
+//   packages/opencode/src/server/routes/instance/httpapi/handlers/
+//     project-copy.ts:34-51 — project-copy name generation. Structurally
+//     identical to TitleGenerator[@T] (one system message + one user message),
+//     only the template text differs.
+//   Subagents (task tool) are NOT a separate spec: the task tool creates a
+//     child session and re-enters the same prompt path, so a subagent turn is
+//     OpenCode[@T.I] with a different agent.
+//     <- packages/opencode/src/tool/task.ts:200-214 -> prompt.ts:1052-1071
+// ============================================================================
+
+
+// ---------------------------------------------------------------------------
+// Shared fragments — v1 message rendering (MessageV2.toModelMessagesEffect)
+// ---------------------------------------------------------------------------
+
+// Content of one persisted user message.
+// <- packages/opencode/src/session/message-v2.ts:198-242
+StrFrag UserContent[@t]: {
+  // <- message-v2.ts:204
+  ForEach(part: sys.user_parts[@t]) {
+    Switch part.type {
+      // <- message-v2.ts:206-210  non-empty, non-ignored text parts. Includes
+      // the synthetic text produced when the message was first created:
+      // file/directory expansions ("Called the Read tool with ..." + content),
+      // MCP resource text, and the "call the task tool with subagent: X" hint.
+      // <- prompt.ts:699-993 (resolvePart)
+      Case "text" { part.text }
+      // <- message-v2.ts:212-226  text/plain and directory files were already
+      // converted to text parts above; anything else rides as a media part
+      Case "file" { part.media }
+      // <- message-v2.ts:228-233  a compaction marker renders as a question
+      Case "compaction" { WHAT_DID_WE_DO_SO_FAR }
+      // <- message-v2.ts:234-239
+      Case "subtask" { TOOL_EXECUTED_BY_USER }
+    }
+  }
+}
+
+// One completed provider step: the assistant message plus the tool results it
+// produced. convertToModelMessages() splits one persisted assistant message
+// into an assistant message and a following tool message.
+// <- message-v2.ts:244-401, :406-414
+RolesFrag Step[@t.i]: {
+  // assistant messages that recorded an error are dropped from the context
+  // entirely (unless they were aborted with usable content)
+  // <- message-v2.ts:248-256
+  If sys.step[@t.i].error == none {
+    A: {
+      // <- message-v2.ts:277
+      ForEach(part: sys.step[@t.i].parts) {
+        Switch part.type {
+          // <- message-v2.ts:362-376  replayed as reasoning for the same model,
+          // demoted to plain text when the model changed mid-session
+          Case "reasoning" { part.text }
+          // <- message-v2.ts:278-285
+          Case "text" { part.text }
+          // <- message-v2.ts:290-360
+          Case "tool" { part.name_and_input }
+        }
+      }
+    }
+    T: {
+      // one tool-result block per tool call; completed, errored, pruned
+      // ("[Old tool result content cleared]") and interrupted calls all
+      // produce a result so no tool_use is left dangling
+      // <- message-v2.ts:292-360, compaction.ts:243-287 (prune)
+      ForEach(tool: sys.step[@t.i].tool_calls) {
+        tool.id_and_output
+      }
+    }
+    // providers that cannot carry media inside a tool result get that media
+    // re-sent as an extra user message right after the step
+    // <- message-v2.ts:382-399
+    If sys.step[@t.i].extracted_media != none {
+      U: {
+        // <- message-v2.ts:46, :389
+        ATTACHED_MEDIA_FROM_TOOL_RESULT
+        ForEach(m: sys.step[@t.i].extracted_media) { m.file }
+      }
+    }
+  }
+}
+
+// A turn = one persisted user message and every provider step that followed it.
+// <- message-v2.ts:195 (single pass over the message list, in order)
+RolesFrag Turn[@t]: {
+  U: { Frag UserContent[@t] }
+  ForEach(i: range(1, @t.substeps + 1)) { Frag Step[@t.i] }
+}
+
+
+// ---------------------------------------------------------------------------
+// OpenCode — the main agent (v1).
+//
+// runLoop() re-reads the whole message list from SQLite and rebuilds the array
+// from scratch before every provider call; nothing is appended in place.
+// <- packages/opencode/src/session/prompt.ts:1081-1341 (while(true))
+//
+// @T = user turn (one persisted user message)
+// I  = step inside the turn (one persisted assistant message = one call)
+// <- prompt.ts:1088 loop, :1132 step++, :1186-1201 one assistant message per step
+// ---------------------------------------------------------------------------
+OpenCode[@T.I]: {
+  Mark 1 {
+  // Exactly ONE system message: every element below is joined with "\n" into a
+  // single string and sent as one system-role message.
+  // <- session/llm/request.ts:58-66 (join), :101-112 (system -> messages)
+  // NOTE: for OpenAI-oauth credentials and GitLab workflow models this same
+  // text is passed as a provider option (`instructions`) instead of being sent
+  // as a message. <- request.ts:99, :101-103
+  S: {
+    // the agent's own prompt when it defines one, otherwise the model-family
+    // base prompt (anthropic / gpt / codex / beast / gemini / kimi / meta /
+    // trinity / default .txt)
+    // <- request.ts:60, session/system.ts:27-42
+    If sys.agent.prompt != none { AGENT_PROMPT(sys.agent.name) }
+    Else { MODEL_FAMILY_PROMPT(sys.model.api_id) }
+    // the remaining elements arrive as prompt.ts's `system` array, in this
+    // exact order <- prompt.ts:1257-1269
+    // model identity + working directory, worktree, git-ness, platform, date
+    // <- system.ts:60-76
+    ENVIRONMENT(sys.model.api_id, sys.cwd, sys.worktree, sys.is_git_repo, sys.platform, sys.date)
+    // configured project references, sorted by name <- system.ts:77-94
+    If sys.references != none { AVAILABLE_REFERENCES(sys.references) }
+    // AGENTS.md / CLAUDE.md / CONTEXT.md discovered upward from cwd, plus
+    // config `instructions` globs, plus http(s) instruction URLs
+    // <- session/instruction.ts:110-169
+    ForEach(f: sys.instruction_files) {
+      // "Instructions from: <path>" <- instruction.ts:166-167
+      INSTRUCTIONS_FROM(f.path)
+      f.content
+    }
+    // <mcp_instructions> for every MCP server with at least one enabled tool
+    // <- system.ts:112-128
+    If sys.mcp_instructions != none { MCP_INSTRUCTIONS }
+    // verbose skill listing, omitted when the skill permission is disabled
+    // <- system.ts:98-110
+    If sys.skills != none { SKILL_INSTRUCTIONS }
+    // <- prompt.ts:1270-1271, text at prompt.ts:82
+    If env.output_format[@T] == json_schema { STRUCTURED_OUTPUT_INSTRUCTION }
+    // per-request system override supplied by the API caller
+    // <- request.ts:62, prompt.ts:668 (PromptInput.system)
+    If env.request_system[@T] != none { env.request_system[@T] }
+  }
+  // A plugin may append entries to the system array; when it does, everything
+  // it appended is collapsed into a SECOND system message.
+  // <- request.ts:68-78 (experimental.chat.system.transform)
+  If sys.plugin_system_extra != none { S: PLUGIN_SYSTEM_EXTRA }
+  }
+
+  // filterCompacted(): the history is cut at the newest *completed* compaction
+  // and reordered to [compaction request, summary, verbatim tail, remainder].
+  // <- message-v2.ts:521-576, called at prompt.ts:1092-1094
+  Name C := sys.compaction_turn[@T]   // 0 when this session was never compacted
+  Name K := sys.tail_start_turn[@T]   // first pre-compaction turn kept verbatim
+  Mark 2 {
+  If (@$C > 0) {
+    // the compaction user message <- message-v2.ts:228-233
+    U: WHAT_DID_WE_DO_SO_FAR
+    // the model-written summary <- compaction.ts:356-402
+    A: resp.summary[@$C]
+    // turns from before the compaction point that were small enough to keep
+    // verbatim — replayed AFTER the summary <- message-v2.ts:545-570
+    ForEach(t: range(@$K, @$C)) { Frag Turn[@t] }
+  }
+  }
+
+  Mark 3 {
+  // every turn after the summary, up to but not including the current turn @T
+  // (when there was no compaction, @$C is 0 and this is turns 1..@T-1)
+  ForEach(t: range(@$C + 1, @T)) { Frag Turn[@t] }
+  }
+
+  Mark 4 {
+  // current turn
+  U: {
+    Frag UserContent[@T]
+    // reminders are appended as synthetic text parts on the LAST user message
+    // <- session/reminders.ts:15-90 (applied at prompt.ts:1180-1184)
+    // plan.txt, or plan-mode.txt with the plan-file path under the
+    // experimentalPlanMode flag <- reminders.ts:27-36, :70-88
+    If sys.agent.name == plan { PLAN_REMINDER }
+    // build-switch.txt when this session previously ran the plan agent
+    // <- reminders.ts:37-47, :51-67
+    ElseIf sys.switched_from_plan[@T] { BUILD_SWITCH_REMINDER }
+  }
+  // steps already completed in this turn; the assistant message for step I has
+  // just been created and is still empty, so it contributes nothing
+  // <- prompt.ts:1092 (read before :1186 insert), message-v2.ts:196
+  ForEach(i: range(1, @T.I)) { Frag Step[@T.i] }
+  // step budget exhausted: an assistant-role nudge is appended after the
+  // history telling the model that tools are gone
+  // <- prompt.ts:1178-1179, :1279-1282; text at core/session/runner/max-steps.ts:1
+  If sys.run_step[@T.I] >= sys.agent.steps { A: MAX_STEPS_PROMPT }
+  }
+  // Tool schemas are NOT part of any message; they travel in the API `tools`
+  // field, filtered by permission, sorted by name.
+  // <- request.ts:148, :184, session/tools.ts:40
+}
+
+
+// ---------------------------------------------------------------------------
+// Compaction — the summarization call (v1).
+// Runs as its own assistant message inside the same session, with no tools.
+// <- packages/opencode/src/session/compaction.ts:289-402
+// ---------------------------------------------------------------------------
+Compaction[@T]: {
+  // `system: []` is passed in, so the only system content is the hidden
+  // "compaction" agent's prompt (agent/prompt/compaction.txt)
+  // <- compaction.ts:391-393, request.ts:58-66, agent/agent.ts:219-233
+  S: COMPACTION_AGENT_PROMPT
+
+  Name H := sys.head_start_turn[@T]  // first turn after the previous compaction
+  Name K := sys.tail_start_turn[@T]  // first turn withheld from the summary
+  Mark 1 {
+  // the head of the retained history: earlier compaction request/summary pairs
+  // are removed, the most recent turns are withheld (they stay verbatim in the
+  // live context), media is stripped and tool output is cut to 2000 chars
+  // <- compaction.ts:333-341 (hidden/prior), :188-239 (select), :351-354
+  ForEach(t: range(@$H, @$K)) { Frag Turn[@t] }
+  }
+
+  // the summarization instruction, appended as the final user message
+  // <- compaction.ts:394-400; built at core/session/compaction.ts:161-169
+  U: {
+    // "Update the anchored summary below ..." wrapping <previous-summary>
+    If sys.previous_summary[@T] != none { UPDATE_ANCHORED_SUMMARY(sys.previous_summary[@T]) }
+    // "Create a new anchored summary from the conversation history."
+    Else { CREATE_ANCHORED_SUMMARY }
+    // fixed Markdown skeleton (Objective / Important Details / Work State /
+    // Next Move / Relevant Files) plus its rules
+    SUMMARY_TEMPLATE
+    // extra context injected by plugins <- compaction.ts:343-348
+    ForEach(c: sys.plugin_compaction_context[@T]) { c.text }
+  }
+}
+
+
+// ---------------------------------------------------------------------------
+// TitleGenerator — names the session. Forked in the background on the first
+// step of a session that still carries the default title.
+// <- packages/opencode/src/session/prompt.ts:193-253, fired at :1133-1139
+// ---------------------------------------------------------------------------
+TitleGenerator[@T]: {
+  // `system: []` is passed in, so only the hidden "title" agent prompt remains
+  // <- prompt.ts:229-231, request.ts:58-66, agent/agent.ts:234-249
+  S: TITLE_AGENT_PROMPT
+  // <- prompt.ts:235
+  U: GENERATE_A_TITLE_FOR_THIS_CONVERSATION
+
+  Name F := sys.first_real_user_turn[@T]  // first user message that is not synthetic
+  // a first message made only of subtask parts (a slash command) is replaced by
+  // the raw subtask prompts <- prompt.ts:213-223
+  If sys.first_message_only_subtasks[@T] {
+    U: env.subtask_prompts[@$F]
+  }
+  Else {
+    // history up to and including that first real user message
+    // <- prompt.ts:208, :224
+    ForEach(t: range(1, @$F + 1)) { Frag Turn[@t] }
+  }
+}
+
+
+// ---------------------------------------------------------------------------
+// Shared fragments — v2 message rendering (toLLMMessages)
+// ---------------------------------------------------------------------------
+
+// <- packages/core/src/session/runner/to-llm-message.ts:70-113
+RolesFrag AssistantV2[m]: {
+  // text, reasoning and tool CALLS ride in one assistant message; the message
+  // is omitted when nothing meaningful survives filtering
+  // <- to-llm-message.ts:96-100, :108
+  If m.has_content {
+    A: {
+      ForEach(part: m.content) {
+        Switch part.type {
+          // <- to-llm-message.ts:75
+          Case "text" { part.text }
+          // replayed as reasoning for the same model, demoted to text otherwise
+          // <- to-llm-message.ts:76-87
+          Case "reasoning" { part.text }
+          // <- to-llm-message.ts:88-94
+          Case "tool" { part.name_and_input }
+        }
+      }
+    }
+  }
+  // one tool message per locally executed tool call; provider-executed calls
+  // keep their result inside the assistant message instead
+  // <- to-llm-message.ts:101-107
+  ForEach(tool: m.local_tool_calls) {
+    T: tool.id_and_result
+  }
+}
+
+
+// ---------------------------------------------------------------------------
+// RunnerV2 — the v2 session runner used by packages/server.
+// One provider turn per step; the projected history is reloaded from SQLite
+// before every call.
+// <- packages/core/src/session/runner/llm.ts:173-348 (runTurnAttempt),
+//    :393-405 (step loop)
+// ---------------------------------------------------------------------------
+RunnerV2[@T.I]: {
+  Mark 1 {
+  // two system parts. openai-chat joins them into one system message
+  // (packages/llm/src/protocols/openai-chat.ts:294-295); anthropic sends them
+  // as two blocks of the top-level `system` field
+  // (packages/llm/src/protocols/anthropic-messages.ts:525-530)
+  // <- runner/llm.ts:208-210
+  S: {
+    // the selected agent's configured system prompt, when it has one
+    If sys.agent.system != none { AGENT_SYSTEM_PROMPT(sys.agent.id) }
+    // the system-context baseline: each source's baseline text joined by a
+    // blank line, registry sources first (sorted by key), then skills, then
+    // references. The baseline is frozen per context epoch and persisted, so
+    // it reflects the values captured when the epoch was opened.
+    // <- runner/llm.ts:168-171, :197-198; system-context/registry.ts:38-45;
+    //    system-context/index.ts (initialize/render); session/context-epoch.ts:40-89
+    ENVIRONMENT             // <- system-context/builtins.ts:16-32
+    TODAYS_DATE             // <- system-context/builtins.ts:33-39
+    AGENTS_MD_INSTRUCTIONS  // <- instruction-context.ts:29-37, :39-73
+    SKILL_GUIDANCE          // <- skill/guidance.ts:57-62
+    REFERENCE_GUIDANCE      // <- reference/guidance.ts:50-55
+  }
+  }
+
+  Mark 2 {
+  // projected history: every message from the newest compaction onward, plus
+  // system messages newer than the context baseline, ordered by sequence
+  // <- runner/llm.ts:200-201, :211; session/history.ts:24-53, :90-99
+  ForEach(m: sys.history[@T.I]) {
+    Switch m.type {
+      // <- to-llm-message.ts:120-131
+      Case "user" {
+        U: {
+          m.text
+          ForEach(f: m.files) { f.media }
+        }
+      }
+      // <- to-llm-message.ts:132-133
+      Case "synthetic" { U: m.text }
+      // a system-context refresh recorded mid-conversation, replayed in place
+      // <- to-llm-message.ts:134-135; context-epoch.ts:72-77
+      Case "system" { S: m.text }
+      // <- to-llm-message.ts:136-144
+      Case "shell" { U: SHELL_COMMAND_AND_OUTPUT(m.command) }
+      // <- to-llm-message.ts:147-165  <conversation-checkpoint> wrapping the
+      // summary and the verbatim recent tail
+      Case "compaction" { U: CONVERSATION_CHECKPOINT(m.summary, m.recent) }
+      // <- to-llm-message.ts:145-146
+      Case "assistant" { Frag AssistantV2[m] }
+      // agent-switched / model-switched contribute no message
+      // <- to-llm-message.ts:117-119
+    }
+  }
+  }
+
+  // step budget exhausted: tools are withheld entirely and an assistant-role
+  // nudge is appended <- runner/llm.ts:202-203, :211-213
+  If sys.is_last_step[@T.I] { A: MAX_STEPS_PROMPT }
+}
+
+
+// ---------------------------------------------------------------------------
+// CompactionV2 — automatic compaction on the v2 path. A single user message;
+// no system prompt, no tools, no replayed history messages: the conversation
+// is flattened into text inside that one message.
+// <- packages/core/src/session/compaction.ts:172-224 (compactAfterOverflow)
+// ---------------------------------------------------------------------------
+CompactionV2[@T]: {
+  U: {
+    // <- core/session/compaction.ts:161-169 (buildPrompt), joined with "\n\n"
+    If sys.previous_summary[@T] != none { UPDATE_ANCHORED_SUMMARY(sys.previous_summary[@T]) }
+    Else { CREATE_ANCHORED_SUMMARY }
+    SUMMARY_TEMPLATE
+    // the verbatim tail carried over from the previous checkpoint
+    // <- core/session/compaction.ts:179-182
+    If sys.previous_recent[@T] != none { sys.previous_recent[@T] }
+    // the conversation flattened into "[User]: ... / [Assistant]: ... /
+    // [Assistant tool call]: ... / [Tool result]: ..." lines, split so the
+    // newest ~8k tokens stay out of the summary
+    // <- core/session/compaction.ts:86-126 (serialize), :128-159 (select)
+    serializeHistory(sys.history_head[@T])
+  }
+}

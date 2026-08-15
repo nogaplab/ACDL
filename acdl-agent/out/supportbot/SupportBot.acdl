@@ -1,0 +1,50 @@
+// SupportBot — customer support agent for a fictional retailer.
+// Single model call per user turn; no tool loop, no sub-agents, no compaction.
+// Extracted from supportbot.py (the only source file in the codebase).
+//
+// The only context-assembly site is build_messages() at supportbot.py:59-95.
+// The actual API call is commented-out dead code (supportbot.py:131-133), so the
+// message array built by build_messages() is taken as the model input verbatim.
+
+// <- supportbot.py:59  build_messages(turn, state, current_message); `turn` is the
+//    1-indexed current turn number and is the only dimension the array grows over.
+SupportBot[@T]: {
+
+    // ---- Setup -------------------------------------------------------------
+    Mark 1 {
+    // <- supportbot.py:74-79  one system message; three fragments joined with "\n\n"
+    S: {
+        // <- supportbot.py:14-16, 75  persona + politeness/escalation rules
+        SUPPORT_GUIDELINES
+        // <- supportbot.py:18-20, 76  returns, shipping, support-hours policy text
+        COMPANY_POLICIES
+        // <- supportbot.py:31-33, 77  f-string wrapping the customer's name and tier
+        CUSTOMER_INFO(env.customer_name, env.customer_tier)
+    }
+    }
+
+    // ---- Conversation history ----------------------------------------------
+    Mark 2 {
+    // <- supportbot.py:82  `for t in range(1, turn)` — turns 1..@T-1, excludes the
+    //    current turn, whose message is passed in separately as `current_message`
+    ForEach(@t: range(1, @T)) {
+        // <- supportbot.py:84  state.history[t-1].message
+        U: env.message[@t]
+        // <- supportbot.py:86  state.history[t-1].reply (the model's prior output)
+        A: resp.reply[@t]
+    }
+    }
+
+    // ---- Current turn ------------------------------------------------------
+    Mark 3 {
+    // <- supportbot.py:89  the `current_message` argument, not read from history
+    U: env.message[@T]
+
+    // <- supportbot.py:92  if state.customer_tier == "premium"
+    If env.customer_tier == "premium" {
+        // <- supportbot.py:22-24, 93  a SECOND system message, appended last —
+        //    priority/expedite instruction placed after the user's message
+        S: PREMIUM_PRIORITY_NOTICE
+    }
+    }
+}
