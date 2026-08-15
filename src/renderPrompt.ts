@@ -1364,7 +1364,10 @@ function renderConditionalInsideRole(block: ConditionalBlockInsideRole): string 
     result += wrapBlock("conditional-block-inside-role", elseHeader, renderBody(block.elseBody));
   }
 
-  return result;
+  // The branches are siblings, and a role body is a wrapping flex row: without a
+  // wrapper the If and its Else would sit side by side whenever they both fit on
+  // one line. The chain must always read top-to-bottom.
+  return `<div class="conditional-chain">${result}</div>`;
 }
 
 

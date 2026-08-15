@@ -195,6 +195,15 @@ function renderBody(md, body) {
     .replace(/@@RAWHTML(\d+)@@/g, (_, i) => stash[Number(i)]);
 }
 
+// Read a source file with line endings normalised to \n. On a checkout with
+// core.autocrlf=true every content and template file arrives CRLF, and the \n
+// in the frontmatter/banner patterns below would silently stop matching: the
+// frontmatter would render as a stray <hr>/<h2> and {{TITLE}} would survive
+// into the built page.
+function readText(file) {
+  return fs.readFileSync(file, 'utf8').replace(/\r\n/g, '\n');
+}
+
 function parseFrontmatter(raw) {
   const m = raw.match(/^---\n([\s\S]*?)\n---\n?/);
   if (!m) return { data: {}, body: raw };
@@ -251,10 +260,10 @@ function build() {
       console.log(`Skipped: ${rel} (no website/templates/${name}.html)`);
       continue;
     }
-    const raw = fs.readFileSync(path.join(CONTENT_DIR, rel), 'utf8');
+    const raw = readText(path.join(CONTENT_DIR, rel));
     const { data, body } = parseFrontmatter(raw);
     const html = renderBody(md, body);
-    const template = fs.readFileSync(templatePath, 'utf8');
+    const template = readText(templatePath);
     const page = applyTemplate(template, html, data, name);
 
     const destPath = path.join(SRC_DIR, `${name}.html`);

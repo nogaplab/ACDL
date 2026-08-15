@@ -1006,6 +1006,30 @@ body {
   border-left: 1px solid var(--control-border);
 }
 
+/* An If/ElseIf/Else chain is one unit: its branches stack, never flow side by
+   side, even when the role body they sit in has room for both. */
+.conditional-chain {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  flex: 1 1 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.conditional-chain > * {
+  max-width: 100%;
+}
+
+/* Keep the chain's outer spacing identical to a single block's */
+.conditional-chain > :first-child {
+  margin-top: 0;
+}
+
+.conditional-chain > :last-child {
+  margin-bottom: 0;
+}
+
 .conditional-section {
   position: relative;
   margin: 1px 0;

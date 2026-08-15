@@ -47,6 +47,35 @@ const SYMBOLS = new Set<string>([
   ":", ";", ".", ",", "(", ")", "{", "}", "[", "]", "@", "#", "$", "?", "!", "_"
 ]);
 
+/* ───────────────── whitespace ───────────────── */
+
+/**
+ * Invisible characters that carry no meaning but ride along with copy-pasted
+ * source (from a browser, a PDF, or a chat window): zero-width space/joiners,
+ * word joiner, BOM, and soft hyphen. JS `\s` misses all of these, so they are
+ * listed explicitly.
+ */
+const INVISIBLE = new Set<string>(
+  [
+    0x200b, // zero-width space
+    0x200c, // zero-width non-joiner
+    0x200d, // zero-width joiner
+    0x2060, // word joiner
+    0xfeff, // BOM / zero-width no-break space
+    0x00ad, // soft hyphen
+  ].map((code) => String.fromCharCode(code))
+);
+
+/**
+ * Indentation is not significant in ACDL, and neither is which flavour of space
+ * produced it. `\s` already covers tab, newline, NBSP (U+00A0), the U+2000
+ * range, and ideographic space — the characters an HTML or PDF copy turns plain
+ * spaces into.
+ */
+function isWhitespace(ch: string): boolean {
+  return /\s/.test(ch) || INVISIBLE.has(ch);
+}
+
 /* ───────────────── scanner ───────────────── */
 
 export class Scanner {
@@ -132,7 +161,7 @@ export class Scanner {
         return this.readIdentifier();
     }
 
-    throw this.error(`Unexpected character '${ch}'`);
+    throw this.error(`Unexpected character '${ch}' (U+${ch.codePointAt(0)!.toString(16).toUpperCase().padStart(4, "0")})`);
     }
 
  /* ───────────── token readers ───────────── */
@@ -282,14 +311,9 @@ export class Scanner {
 
   private skipWhitespace(): boolean {
     let skipped = false;
-    while (!this.isEOF()) {
-        const ch = this.peek();
-        if (ch === " " || ch === "\t" || ch === "\n" || ch === "\r") {
-        this.advance();
-        skipped = true;
-        } else {
-        break;
-        }
+    while (!this.isEOF() && isWhitespace(this.peek())) {
+      this.advance();
+      skipped = true;
     }
     return skipped;
   }
