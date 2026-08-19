@@ -1,0 +1,161 @@
+{
+  "version": 1,
+  "spec": "acdl-agent/out/supportbot/SupportBot.acdl",
+  "target": "acdl-tests/test1-supportbot",
+  "generatedAt": "2026-08-19T10:19:47.432Z",
+  "model": "opus (claude-cli)",
+  "bindings": [
+    {
+      "key": "cond:44",
+      "kind": "harness",
+      "handle": "AgentState(customer_tier=...) → build_messages(state=...)",
+      "setter": "Set customer_tier to \"premium\" (true branch) or any other string (false branch) when constructing AgentState and passing it to build_messages(state=...); the demo hardcodes it at supportbot.py:116.",
+      "evidence": {
+        "file": "supportbot.py",
+        "line": 116,
+        "snippet": "        customer_tier=\"premium\""
+      },
+      "confidence": "high",
+      "reasoning": "The branch at line 92 tests state.customer_tier against the literal \"premium\", and customer_tier has no input surface other than the AgentState constructor argument. Flipping the branch requires editing that literal or calling build_messages with a different synthetic state.",
+      "status": "grounded",
+      "domain": [
+        "premium"
+      ],
+      "recipe": {
+        "language": "python",
+        "program": "import os, sys, json, urllib.request\n\nsys.path.insert(0, os.getcwd())\n\nimport supportbot\nfrom supportbot import AgentState, TurnHistory, build_messages\n\nvalue = os.environ[\"ACDL_VALUE\"]\nturn = int(os.environ.get(\"ACDL_TIME\", \"3\"))\nif turn < 1:\n    turn = 1\n\nhistory = []\nfor i in range(1, turn):\n    history.append(TurnHistory(\n        message=\"Customer message for turn %d.\" % i,\n        reply=\"Assistant reply for turn %d.\" % i,\n    ))\n\nstate = AgentState(\n    history=history,\n    customer_name=\"Alice Johnson\",\n    customer_tier=value,\n)\n\ncurrent_message = \"Customer message for turn %d.\" % turn\n\nmessages = build_messages(turn=turn, state=state, current_message=current_message)\n\nmsgs = [{\"role\": m[\"role\"], \"content\": m[\"content\"]} for m in messages]\n\nsystem_parts = []\nwhile msgs and msgs[0][\"role\"] == \"system\":\n    system_parts.append(msgs.pop(0)[\"content\"])\n\nbody = {\n    \"model\": \"claude-haiku-4-5\",\n    \"max_tokens\": 64,\n    \"messages\": msgs,\n}\nif system_parts:\n    body[\"system\"] = \"\\n\\n\".join(system_parts)\n\nbase = os.environ[\"ANTHROPIC_BASE_URL\"].rstrip(\"/\")\nreq = urllib.request.Request(\n    base + \"/v1/messages\",\n    data=json.dumps(body).encode(\"utf-8\"),\n    headers={\"content-type\": \"application/json\"},\n    method=\"POST\",\n)\ntry:\n    urllib.request.urlopen(req).read()\nexcept Exception as e:\n    sys.stderr.write(str(e) + \"\\n\")\n\nsys.exit(0)\n",
+        "entry": "harness.py",
+        "env": {
+          "ACDL_VALUE": "{value}"
+        },
+        "args": [],
+        "stdin": ""
+      },
+      "verification": "confirmed",
+      "evidenceRuntime": {
+        "method": "differential",
+        "traces": [
+          "acdl-verify\\traces\\verify\\cond_44-arm0.jsonl",
+          "acdl-verify\\traces\\verify\\cond_44-arm1.jsonl"
+        ],
+        "detail": "message shape changed: arm \"premium\" gave [S U A U A U S], the off-arm value gave [S U A U A U]. Incidental text delta at \"Tier: premium\" vs \"Tier: ACDLVBBBC9A75_NOT_premium\""
+      }
+    },
+    {
+      "key": "env.customer_name",
+      "kind": "harness",
+      "handle": "AgentState(customer_name=...) → build_messages(state=...)",
+      "setter": "Edit the hardcoded `customer_name=\"Alice Johnson\"` in the `__main__` block (supportbot.py:115), or import supportbot and call build_messages(turn, AgentState(history=..., customer_name=<value>, customer_tier=...), current_message).",
+      "evidence": {
+        "file": "supportbot.py",
+        "line": 115,
+        "snippet": "        customer_name=\"Alice Johnson\","
+      },
+      "confidence": "high",
+      "reasoning": "The file has no argparse, no os.environ read, and no file/stdin input; customer_name is set only by the literal in the `__main__` demo state. It reaches the prompt via state.customer_name in CUSTOMER_INFO at line 77.",
+      "status": "grounded"
+    },
+    {
+      "key": "env.customer_tier",
+      "kind": "harness",
+      "handle": "AgentState(customer_tier=...) → build_messages(state=...)",
+      "setter": "Edit the hardcoded `customer_tier=\"premium\"` in the `__main__` block (supportbot.py:116), or import supportbot and call build_messages(turn, AgentState(history=..., customer_name=..., customer_tier=<value>), current_message).",
+      "evidence": {
+        "file": "supportbot.py",
+        "line": 116,
+        "snippet": "        customer_tier=\"premium\""
+      },
+      "confidence": "high",
+      "reasoning": "customer_tier enters only as a literal keyword argument to AgentState in the demo block; there is no CLI, env, or config surface. It is consumed at line 77 (CUSTOMER_INFO) and line 92 (the premium test).",
+      "status": "grounded",
+      "recipe": {
+        "language": "python",
+        "program": "import os, sys, json, urllib.request\n\nsys.path.insert(0, os.getcwd())\n\nimport supportbot\nfrom supportbot import AgentState, TurnHistory, build_messages\n\nvalue = os.environ[\"ACDL_VALUE\"]\nturn = int(os.environ.get(\"ACDL_TIME\", \"3\"))\nif turn < 1:\n    turn = 1\n\nSAMPLE = [\n    (\"I ordered a laptop last week but haven't received it yet.\",\n     \"I apologize for the delay. Let me look up your order. Could you provide your order number?\"),\n    (\"My order number is #12345\",\n     \"Thank you! I can see your order is currently in transit and should arrive tomorrow.\"),\n]\n\nhistory = []\nfor i in range(turn - 1):\n    if i < len(SAMPLE):\n        m, r = SAMPLE[i]\n    else:\n        m = \"Follow-up question number %d.\" % (i + 1)\n        r = \"Here is my answer to follow-up number %d.\" % (i + 1)\n    history.append(TurnHistory(message=m, reply=r))\n\nstate = AgentState(\n    history=history,\n    customer_name=\"Alice Johnson\",\n    customer_tier=value,\n)\n\ncurrent_message = \"That's great! Can I also get a discount on my next order?\"\n\nmessages = build_messages(turn=turn, state=state, current_message=current_message)\n\nmsgs = [{\"role\": m[\"role\"], \"content\": m[\"content\"]} for m in messages]\n\nsystem_parts = []\nidx = 0\nwhile idx < len(msgs) and msgs[idx][\"role\"] == \"system\":\n    system_parts.append(msgs[idx][\"content\"])\n    idx += 1\nrest = msgs[idx:]\n\nbody = {\"model\": \"claude-haiku-4-5\", \"max_tokens\": 64, \"messages\": rest}\nif system_parts:\n    body[\"system\"] = \"\\n\\n\".join(system_parts)\n\nbase = os.environ[\"ANTHROPIC_BASE_URL\"].rstrip(\"/\")\nreq = urllib.request.Request(\n    base + \"/v1/messages\",\n    data=json.dumps(body).encode(\"utf-8\"),\n    headers={\"content-type\": \"application/json\"},\n    method=\"POST\",\n)\ntry:\n    with urllib.request.urlopen(req) as resp:\n        resp.read()\nexcept Exception as e:\n    print(\"proxy error:\", e)\n\nsys.exit(0)\n",
+        "entry": "harness.py",
+        "env": {
+          "ACDL_VALUE": "{value}"
+        },
+        "args": [],
+        "stdin": ""
+      },
+      "verification": "confirmed",
+      "evidenceRuntime": {
+        "method": "canary",
+        "traces": [
+          "acdl-verify\\traces\\verify\\env.customer_tier-canary.jsonl"
+        ],
+        "placement": [
+          {
+            "message": -1,
+            "role": "system",
+            "field": "system"
+          }
+        ],
+        "detail": "canary ACDLV3435E6BB appeared in 1 position(s): system.system"
+      }
+    },
+    {
+      "key": "env.message",
+      "kind": "harness",
+      "handle": "build_messages(current_message=...) and TurnHistory(message=...)",
+      "setter": "Import supportbot and call build_messages(turn=N, state=AgentState(history=[TurnHistory(message=<value>, reply=...), ...], ...), current_message=<value>), or edit the literals at supportbot.py:107, 111 and 120.",
+      "evidence": {
+        "file": "supportbot.py",
+        "line": 121,
+        "snippet": "    messages = build_messages(turn=3, state=state, current_message=current_message)"
+      },
+      "confidence": "high",
+      "reasoning": "Historical user messages come from TurnHistory.message literals built in `__main__` (lines 107, 111); the current-turn message is the `current_message` argument, assigned from a literal at line 120 and passed at line 121. No stdin, flag, or file feeds either.",
+      "status": "grounded",
+      "recipe": {
+        "language": "python",
+        "program": "import os, sys, json, urllib.request\n\nsys.path.insert(0, os.getcwd())\n\nimport supportbot\n\nvalue = os.environ[\"ACDL_VALUE\"]\nturn = int(os.environ.get(\"ACDL_TIME\", \"3\") or \"3\")\nif turn < 1:\n    turn = 1\n\n# Build history so that every user message in the conversation is the value.\n# Turn N means there are N-1 prior turns in history.\nhistory = []\nfor i in range(turn - 1):\n    history.append(supportbot.TurnHistory(message=value, reply=\"Thank you, let me look into that for you.\"))\n\nstate = supportbot.AgentState(\n    history=history,\n    customer_name=\"Alice Johnson\",\n    customer_tier=\"premium\",\n)\n\nmessages = supportbot.build_messages(turn=turn, state=state, current_message=value)\n\nmsgs = [{\"role\": m[\"role\"], \"content\": m[\"content\"]} for m in messages]\n\n# Hoist ONLY a leading run of system messages.\nlead = 0\nwhile lead < len(msgs) and msgs[lead][\"role\"] == \"system\":\n    lead += 1\n\nbody = {\n    \"model\": \"claude-haiku-4-5\",\n    \"max_tokens\": 64,\n    \"messages\": msgs[lead:],\n}\nif lead > 0:\n    body[\"system\"] = \"\\n\\n\".join(m[\"content\"] for m in msgs[:lead])\n\nbase = os.environ[\"ANTHROPIC_BASE_URL\"].rstrip(\"/\")\nreq = urllib.request.Request(\n    base + \"/v1/messages\",\n    data=json.dumps(body).encode(\"utf-8\"),\n    headers={\"content-type\": \"application/json\"},\n    method=\"POST\",\n)\ntry:\n    urllib.request.urlopen(req).read()\nexcept Exception as e:\n    print(\"post failed:\", e)\n\nsys.exit(0)\n",
+        "entry": "harness.py",
+        "env": {
+          "ACDL_VALUE": "{value}"
+        },
+        "args": [],
+        "stdin": ""
+      },
+      "verification": "confirmed",
+      "evidenceRuntime": {
+        "method": "canary",
+        "traces": [
+          "acdl-verify\\traces\\verify\\env.message-canary.jsonl"
+        ],
+        "placement": [
+          {
+            "message": 0,
+            "role": "user",
+            "field": "content"
+          },
+          {
+            "message": 2,
+            "role": "user",
+            "field": "content"
+          },
+          {
+            "message": 4,
+            "role": "user",
+            "field": "content"
+          }
+        ],
+        "detail": "canary ACDLV7C67EF0D appeared in 3 position(s): user[0].content, user[2].content, user[4].content"
+      }
+    },
+    {
+      "key": "resp.reply",
+      "kind": "harness",
+      "handle": "TurnHistory(reply=...) inside AgentState(history=[...]) → build_messages(state=...)",
+      "setter": "Import supportbot and pass TurnHistory(message=..., reply=<value>) entries in AgentState.history to build_messages(state=...), or edit the hardcoded reply literals at supportbot.py:108 and 112.",
+      "evidence": {
+        "file": "supportbot.py",
+        "line": 108,
+        "snippet": "                reply=\"I apologize for the delay. Let me look up your order. Could you provide your order number?\""
+      },
+      "confidence": "high",
+      "reasoning": "The API call that would produce real replies is commented out (lines 131-133), so reply values exist only as literals in the demo history or as whatever a caller supplies to TurnHistory. They are emitted verbatim as assistant messages at line 86.",
+      "status": "grounded"
+    }
+  ]
+}

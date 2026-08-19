@@ -10,7 +10,8 @@
 import * as fs from 'node:fs';
 import { Parser } from '../src/parser';
 import type * as AST from '../src/types';
-import { evaluate, exprText, Unsupported, type Prediction, type Resolver, type Scope } from './evaluate';
+import { evaluate, Unsupported, type Prediction, type Resolver, type Scope } from './evaluate';
+import { readTrace } from './proxy';
 
 // ------------------------------------------------------- observed messages
 
@@ -61,7 +62,10 @@ export function normalizeAnthropic(request: any): Observed[] {
  * the spec did not determine, so `evaluate` records it as free and the report
  * refuses to count it as agreement.
  */
-function traceResolver(observed: Observed[], request: any): Resolver {
+export function traceResolver(
+    observed: Observed[], request: any, variables: Record<string, string> = {},
+    free: string[] = [], controlled: string[] = [],
+): Resolver {
     const assistants = observed.filter((m) => m.role === 'assistant');
 
     return {
@@ -78,8 +82,26 @@ function traceResolver(observed: Observed[], request: any): Resolver {
             }
             throw new Unsupported(`no way to size collection '${label}' from the trace`);
         },
+        /**
+         * A condition is decidable when the episode recorded what its subject was
+         * held at -- which is exactly what the manifest's `variables` are for.
+         * Anything else defaults to false and is reported as a free choice.
+         *
+         * Defaulting rather than throwing matters: the throw used to escape the
+         * whole `evaluate` call, so a single unresolvable `If` discarded every
+         * shape verdict for that request.
+         */
         conditionHolds(expr: string): boolean {
-            throw new Unsupported(`condition '${expr}' needs a binding map (Level B/C)`);
+            const decided = decide(expr, variables);
+            if (decided !== undefined) {
+                // Not a free choice: the episode *set* this, so the branch it
+                // selects is part of the experiment rather than an assumption.
+                controlled.push(`${expr} = ${decided} (the episode held ${
+                    expr.split(/[=!<>]/)[0].trim()} at "${variables[expr.split(/[=!<>]/)[0].trim()]}")`);
+                return decided;
+            }
+            free.push(`condition '${expr}' was assumed false (no recorded assignment)`);
+            return false;
         },
         indexValue(name: string): number {
             throw new Unsupported(`index '${name}' cannot be read from the trace`);
@@ -95,6 +117,32 @@ export type Verdict = {
     call?: number;
     detail: string;
 };
+
+/**
+ * Evaluate `env.tier == "premium"` against the episode's assignment. Only the
+ * comparison forms ACDL actually uses; anything else is left undecided rather
+ * than guessed.
+ */
+export function decide(expr: string, variables: Record<string, string>): boolean | undefined {
+    // An index may sit anywhere in the path -- `sys.step[@t.i].error` is ordinary
+    // ACDL -- so the name is the segment run before the first bracket, which is
+    // also how `provenance.ts` keys the variable and therefore how an episode's
+    // assignment will spell it.
+    const m = /^\s*((?:env|sys|resp)(?:\.[A-Za-z_][A-Za-z0-9_]*)*)((?:\[[^\]]*\]|\.[A-Za-z_][A-Za-z0-9_]*)*)\s*(==|!=)\s*(.+?)\s*$/
+        .exec(expr);
+    if (!m) return undefined;
+    const [, base, rest, op, rawLiteral] = m;
+
+    // Fall back to the whole dotted path with indices dropped, for a spec that
+    // names the leaf rather than the container.
+    const full = (base + rest).replace(/\[[^\]]*\]/g, '');
+    const subject = base in variables ? base : full in variables ? full : undefined;
+    if (subject === undefined) return undefined;
+
+    const literal = rawLiteral.replace(/^"|"$/g, '');
+    const equal = variables[subject] === literal;
+    return op === '==' ? equal : !equal;
+}
 
 function roleSeq(ms: { role: AST.Role }[]): string {
     const letter: Record<AST.Role, string> = { system: 'S', user: 'U', assistant: 'A', tool: 'T' };
@@ -148,7 +196,7 @@ function arg(name: string, fallback?: string): string | undefined {
     return i !== -1 && process.argv[i + 1] ? process.argv[i + 1] : fallback;
 }
 
-function loadSpec(file: string, wanted?: string) {
+export function loadSpec(file: string, wanted?: string) {
     // src/parser.ts logs its progress to stdout; keep it out of the report.
     const log = console.log;
     console.log = () => {};
@@ -184,40 +232,59 @@ function main() {
     }
 
     const { prompt, line, strFrags, rolesFrags } = loadSpec(specFile, arg('name'));
-    const records = fs.readFileSync(traceFile, 'utf8').trim().split('\n')
-        .map((l) => JSON.parse(l)).filter((r) => !r.unexpected);
+    const { manifest, calls } = readTrace(traceFile);
 
-    const timeVar = prompt.title.indices
-        .map((i) => exprText([{ type: 'IDENT', value: '' }]) || '')
-        .length ? indexName(prompt.title.indices[0]) : 'T';
+    const timeVar = prompt.title.indices.length ? indexName(prompt.title.indices[0]) : 'T';
 
     console.log(`spec   ${prompt.title.name}[@${timeVar}]  ${specFile}:${line}`);
-    console.log(`trace  ${records.length} recorded call(s)  ${traceFile}\n`);
+    console.log(`trace  ${calls.length} recorded call(s)  ${traceFile}`);
+    if (manifest) {
+        const vars = Object.entries(manifest.variables ?? {})
+            .map(([k, v]) => `${k}=${v}`).join(' ');
+        console.log(`       episode ${manifest.episode}  [${manifest.mode}/${manifest.provider}]` +
+                    (vars ? `  vars ${vars}` : ''));
+    }
+    console.log();
 
     const verdicts: Verdict[] = [];
     const allObserved: Observed[][] = [];
     const frees: string[] = [];
+    const controlled: string[] = [];
 
-    for (const rec of records) {
+    // The episode records which time index it ran at, so the k-th call is not
+    // blindly assumed to be @T=k. Without it, a harness episode driven at @T=3
+    // would be checked against the spec's @T=1.
+    const timeBase = Number(manifest?.variables?.time ?? 1);
+
+    calls.forEach((rec, idx) => {
+        // The k-th model call is the spec at time index k. True for a ReAct loop
+        // whose @T is the step; a spec whose @T is a conversation turn needs turn
+        // boundaries from the runner, which do not exist yet.
+        const k = timeBase + idx;
+        if (rec.provider && rec.provider !== 'anthropic') {
+            verdicts.push({ claim: 'normalize', status: 'UNEXERCISED', call: k,
+                detail: `trace is ${rec.provider}; only the Anthropic wire format normalizes so far` });
+            return;
+        }
         const observed = normalizeAnthropic(rec.request);
         allObserved.push(observed);
 
-        // The k-th recorded call is the spec at time index k.
         let prediction: Prediction;
         try {
             prediction = evaluate(prompt, {
-                time: { [timeVar]: rec.seq },
-                resolver: traceResolver(observed, rec.request),
+                time: { [timeVar]: k },
+                resolver: traceResolver(
+                    observed, rec.request, manifest?.variables ?? {}, frees, controlled),
                 strFrags, rolesFrags,
             });
         } catch (e) {
-            verdicts.push({ claim: 'evaluate', status: 'UNEXERCISED', call: rec.seq,
+            verdicts.push({ claim: 'evaluate', status: 'UNEXERCISED', call: k,
                 detail: `${(e as Error).message}` });
-            continue;
+            return;
         }
-        verdicts.push(...checkCall(rec.seq, prediction, observed));
-        for (const f of prediction.free) frees.push(`call ${rec.seq}: ${f.what} = ${f.value} (${f.why})`);
-    }
+        verdicts.push(...checkCall(k, prediction, observed));
+        for (const f of prediction.free) frees.push(`call ${k}: ${f.what} = ${f.value} (${f.why})`);
+    });
 
     verdicts.push(...checkPrefixMonotonicity(allObserved));
 
@@ -227,9 +294,18 @@ function main() {
                     `${(v.call ? `call ${v.call}` : '').padEnd(8)} ${v.claim.padEnd(18)} ${v.detail}`);
     }
 
-    if (frees.length) {
+    // A condition the episode deliberately set is not a free choice. Listing the
+    // two together would let a branch we chose look like a branch we assumed.
+    if (controlled.length) {
+        console.log('\ncontrolled by the episode (set deliberately, so the branch IS under test):');
+        for (const c of [...new Set(controlled)]) console.log(`  - ${c}`);
+    }
+    const decided = new Set(controlled.map((c) => c.split(' = ')[0]));
+    const unforced = [...new Set(frees)].filter(
+        (f) => ![...decided].some((d) => f.includes(d)));
+    if (unforced.length) {
         console.log('\nfree choices (taken from the trace, therefore NOT verified):');
-        for (const f of [...new Set(frees)]) console.log(`  - ${f}`);
+        for (const f of unforced) console.log(`  - ${f}`);
     }
 
     const refuted = verdicts.filter((v) => v.status === 'REFUTED').length;

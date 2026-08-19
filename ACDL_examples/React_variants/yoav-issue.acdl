@@ -1,0 +1,23 @@
+ReactAgent[@T]: {
+    S: {
+        USER_INFO(sys.user_name[@T], sys.user_email[@T])
+        TASK_INSTRUCTIONS
+        sys.available_tools[@T]
+    }
+    U: env.user_question
+    // Action history
+    ForEach(@t: range(1, @T)) {
+        A: {
+            resp.reasoning[@t]
+            sys.tool_call[@t]
+        }
+        T: {
+            If is_long(sys.tool_call[@t].response) {
+                short_version(sys.tool_call[@t].response)
+            } Else {
+                sys.tool_call[@t].response
+            }
+        }
+    }
+    S: CONTINUE_OR_ANSWER
+}

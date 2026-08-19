@@ -91,9 +91,9 @@ title: Examples - ACDL
     <span class="role">S</span>: <span class="template">INSTRUCTIONS</span>
     <span class="role">U</span>: {
         <span class="keyword">Name</span> docs := k_relevant_docs(<span class="context">env.user_input</span>[<span class="context">@T</span>])
-        <span class="keyword">ForEach</span>(i: range(1, $docs.len)) {
-            $docs[i].source
-            $docs[i].content
+        <span class="keyword">ForEach</span>(doc: $docs) {
+            doc.source
+            doc.content
         }
         <span class="template">ANSWER_Q_FROM_DOCS</span>
         <span class="context">env.user_input</span>[<span class="context">@T</span>]
@@ -113,9 +113,9 @@ title: Examples - ACDL
                 <div class="role-body">
                   <div style="margin-bottom: 6px;"><span class="name-kw">Name</span> <span class="name-var">docs</span> <span class="name-assign">:=</span> <span class="fn">k_relevant_docs(<span class="ctx">env.user_input[<span class="idx">@T</span>]</span>)</span></div>
                   <div class="ctrl-block">
-                    <div class="ctrl-header">↻ ForEach <span class="idx">i</span> : 1 ... <span class="name-var">docs.len</span></div>
-                    <span class="name-var">docs[</span><span class="idx">i</span><span class="name-var">].source</span><br>
-                    <span class="name-var">docs[</span><span class="idx">i</span><span class="name-var">].content</span>
+                    <div class="ctrl-header">↻ ForEach <span class="idx">doc</span> : <span class="name-var">docs</span></div>
+                    <span class="idx">doc</span><span class="name-var">.source</span><br>
+                    <span class="idx">doc</span><span class="name-var">.content</span>
                   </div>
                   <span class="tpl">ANSWER_Q_FROM_DOCS</span><br>
                   <span class="ctx">env.user_input[<span class="idx">@T</span>]</span>
@@ -152,7 +152,7 @@ title: Examples - ACDL
         <span class="template">AVAILABLE_TOOLS</span>
     }
     <span class="role">U</span>: <span class="context">env.user_input</span>[<span class="context">@1</span>]  <span class="comment">// history</span>
-    <span class="keyword">ForEach</span>(<span class="context">@t</span>: range(1, <span class="context">@T</span>-1)) {
+    <span class="keyword">ForEach</span>(<span class="context">@t</span>: range(1, <span class="context">@T</span>)) {
         <span class="role">A</span>: {
             <span class="context">resp.tool_reasoning</span>[<span class="context">@t</span>]
             <span class="context">sys.tool_used</span>[<span class="context">@t</span>]
@@ -178,7 +178,7 @@ title: Examples - ACDL
                 <div class="role-body"><span class="ctx">env.user_input[<span class="idx">@1</span>]</span></div>
               </div>
               <div class="ctrl-block">
-                <div class="ctrl-header">↻ ForEach <span class="idx">@t</span> : 1 ... <span class="idx">@T</span>-1</div>
+                <div class="ctrl-header">↻ ForEach <span class="idx">@t</span> : 1 ... <span class="idx">@T</span></div>
                 <div class="role-msg assistant">
                   <span class="role-badge">Role: Assistant</span>
                   <div class="role-body">
@@ -219,7 +219,7 @@ title: Examples - ACDL
         <span class="template">AVAILABLE_TOOLS</span>
     }
     <span class="role">U</span>: <span class="context">env.user_input</span>[<span class="context">@1</span>]  <span class="comment">// history</span>
-    <span class="keyword">ForEach</span>(<span class="context">@t</span>: range(1, <span class="context">@T</span>-1)) {
+    <span class="keyword">ForEach</span>(<span class="context">@t</span>: range(1, <span class="context">@T</span>)) {
         <span class="role">A</span>: <span class="context">sys.tool_used</span>[<span class="context">@t</span>]
         <span class="role">T</span>: <span class="context">sys.tool_used</span>[<span class="context">@t</span>].tool_response
     }
@@ -242,7 +242,7 @@ title: Examples - ACDL
                 <div class="role-body"><span class="ctx">env.user_input[<span class="idx">@1</span>]</span></div>
               </div>
               <div class="ctrl-block">
-                <div class="ctrl-header">↻ ForEach <span class="idx">@t</span> : 1 ... <span class="idx">@T</span>-1</div>
+                <div class="ctrl-header">↻ ForEach <span class="idx">@t</span> : 1 ... <span class="idx">@T</span></div>
                 <div class="role-msg assistant">
                   <span class="role-badge">Role: Assistant</span>
                   <div class="role-body"><span class="ctx">sys.tool_used[<span class="idx">@t</span>]</span></div>
@@ -277,7 +277,7 @@ title: Examples - ACDL
             <pre><span class="template">ReactToolRag</span>[<span class="context">@T</span>]: {
     <span class="role">S</span>: <span class="template">INSTRUCTIONS</span>
     <span class="role">U</span>: <span class="context">env.user_input</span>[<span class="context">@1</span>]
-    <span class="keyword">ForEach</span>(<span class="context">@t</span>: range(1, <span class="context">@T</span>-1)) {
+    <span class="keyword">ForEach</span>(<span class="context">@t</span>: range(1, <span class="context">@T</span>)) {
         <span class="role">A</span>: {
             <span class="context">resp.tool_reasoning</span>[<span class="context">@t</span>]
             <span class="context">sys.tool_used</span>[<span class="context">@t</span>]
@@ -306,7 +306,7 @@ title: Examples - ACDL
                 <div class="role-body"><span class="ctx">env.user_input[<span class="idx">@1</span>]</span></div>
               </div>
               <div class="ctrl-block">
-                <div class="ctrl-header">↻ ForEach <span class="idx">@t</span> : 1 ... <span class="idx">@T</span>-1</div>
+                <div class="ctrl-header">↻ ForEach <span class="idx">@t</span> : 1 ... <span class="idx">@T</span></div>
                 <div class="role-msg assistant">
                   <span class="role-badge">Role: Assistant</span>
                   <div class="role-body">
@@ -383,14 +383,14 @@ title: Examples - ACDL
       }
     }
     <span class="keyword">PromptEndsHere</span> <span class="keyword">when</span> (<span class="context">@T</span> == <span class="context">@t</span> &amp;&amp; <span class="context">@T</span>.0)
-    <span class="keyword">ForEach</span>(<span class="context">@i</span>: range(1, <span class="context">@t</span>.substeps)) {
+    <span class="keyword">ForEach</span>(step: <span class="context">@t</span>.substeps) {
       <span class="keyword">Mark</span> 1 {
       <span class="role">A</span>: {
-        <span class="keyword">ForEach</span>(tool: <span class="context">sys.tool_requests</span>[<span class="context">@t.i</span>]) {
+        <span class="keyword">ForEach</span>(tool: <span class="context">sys.tool_requests</span>[step]) {
           tool.id_name_and_args
         }
       }
-      <span class="keyword">ForEach</span>(tool: <span class="context">tool_requests</span>[<span class="context">@t.i</span>]) {
+      <span class="keyword">ForEach</span>(tool: <span class="context">tool_requests</span>[step]) {
         <span class="role">T</span>: tool.id_and_response
       }
       }
@@ -454,18 +454,18 @@ title: Examples - ACDL
                 </div>
                 <div class="mark-block">
                 <div class="ctrl-block">
-                  <div class="ctrl-header">↻ ForEach <span class="idx">@i</span> : 1 ... <span class="idx">@t</span>.substeps</div>
+                  <div class="ctrl-header">↻ ForEach <span class="idx">step</span> : <span class="idx">@t</span>.substeps</div>
                   <div class="role-msg assistant">
                     <span class="role-badge">Role: Assistant</span>
                     <div class="role-body">
                       <div class="ctrl-block">
-                        <div class="ctrl-header">↻ ForEach <span class="idx">tool</span> : <span class="ctx">sys.tool_requests[<span class="idx">@t.i</span>]</span></div>
+                        <div class="ctrl-header">↻ ForEach <span class="idx">tool</span> : <span class="ctx">sys.tool_requests[<span class="idx">step</span>]</span></div>
                         <span class="idx">tool.id_name_and_args</span>
                       </div>
                     </div>
                   </div>
                   <div class="ctrl-block">
-                    <div class="ctrl-header">↻ ForEach <span class="idx">tool</span> : <span class="ctx">tool_requests[<span class="idx">@t.i</span>]</span></div>
+                    <div class="ctrl-header">↻ ForEach <span class="idx">tool</span> : <span class="ctx">tool_requests[<span class="idx">step</span>]</span></div>
                     <div class="role-msg tool">
                       <span class="role-badge">Role: Tool</span>
                       <div class="role-body"><span class="idx">tool.id_and_response</span></div>
@@ -515,9 +515,9 @@ title: Examples - ACDL
   <span class="keyword">ForEach</span>(t: range(<span class="context">@$C</span> + 1, <span class="context">@T</span>)) {
     <span class="role">U</span>: {
       <span class="keyword">Mark</span> 6 {
-      <span class="keyword">ForEach</span>(m: range(1, <span class="context">sys.pending_messages</span>[<span class="context">@t</span>].len)) {
-        <span class="context">sys.pending_messages</span>[<span class="context">@t</span>][m].date_time
-        <span class="context">sys.pending_messages</span>[<span class="context">@t</span>][m].message
+      <span class="keyword">ForEach</span>(message: <span class="context">sys.pending_messages</span>[<span class="context">@t</span>]) {
+        message.date_time
+        message.message
       }
       }
       <span class="keyword">Mark</span> 5 {
@@ -535,14 +535,14 @@ title: Examples - ACDL
       }
     }
     <span class="keyword">PromptEndsHere</span> <span class="keyword">when</span> (<span class="context">@t</span> == <span class="context">@T</span> &amp;&amp; T.0)
-    <span class="keyword">ForEach</span>(i: range(1, <span class="context">@t</span>.substeps)) {
+    <span class="keyword">ForEach</span>(step: <span class="context">@t</span>.substeps) {
       <span class="keyword">Mark</span> 1 {
       <span class="role">A</span>: {
-        <span class="keyword">ForEach</span>(tool: <span class="context">sys.tool_requests</span>[<span class="context">@t.i</span>]) {
+        <span class="keyword">ForEach</span>(tool: <span class="context">sys.tool_requests</span>[step]) {
           tool.id_name_and_arg
         }
       }
-      <span class="keyword">ForEach</span>(tool: <span class="context">sys.tool_requests</span>[<span class="context">@t.i</span>]) {
+      <span class="keyword">ForEach</span>(tool: <span class="context">sys.tool_requests</span>[step]) {
         <span class="role">T</span>: tool.id_and_response
       }
       }
@@ -585,9 +585,9 @@ title: Examples - ACDL
                   <div class="role-body">
                     <div class="mark-block">
                     <div class="ctrl-block">
-                      <div class="ctrl-header">↻ ForEach <span class="idx">m</span> : 1 ... <span class="ctx">sys.pending_messages[<span class="idx">@t</span>].len</span></div>
-                      <span class="ctx">sys.pending_messages[<span class="idx">@t</span>][m].date_time</span><br>
-                      <span class="ctx">sys.pending_messages[<span class="idx">@t</span>][m].message</span>
+                      <div class="ctrl-header">↻ ForEach <span class="idx">message</span> : <span class="ctx">sys.pending_messages[<span class="idx">@t</span>]</span></div>
+                      <span class="idx">message</span><span class="ctx">.date_time</span><br>
+                      <span class="idx">message</span><span class="ctx">.message</span>
                     </div>
                     <div class="mark-bracket"><div class="mark-line"></div><span class="mark-num">6</span></div>
                     </div>
@@ -616,18 +616,18 @@ title: Examples - ACDL
                 </div>
                 <div class="mark-block">
                 <div class="ctrl-block">
-                  <div class="ctrl-header">↻ ForEach <span class="idx">i</span> : 1 ... <span class="idx">@t</span>.substeps</div>
+                  <div class="ctrl-header">↻ ForEach <span class="idx">step</span> : <span class="idx">@t</span>.substeps</div>
                   <div class="role-msg assistant">
                     <span class="role-badge">Role: Assistant</span>
                     <div class="role-body">
                       <div class="ctrl-block">
-                        <div class="ctrl-header">↻ ForEach <span class="idx">tool</span> : <span class="ctx">sys.tool_requests[<span class="idx">@t.i</span>]</span></div>
+                        <div class="ctrl-header">↻ ForEach <span class="idx">tool</span> : <span class="ctx">sys.tool_requests[<span class="idx">step</span>]</span></div>
                         <span class="idx">tool.id_name_and_arg</span>
                       </div>
                     </div>
                   </div>
                   <div class="ctrl-block">
-                    <div class="ctrl-header">↻ ForEach <span class="idx">tool</span> : <span class="ctx">sys.tool_requests[<span class="idx">@t.i</span>]</span></div>
+                    <div class="ctrl-header">↻ ForEach <span class="idx">tool</span> : <span class="ctx">sys.tool_requests[<span class="idx">step</span>]</span></div>
                     <div class="role-msg tool">
                       <span class="role-badge">Role: Tool</span>
                       <div class="role-body"><span class="idx">tool.id_and_response</span></div>
