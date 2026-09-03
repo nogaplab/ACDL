@@ -227,6 +227,11 @@ function updatePreview(
       path.join(context.extensionPath, "media", "html2canvas.min.js"),
     ),
   );
+  const captureFixUri = panel.webview.asWebviewUri(
+    vscode.Uri.file(
+      path.join(context.extensionPath, "media", "preview-capture.js"),
+    ),
+  );
   const cspSource = panel.webview.cspSource;
   const nonce = makeNonce();
 
@@ -343,6 +348,7 @@ function updatePreview(
     </div>
   </div>
   <script nonce="${nonce}" src="${html2canvasUri}"></script>
+  <script nonce="${nonce}" src="${captureFixUri}"></script>
   <script nonce="${nonce}">
 ${getWebviewScript()}
   </script>
@@ -418,6 +424,12 @@ function getWebviewScript(): string {
       // Render at zoom = 1 regardless of current preview zoom.
       const prevTransform = host.style.transform;
       host.style.transform = 'scale(1)';
+      // html2canvas cannot reproduce inline-flex text, CSS custom properties
+      // or gradients, which is what the ACDL renderer uses for context vars,
+      // templates and time indices. Swap them out for the capture.
+      const restoreCapture = window.acdlPrepareCapture
+        ? window.acdlPrepareCapture(capture)
+        : () => {};
       try {
         // eslint-disable-next-line no-undef
         const canvas = await html2canvas(capture, {
@@ -428,6 +440,7 @@ function getWebviewScript(): string {
         });
         return canvas;
       } finally {
+        restoreCapture();
         host.style.transform = prevTransform;
       }
     }

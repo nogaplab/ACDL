@@ -3,37 +3,105 @@
   "name": "ACDL",
   "scopeName": "source.acdl",
   "patterns": [
-    { "include": "#comment" },
-    { "include": "#string" },
-    { "include": "#number" },
-    { "include": "#prompt-declaration" },
-    { "include": "#fragment-definition" },
-    { "include": "#fragment-invocation" },
-    { "include": "#role-identifier" },
-    { "include": "#namespace-keyword" },
-    { "include": "#control-keyword" },
-    { "include": "#definition-keyword" },
-    { "include": "#name-reference" },
-    { "include": "#template" },
-    { "include": "#range-operator" },
-    { "include": "#operator" },
-    { "include": "#context-variable-path" },
-    { "include": "#index-expression" },
-    { "include": "#punctuation" }
+    {
+      "include": "#comment"
+    },
+    {
+      "include": "#string"
+    },
+    {
+      "include": "#number"
+    },
+    {
+      "include": "#prompt-declaration"
+    },
+    {
+      "include": "#fragment-definition"
+    },
+    {
+      "include": "#fragment-invocation"
+    },
+    {
+      "include": "#role-identifier"
+    },
+    {
+      "include": "#namespace-keyword"
+    },
+    {
+      "include": "#control-keyword"
+    },
+    {
+      "include": "#definition-keyword"
+    },
+    {
+      "include": "#name-reference"
+    },
+    {
+      "include": "#template"
+    },
+    {
+      "include": "#range-operator"
+    },
+    {
+      "include": "#operator"
+    },
+    {
+      "include": "#context-variable-path"
+    },
+    {
+      "include": "#index-expression"
+    },
+    {
+      "include": "#punctuation"
+    }
   ],
   "repository": {
     "comment": {
-      "match": "//.*$",
-      "name": "comment.line.double-slash.acdl"
-    },
-    "string": {
-      "begin": "\"",
-      "end": "\"",
-      "name": "string.quoted.double.acdl",
       "patterns": [
         {
-          "match": "\\\\[\"\\\\nt]",
-          "name": "constant.character.escape.acdl"
+          "match": "(?://|#).*$",
+          "name": "comment.line.double-slash.acdl"
+        },
+        {
+          "begin": "/\\*",
+          "end": "\\*/",
+          "name": "comment.block.acdl"
+        }
+      ]
+    },
+    "string": {
+      "patterns": [
+        {
+          "begin": "\"",
+          "end": "\"",
+          "name": "string.quoted.double.acdl",
+          "patterns": [
+            {
+              "match": "\\\\[\"'\\\\nt]",
+              "name": "constant.character.escape.acdl"
+            }
+          ]
+        },
+        {
+          "begin": "'",
+          "end": "'",
+          "name": "string.quoted.single.acdl",
+          "patterns": [
+            {
+              "match": "\\\\[\"'\\\\nt]",
+              "name": "constant.character.escape.acdl"
+            }
+          ]
+        },
+        {
+          "begin": "“",
+          "end": "”",
+          "name": "string.quoted.double.acdl"
+        },
+        {
+          "begin": "‘",
+          "end": "’",
+          "name": "string.quoted.single.acdl"
         }
       ]
     },
@@ -46,35 +114,39 @@
       "name": "keyword.other.prompt.acdl"
     },
     "fragment-definition": {
-      "match": "\\b(StrFrag|RolesFrag)\\b",
+      "match": "(?i)\\b(StrFrag|StringFrag|RolesFrag|RoleFrag)\\b",
       "name": "keyword.other.fragment.acdl"
     },
     "fragment-invocation": {
-      "match": "\\b(Frag)\\b",
+      "match": "(?i)\\b(Frag)\\b",
       "name": "keyword.other.frag-invoke.acdl"
     },
     "role-identifier": {
-      "match": "\\b([SUATN])(?=\\s*:)",
+      "match": "(?i)\\b(S|U|A|T|N|system|user|assistant|tool|none)(?=\\s*:)",
       "captures": {
-        "1": { "name": "entity.name.tag.role.acdl" }
+        "1": {
+          "name": "entity.name.tag.role.acdl"
+        }
       }
     },
     "namespace-keyword": {
-      "match": "\\b(env|sys|resp|prompt)\\b",
+      "match": "\\b(env|sys|resp)\\b|(?i)\\b(Env|Sys|Resp)\\b(?=\\s*[.\\[])|(?i)\\bprompt\\b(?=\\s*\\.)",
       "name": "keyword.other.namespace.acdl"
     },
     "control-keyword": {
-      "match": "\\b(If|ElseIf|Else|ForEach|Switch|Case|Default|break|continue|when|and|or|not|for|in)\\b",
+      "match": "(?i)\\b(If|ElseIf|ElsIf|Elif|Else|ForEach|Switch|Case|Default|break|continue|when|and|or|not|for|in)\\b",
       "name": "keyword.control.acdl"
     },
     "definition-keyword": {
-      "match": "\\b(Name|Mark|PromptEndsHere)\\b",
+      "match": "(?i)\\b(Name|Mark|PromptEndsHere)\\b",
       "name": "keyword.other.definition.acdl"
     },
     "name-reference": {
       "match": "\\$([a-zA-Z_][a-zA-Z0-9_]*)",
       "captures": {
-        "0": { "name": "variable.other.name-ref.acdl" }
+        "0": {
+          "name": "variable.other.name-ref.acdl"
+        }
       }
     },
     "template": {
@@ -82,7 +154,7 @@
       "name": "entity.name.function.template.acdl"
     },
     "range-operator": {
-      "match": "\\.\\.\\.|\\u2026",
+      "match": "\\.\\.\\.?|\\u2026|\\u2025",
       "name": "keyword.operator.range.acdl"
     },
     "operator": {
@@ -92,17 +164,21 @@
     "context-variable-path": {
       "match": "(?<=\\b(?:env|sys|resp|prompt))\\.([a-zA-Z_][a-zA-Z0-9_]*)",
       "captures": {
-        "1": { "name": "variable.other.property.acdl" }
+        "1": {
+          "name": "variable.other.property.acdl"
+        }
       }
     },
     "index-expression": {
       "match": "@([a-zA-Z_][a-zA-Z0-9_]*)",
       "captures": {
-        "0": { "name": "variable.parameter.index.acdl" }
+        "0": {
+          "name": "variable.parameter.index.acdl"
+        }
       }
     },
     "punctuation": {
-      "match": "[{}()\\[\\]:;,@#$?_]",
+      "match": "[{}()\\[\\]:;,@$?_]",
       "name": "punctuation.acdl"
     }
   }

@@ -39,33 +39,40 @@ module.exports = __toCommonJS(extension_exports);
 var vscode = __toESM(require("vscode"));
 
 // ../src/scanner.ts
-var NAMESPACE_KEYWORDS = /* @__PURE__ */ new Set([
-  "env",
-  "sys",
-  "resp"
+var CONTROL_KEYWORDS = /* @__PURE__ */ new Map([
+  ["if", "If"],
+  ["elseif", "ElseIf"],
+  ["elsif", "ElseIf"],
+  ["elif", "ElseIf"],
+  ["else", "Else"],
+  ["foreach", "ForEach"],
+  ["switch", "Switch"],
+  ["case", "Case"],
+  ["default", "Default"],
+  ["break", "break"],
+  ["continue", "continue"],
+  ["name", "Name"],
+  ["for", "for"],
+  ["in", "in"],
+  ["mark", "Mark"],
+  ["when", "when"],
+  ["not", "not"],
+  ["and", "and"],
+  ["or", "or"],
+  ["strfrag", "StrFrag"],
+  ["stringfrag", "StrFrag"],
+  ["rolesfrag", "RolesFrag"],
+  ["rolefrag", "RolesFrag"],
+  ["frag", "Frag"]
 ]);
-var CONTROL_KEYWORDS = /* @__PURE__ */ new Set([
-  "If",
-  "ElseIf",
-  "Else",
-  "ForEach",
-  "Switch",
-  "Case",
-  "Default",
-  "break",
-  "continue",
-  "Name",
-  "for",
-  "in",
-  "Mark",
-  "when",
-  "not",
-  "and",
-  "or",
-  "StrFrag",
-  "RolesFrag",
-  "Frag"
+var NAMESPACE_KEYWORDS = /* @__PURE__ */ new Map([
+  ["env", "env"],
+  ["sys", "sys"],
+  ["resp", "resp"],
+  ["prompt", "prompt"]
 ]);
+var UNCONDITIONAL_NAMESPACES = /* @__PURE__ */ new Set(["env", "sys", "resp"]);
+var DOT_ONLY_NAMESPACES = /* @__PURE__ */ new Set(["prompt"]);
 var LOGIC_OP = /* @__PURE__ */ new Set([
   "=",
   "!",
@@ -73,7 +80,11 @@ var LOGIC_OP = /* @__PURE__ */ new Set([
   ">",
   "&",
   "|",
-  "^"
+  "^",
+  "\u2260",
+  "\u2264",
+  "\u2265",
+  "\u2248"
 ]);
 var ARITH_OP = /* @__PURE__ */ new Set([
   "-",
@@ -81,6 +92,18 @@ var ARITH_OP = /* @__PURE__ */ new Set([
   "%",
   "*",
   "/"
+]);
+var OPERATOR_ALIASES = /* @__PURE__ */ new Map([
+  ["\u2212", "-"],
+  // minus sign
+  ["\u2013", "-"],
+  // en dash
+  ["\u2014", "-"],
+  // em dash
+  ["\xD7", "*"],
+  // multiplication sign
+  ["\xF7", "/"]
+  // division sign
 ]);
 var SYMBOLS = /* @__PURE__ */ new Set([
   ":",
@@ -94,12 +117,38 @@ var SYMBOLS = /* @__PURE__ */ new Set([
   "[",
   "]",
   "@",
-  "#",
   "$",
   "?",
   "!",
   "_"
 ]);
+var QUOTE_PAIRS = /* @__PURE__ */ new Map([
+  ['"', '"'],
+  ["'", "'"],
+  ["\u201C", "\u201D"],
+  // “ ”
+  ["\u2018", "\u2019"]
+  // ‘ ’
+]);
+var INVISIBLE = new Set(
+  [
+    8203,
+    // zero-width space
+    8204,
+    // zero-width non-joiner
+    8205,
+    // zero-width joiner
+    8288,
+    // word joiner
+    65279,
+    // BOM / zero-width no-break space
+    173
+    // soft hyphen
+  ].map((code) => String.fromCharCode(code))
+);
+function isWhitespace(ch) {
+  return /\s/.test(ch) || INVISIBLE.has(ch);
+}
 var Scanner = class {
   pos = 0;
   line = 1;
@@ -115,43 +164,48 @@ var Scanner = class {
     }
     const ch = this.peek();
     if (ch === "/" && this.peekNext() === "/") {
-      return this.readComment();
+      return this.readLineComment(2);
     }
-    if (ch === "\u2026") {
+    if (ch === "#") {
+      return this.readLineComment(1);
+    }
+    if (ch === "/" && this.peekNext() === "*") {
+      return this.readBlockComment();
+    }
+    if (ch === "\u2026" || ch === "\u2025") {
       const col = this.col;
       this.advance();
       return { type: "RANGE", value: "\u2026", line: this.line, col };
     }
-    if (ch === ".") {
-      if (this.peekNext() === "." && this.input[this.pos + 2] === ".") {
-        const col = this.col;
-        this.advance();
-        this.advance();
-        this.advance();
-        return { type: "RANGE", value: "...", line: this.line, col };
-      }
-    }
-    if (LOGIC_OP.has(ch)) {
+    if (ch === "." && this.peekNext() === ".") {
       const col = this.col;
-      const value = this.advance();
+      this.advance();
+      this.advance();
+      if (this.peek() === ".") this.advance();
+      return { type: "RANGE", value: "...", line: this.line, col };
+    }
+    const normalized = OPERATOR_ALIASES.get(ch) ?? ch;
+    if (LOGIC_OP.has(normalized)) {
+      const col = this.col;
+      this.advance();
       return {
         type: "LOGIC_OP",
-        value,
+        value: normalized,
         line: this.line,
         col
       };
     }
-    if (ARITH_OP.has(ch)) {
+    if (ARITH_OP.has(normalized)) {
       const col = this.col;
-      const value = this.advance();
+      this.advance();
       return {
         type: "ARITH_OP",
-        value,
+        value: normalized,
         line: this.line,
         col
       };
     }
-    if (ch === '"') {
+    if (QUOTE_PAIRS.has(ch)) {
       return this.readString();
     }
     if (SYMBOLS.has(ch)) {
@@ -163,13 +217,23 @@ var Scanner = class {
     if (this.isIdentStart(ch)) {
       return this.readIdentifier();
     }
-    throw this.error(`Unexpected character '${ch}'`);
+    if (/[\p{P}\p{S}]/u.test(ch)) {
+      return this.readSymbol();
+    }
+    throw this.error(`Unexpected character '${ch}' (U+${ch.codePointAt(0).toString(16).toUpperCase().padStart(4, "0")})`);
   }
   /* ───────────── token readers ───────────── */
-  readComment() {
+  /**
+   * A `//` or `#` comment, running to end of line. `openerLength` is how many
+   * characters introduce it.
+   *
+   * Braces are ordinary comment text: stopping at "}" would make any comment
+   * quoting a code literal terminate early, leaving the remainder to be
+   * tokenized as source.
+   */
+  readLineComment(openerLength) {
     const startCol = this.col;
-    this.advance();
-    this.advance();
+    for (let i = 0; i < openerLength; i++) this.advance();
     let value = "";
     while (!this.isEOF() && this.peek() !== "\n") {
       value += this.advance();
@@ -181,13 +245,32 @@ var Scanner = class {
       col: startCol
     };
   }
+  /** A slash-star comment, which may span lines. */
+  readBlockComment() {
+    const startCol = this.col;
+    const startLine = this.line;
+    this.advance();
+    this.advance();
+    let value = "";
+    while (!this.isEOF()) {
+      if (this.peek() === "*" && this.peekNext() === "/") {
+        this.advance();
+        this.advance();
+        return { type: "COMMENT", value: value.trim(), line: startLine, col: startCol };
+      }
+      value += this.advance();
+    }
+    throw this.error(`Unterminated block comment (opened at line ${startLine})`);
+  }
   readString() {
     const startCol = this.col;
+    const startLine = this.line;
+    const closer = QUOTE_PAIRS.get(this.peek());
     this.advance();
     let value = "";
     while (!this.isEOF()) {
       const ch = this.peek();
-      if (ch === '"') {
+      if (ch === closer) {
         this.advance();
         return {
           type: "STRING",
@@ -199,12 +282,15 @@ var Scanner = class {
       if (ch === "\\") {
         this.advance();
         if (this.isEOF()) {
-          throw this.error("Unterminated string literal");
+          throw this.error(`Unterminated string literal (opened at line ${startLine})`);
         }
         const esc = this.advance();
         switch (esc) {
           case '"':
             value += '"';
+            break;
+          case "'":
+            value += "'";
             break;
           case "\\":
             value += "\\";
@@ -216,16 +302,17 @@ var Scanner = class {
             value += "	";
             break;
           default:
-            throw this.error(`Invalid escape sequence \\${esc}`);
+            value += "\\" + esc;
+            break;
         }
         continue;
       }
       if (ch === "\n") {
-        throw this.error("Unterminated string literal");
+        throw this.error(`Unterminated string literal (opened at line ${startLine})`);
       }
       value += this.advance();
     }
-    throw this.error("Unterminated string literal");
+    throw this.error(`Unterminated string literal (opened at line ${startLine})`);
   }
   readSymbol() {
     const startCol = this.col;
@@ -243,18 +330,24 @@ var Scanner = class {
     while (!this.isEOF() && this.isIdentPart(this.peek())) {
       value += this.advance();
     }
-    if (CONTROL_KEYWORDS.has(value)) {
-      return {
-        type: "KEYWORD",
-        value,
-        line: this.line,
-        col: startCol
-      };
+    const lower = value.toLowerCase();
+    const namespace = NAMESPACE_KEYWORDS.get(lower);
+    if (namespace) {
+      const dotOnly = DOT_ONLY_NAMESPACES.has(lower);
+      if (UNCONDITIONAL_NAMESPACES.has(value) || this.nextSignificantIsPathStart(dotOnly)) {
+        return {
+          type: "KEYWORD",
+          value: namespace,
+          line: this.line,
+          col: startCol
+        };
+      }
     }
-    if (NAMESPACE_KEYWORDS.has(value)) {
+    const control = CONTROL_KEYWORDS.get(lower);
+    if (control) {
       return {
         type: "KEYWORD",
-        value,
+        value: control,
         line: this.line,
         col: startCol
       };
@@ -265,6 +358,18 @@ var Scanner = class {
       line: this.line,
       col: startCol
     };
+  }
+  /**
+   * Whether the next non-whitespace character starts a context-variable path —
+   * `.` for a field or `[` for an index. Used to decide whether a non-canonical
+   * casing such as `Env` is a namespace or an ordinary identifier.
+   */
+  nextSignificantIsPathStart(dotOnly) {
+    let i = this.pos;
+    while (i < this.input.length && isWhitespace(this.input[i])) i++;
+    const ch = this.input[i];
+    if (ch === "." && this.input[i + 1] !== ".") return true;
+    return !dotOnly && ch === "[";
   }
   readNumber() {
     const startCol = this.col;
@@ -281,14 +386,9 @@ var Scanner = class {
   }
   skipWhitespace() {
     let skipped = false;
-    while (!this.isEOF()) {
-      const ch = this.peek();
-      if (ch === " " || ch === "	" || ch === "\n" || ch === "\r") {
-        this.advance();
-        skipped = true;
-      } else {
-        break;
-      }
+    while (!this.isEOF() && isWhitespace(this.peek())) {
+      this.advance();
+      skipped = true;
     }
     return skipped;
   }
@@ -314,11 +414,15 @@ var Scanner = class {
   isDigit(ch) {
     return ch >= "0" && ch <= "9";
   }
+  /**
+   * Identifiers accept any Unicode letter, so a spec may name things in the
+   * language its authors actually work in.
+   */
   isIdentStart(ch) {
-    return /[a-zA-Z_]/.test(ch);
+    return /[\p{L}_]/u.test(ch);
   }
   isIdentPart(ch) {
-    return /[a-zA-Z0-9_]/.test(ch);
+    return /[\p{L}\p{N}_]/u.test(ch);
   }
   error(msg) {
     return new Error(`[${this.line}:${this.col}] ${msg}`);
@@ -445,7 +549,7 @@ function toExprToken(tok) {
     value: tok.value
   };
 }
-var Parser = class {
+var Parser = class _Parser {
   tokens = [];
   pos = 0;
   lastConsumedLine = 0;
@@ -503,16 +607,112 @@ var Parser = class {
     }
     return false;
   }
+  /* ───────────────── Tolerances ─────────────────
+   *
+   * ACDL source is written by hand and by models, and neither reliably produces
+   * the canonical spelling of everything. The parser therefore accepts the
+   * obvious variants — punctuation people expect to be optional, separators they
+   * reach for out of habit — and normalises them into the canonical AST, so the
+   * rendered diagram looks the same however the source was typed.
+   */
+  /**
+   * Role markers, by the spellings people actually write. The AST always stores
+   * the canonical role, so rendering is unaffected by which spelling was used.
+   */
+  static ROLE_MARKERS = /* @__PURE__ */ new Map([
+    ["s", "system"],
+    ["system", "system"],
+    ["u", "user"],
+    ["user", "user"],
+    ["a", "assistant"],
+    ["assistant", "assistant"],
+    ["t", "tool"],
+    ["tool", "tool"]
+  ]);
+  /** The completion-format marker, `N:`. */
+  static NONE_MARKERS = /* @__PURE__ */ new Set(["n", "none"]);
+  /** Spellings of the early-termination marker. */
+  static END_MARKERS = /* @__PURE__ */ new Set([
+    "promptendshere",
+    "prompt_ends_here",
+    "promptends"
+  ]);
+  /** Marks without an explicit number are numbered in source order. */
+  markCounter = 0;
+  /**
+   * The role the token at `offset` introduces, or undefined if it introduces
+   * none. A role marker only counts as one when `:` or `{` follows: `a` and `t`
+   * are ordinary loop variables, and must not shadow the assistant and tool
+   * roles wherever they appear.
+   */
+  roleAt(offset = 0) {
+    const tok = this.tokens[this.pos + offset];
+    const next = this.tokens[this.pos + offset + 1];
+    if (!tok || tok.type !== "IDENT") return void 0;
+    if (!next || next.value !== ":" && next.value !== "{") return void 0;
+    return _Parser.ROLE_MARKERS.get(String(tok.value).toLowerCase());
+  }
+  /** Whether this token is the early-termination marker, in any casing. */
+  isEndMarker(tok) {
+    return tok.type === "IDENT" && _Parser.END_MARKERS.has(String(tok.value).toLowerCase());
+  }
+  /** `range(...)`, in any casing — the one built-in iterable. */
+  isRangeCall() {
+    const tok = this.peek();
+    return tok.type === "IDENT" && String(tok.value).toLowerCase() === "range" && this.peekNext().value === "(";
+  }
+  /**
+   * Consume the `:` that introduces a block body, if it is there. `S: { ... }`
+   * and `S { ... }` mean the same thing, as do `Spec[@T]: {` and `Spec[@T] {`.
+   */
+  matchOptionalColon() {
+    this.match("SYMBOL", ":");
+  }
+  /** Stray statement separators. ACDL has none, but muscle memory supplies them. */
+  skipSeparators() {
+    while (this.peek().type === "SYMBOL" && this.peek().value === ";") this.consume();
+  }
+  /**
+   * Drop a trailing `:` from a captured header expression. `Case user: {` and
+   * `If (x): {` read naturally and appear in the wild — the language reference's
+   * own worked example writes the former — but the colon is punctuation, not
+   * part of the expression, and must not reach the renderer.
+   */
+  trimTrailingColon(tokens) {
+    while (tokens.length) {
+      const last = tokens[tokens.length - 1];
+      if (last.type !== "SYMBOL" || last.value !== ":") break;
+      tokens.pop();
+    }
+    return tokens;
+  }
+  /** True when the current token closes a block, or the file has run out. */
+  atBlockEnd() {
+    return this.isEOF() || this.peek().value === "}";
+  }
+  /**
+   * Consume a block's closing brace, naming the line the block opened on when it
+   * is missing — far more useful than "expected }, got EOF" pointing at the last
+   * line of the file.
+   */
+  consumeBlockClose(openLine, what) {
+    if (this.isEOF()) {
+      const tok = this.peek();
+      throw new Error(`[${tok.line}:${tok.col}] Missing closing "}" for ${what} opened at line ${openLine}`);
+    }
+    this.consume("SYMBOL", "}");
+  }
   /* ───────────────── Grammar Rules (Outside Role) ───────────────── */
   /**
    * Entry Point: Prompt[indices]: { ... }
    */
   parsePrompt() {
     const title = this.parseTitle();
-    this.consume("SYMBOL", ":");
+    this.matchOptionalColon();
+    const openLine = this.peek().line;
     this.consume("SYMBOL", "{");
     const body = this.parsePromptBody();
-    this.consume("SYMBOL", "}");
+    this.consumeBlockClose(openLine, `prompt "${title.name}"`);
     console.log("parsed prompt");
     return prompt({ title, body });
   }
@@ -523,6 +723,8 @@ var Parser = class {
   parseFile() {
     const blocks = [];
     while (!this.isEOF()) {
+      this.skipSeparators();
+      if (this.isEOF()) break;
       const tok = this.peek();
       if (tok.type === "COMMENT") {
         const text = this.consume("COMMENT").value;
@@ -545,6 +747,8 @@ var Parser = class {
   parseFileWithRanges() {
     const ranges = [];
     while (!this.isEOF()) {
+      this.skipSeparators();
+      if (this.isEOF()) break;
       const tok = this.peek();
       const startLine = tok.line;
       let block;
@@ -576,13 +780,16 @@ var Parser = class {
       }
       this.consume("SYMBOL", "]");
     }
-    this.consume("SYMBOL", ":");
+    this.matchOptionalColon();
+    const openLine = this.peek().line;
     this.consume("SYMBOL", "{");
     const body = [];
-    while (this.peek().type !== "EOF" && this.peek().value !== "}") {
+    while (!this.atBlockEnd()) {
+      this.skipSeparators();
+      if (this.atBlockEnd()) break;
       body.push(this.parseRoleBuildingBlock());
     }
-    this.consume("SYMBOL", "}");
+    this.consumeBlockClose(openLine, `StrFrag "${name}"`);
     console.log("parsed StrFrag definition");
     return strFragDef({ name, params, body });
   }
@@ -600,10 +807,13 @@ var Parser = class {
       }
       this.consume("SYMBOL", "]");
     }
-    this.consume("SYMBOL", ":");
+    this.matchOptionalColon();
+    const openLine = this.peek().line;
     this.consume("SYMBOL", "{");
     const body = [];
-    while (this.peek().type !== "EOF" && this.peek().value !== "}") {
+    while (!this.atBlockEnd()) {
+      this.skipSeparators();
+      if (this.atBlockEnd()) break;
       if (this.peek().type === "COMMENT") {
         const text = this.consume("COMMENT").value;
         body.push(commentBlock({ text }));
@@ -611,7 +821,7 @@ var Parser = class {
       }
       body.push(this.parsePromptBodyItem());
     }
-    this.consume("SYMBOL", "}");
+    this.consumeBlockClose(openLine, `RolesFrag "${name}"`);
     console.log("parsed RolesFrag definition");
     return rolesFragDef({ name, params, body });
   }
@@ -630,7 +840,9 @@ var Parser = class {
     while (this.peek().type === "COMMENT") {
       this.pos++;
     }
-    const isCompletionPrompt = this.peek().type === "IDENT" && this.peek().value === "N";
+    const marker = this.peek();
+    const after = this.peekNext();
+    const isCompletionPrompt = marker.type === "IDENT" && _Parser.NONE_MARKERS.has(String(marker.value).toLowerCase()) && !!after && (after.value === ":" || after.value === "{");
     this.pos = savedPos;
     if (isCompletionPrompt) {
       return this.parseCompletionPromptBody();
@@ -642,7 +854,9 @@ var Parser = class {
    */
   parseChatPromptBody() {
     const body = [];
-    while (this.peek().type !== "EOF" && this.peek().value !== "}") {
+    while (!this.atBlockEnd()) {
+      this.skipSeparators();
+      if (this.atBlockEnd()) break;
       if (this.peek().type === "COMMENT") {
         const text = this.consume("COMMENT").value;
         body.push(commentBlock({ text }));
@@ -674,15 +888,18 @@ var Parser = class {
    * Parse a NoneMessage: N: { RoleBuildingBlock* }
    */
   parseNoneMessage() {
-    this.consume("IDENT", "N");
-    this.consume("SYMBOL", ":");
+    this.consume("IDENT");
+    this.matchOptionalColon();
     const body = [];
     if (this.peek().value === "{") {
+      const openLine = this.peek().line;
       this.consume("SYMBOL", "{");
-      while (this.peek().type !== "EOF" && this.peek().value !== "}") {
+      while (!this.atBlockEnd()) {
+        this.skipSeparators();
+        if (this.atBlockEnd()) break;
         body.push(this.parseRoleBuildingBlock());
       }
-      this.consume("SYMBOL", "}");
+      this.consumeBlockClose(openLine, "N message");
     } else {
       const startLine = this.peek().line;
       body.push(this.parseRoleBuildingBlockSingleLine(startLine));
@@ -699,7 +916,7 @@ var Parser = class {
     const tok = this.peek();
     const nextTok = this.peekNext();
     const val = tok.value;
-    if (tok.type === "IDENT" && (val === "S" || val === "U" || val === "A" || val === "T")) {
+    if (this.roleAt()) {
       console.log("parsing role message");
       return this.parseRoleMessage();
     }
@@ -708,6 +925,8 @@ var Parser = class {
         case "If":
           return this.parseConditionalOutside();
         case "ForEach":
+          return this.parseLoopOutside();
+        case "for":
           return this.parseLoopOutside();
         case "Switch":
           return this.parseSwitchOutside();
@@ -719,14 +938,14 @@ var Parser = class {
           return this.parseRolesFragInvocation();
       }
     }
-    if (tok.type === "IDENT" && val === "PromptEndsHere") {
+    if (this.isEndMarker(tok)) {
       return this.parseEndBlock();
     }
     if (tok.type === "COMMENT") {
       const text = this.consume("COMMENT").value;
       return commentBlock({ text });
     }
-    throw new Error(`[${tok.line}:${tok.col}] Syntax Error: Unexpected token "${val}" in global scope.`);
+    throw new Error(`[${tok.line}:${tok.col}] Syntax Error: Unexpected token "${val}" in global scope. Expected a role message (S:, U:, A:, T:), control flow (If, ForEach, Switch), Mark, Name, Frag, or a comment.`);
   }
   /**
    * Parse a MarkBlock: MARK number { PromptBlock+ }
@@ -734,11 +953,14 @@ var Parser = class {
    */
   parseMarkBlock() {
     this.consume("KEYWORD", "Mark");
-    const numberTok = this.consume("NUMBER");
-    const markNumber = parseInt(numberTok.value, 10);
+    const markNumber = this.parseMarkNumber();
+    this.matchOptionalColon();
+    const openLine = this.peek().line;
     this.consume("SYMBOL", "{");
     const blocks = [];
-    do {
+    while (!this.atBlockEnd()) {
+      this.skipSeparators();
+      if (this.atBlockEnd()) break;
       if (this.peek().type === "COMMENT") {
         const text = this.consume("COMMENT").value;
         blocks.push(commentBlock({ text }));
@@ -746,8 +968,8 @@ var Parser = class {
       }
       const innerBlock = this.parseTopLevelBlock();
       blocks.push(innerBlock);
-    } while (this.peek().value !== "}");
-    this.consume("SYMBOL", "}");
+    }
+    this.consumeBlockClose(openLine, `Mark ${markNumber}`);
     return markBlock({ markNumber, body: blocks });
   }
   /**
@@ -756,11 +978,14 @@ var Parser = class {
    */
   parseMarkBlockInside() {
     this.consume("KEYWORD", "Mark");
-    const numberTok = this.consume("NUMBER");
-    const markNumber = parseInt(numberTok.value, 10);
+    const markNumber = this.parseMarkNumber();
+    this.matchOptionalColon();
+    const openLine = this.peek().line;
     this.consume("SYMBOL", "{");
     const blocks = [];
-    do {
+    while (!this.atBlockEnd()) {
+      this.skipSeparators();
+      if (this.atBlockEnd()) break;
       if (this.peek().type === "COMMENT") {
         const text = this.consume("COMMENT").value;
         blocks.push(commentBlock({ text }));
@@ -768,26 +993,41 @@ var Parser = class {
       }
       const innerBlock = this.parseRoleBuildingBlock();
       blocks.push(innerBlock);
-    } while (this.peek().value !== "}");
-    this.consume("SYMBOL", "}");
+    }
+    this.consumeBlockClose(openLine, `Mark ${markNumber}`);
     return markBlockInsideRole({ markNumber, body: blocks });
+  }
+  /**
+   * A mark's number is purely presentational, so an omitted one is not worth an
+   * error: unnumbered marks are numbered in source order, continuing from the
+   * highest number the file has used so far.
+   */
+  parseMarkNumber() {
+    if (this.peek().type === "NUMBER") {
+      const explicit = parseInt(this.consume("NUMBER").value, 10);
+      this.markCounter = Math.max(this.markCounter, explicit);
+      return explicit;
+    }
+    return ++this.markCounter;
   }
   /*
    * RoleMessage = ROLE_ID: { RoleBuildingBlock* } | ROLE_ID: RoleBuildingBlock
    * Supports both multi-line blocks with curly braces and single-line without braces
   */
   parseRoleMessage() {
-    const roleId = this.consume("IDENT").value;
-    this.consume("SYMBOL", ":");
-    const roleMap = { "S": "system", "U": "user", "A": "assistant", "T": "tool" };
-    const role = roleMap[roleId];
+    const role = this.roleAt();
+    this.consume("IDENT");
+    this.matchOptionalColon();
     const body = [];
     if (this.peek().value === "{") {
+      const openLine = this.peek().line;
       this.consume("SYMBOL", "{");
-      while (this.peek().type !== "EOF" && this.peek().value !== "}") {
+      while (!this.atBlockEnd()) {
+        this.skipSeparators();
+        if (this.atBlockEnd()) break;
         body.push(this.parseRoleBuildingBlock());
       }
-      this.consume("SYMBOL", "}");
+      this.consumeBlockClose(openLine, `${role} message`);
     } else {
       const startLine = this.peek().line;
       body.push(this.parseRoleBuildingBlockSingleLine(startLine));
@@ -805,10 +1045,14 @@ var Parser = class {
       throw new Error(`[${tok.line}:${tok.col}] Single-line role syntax cannot span multiple lines`);
     }
     const val = tok.value;
+    if (tok.type === "SYMBOL" && val === "$") {
+      return this.parseNameRef();
+    }
     if (tok.type === "KEYWORD") {
-      if (val === "If" || val === "ForEach" || val === "Switch") {
-        throw new Error(`[${tok.line}:${tok.col}] Control flow statements not allowed in single-line role syntax`);
+      if (val === "If" || val === "ForEach" || val === "for" || val === "Switch") {
+        throw new Error(`[${tok.line}:${tok.col}] Control flow statements not allowed in single-line role syntax. Use the braced form: ${this.tokens[this.pos - 2]?.value ?? "U"}: { ... }`);
       }
+      if (val === "Frag") return this.parseStrFragInvocation();
       const namespaces = ["env", "sys", "resp", "prompt"];
       if (namespaces.includes(val)) {
         return this.parseContextVar();
@@ -834,7 +1078,7 @@ var Parser = class {
     }
     if (tok.type === "KEYWORD") {
       if (val === "If") return this.parseConditionalInside();
-      if (val === "ForEach") return this.parseLoopInside();
+      if (val === "ForEach" || val === "for") return this.parseLoopInside();
       if (val === "Switch") return this.parseSwitchInside();
       if (val === "Mark") return this.parseMarkBlockInside();
       if (val === "Name") return this.parseNameDef();
@@ -848,11 +1092,11 @@ var Parser = class {
         return this.parseContextVar();
       }
     }
-    if (tok.type === "IDENT" && val === "PromptEndsHere") {
+    if (this.isEndMarker(tok)) {
       return this.parseEndBlock();
     }
     if (tok.type === "IDENT") return this.parseTemplateOrFunc();
-    throw new Error(`[${tok.line}:${tok.col}] Unexpected ${tok.type} (${val}) inside role.`);
+    throw new Error(`[${tok.line}:${tok.col}] Unexpected ${tok.type} (${val}) inside role. Expected a context variable, template, function, control flow, Name, Frag, or a comment.`);
   }
   /* ───────────────── Name Definitions ───────────────── */
   /**
@@ -862,8 +1106,7 @@ var Parser = class {
   parseNameDef() {
     this.consume("KEYWORD", "Name");
     const varName = this.consume("IDENT").value;
-    this.consume("SYMBOL", ":");
-    this.consume("LOGIC_OP", "=");
+    this.consumeAssignment(varName);
     const tok = this.peek();
     let value;
     if (tok.type === "SYMBOL" && tok.value === "[") {
@@ -883,6 +1126,18 @@ var Parser = class {
       throw new Error(`[${tok.line}:${tok.col}] Expected ContextVar, Func, list comprehension, or Frag invocation after :=, got ${tok.type}`);
     }
     return nameDef({ name: varName, value });
+  }
+  /**
+   * The binding operator of a name definition. Canonically `:=`; a bare `=` or
+   * `:` is accepted too, since both are what people reach for first and neither
+   * is ambiguous in this position.
+   */
+  consumeAssignment(varName) {
+    const sawColon = this.match("SYMBOL", ":");
+    const sawEquals = this.match("LOGIC_OP", "=");
+    if (sawColon || sawEquals) return;
+    const tok = this.peek();
+    throw new Error(`[${tok.line}:${tok.col}] Expected ":=" after "Name ${varName}", got "${tok.value}"`);
   }
   /**
    * Parse a list comprehension: [expr for var in iterable]
@@ -910,7 +1165,7 @@ var Parser = class {
     const variable = this.consume("IDENT").value;
     this.consume("KEYWORD", "in");
     let iterable;
-    if (this.peek().value === "range" && this.peekNext().value === "(") {
+    if (this.isRangeCall()) {
       iterable = this.parseRangeExpr();
     } else {
       const iterTokens = [];
@@ -1032,10 +1287,11 @@ var Parser = class {
   parseTextArgs() {
     const args = [];
     if (this.peek().value === ")" || this.peek().value === "]") return args;
-    do {
-      const arg = this.parseSingleTextArg();
-      args.push(arg);
-    } while (this.match("SYMBOL", ","));
+    while (true) {
+      args.push(this.parseSingleTextArg());
+      if (!this.match("SYMBOL", ",")) break;
+      if (this.peek().value === ")" || this.peek().value === "]") break;
+    }
     return args;
   }
   /** Parse a single argument, which may be an arithmetic expression */
@@ -1174,49 +1430,81 @@ var Parser = class {
    * Condition is delimited by parentheses, same style as conditionals.
    */
   parseEndBlock() {
-    this.consume("IDENT", "PromptEndsHere");
-    this.consume("KEYWORD", "when");
-    this.consume("SYMBOL", "(");
+    const marker = this.consume("IDENT");
+    this.match("KEYWORD", "when");
     const conditionTokens = [];
-    let depth = 1;
-    while (depth > 0) {
-      if (this.isEOF()) throw new Error("Unterminated PromptEndsHere when condition");
-      const tok = this.consume();
-      if (tok.value === "(") depth++;
-      if (tok.value === ")") depth--;
-      if (depth > 0) {
-        conditionTokens.push(toExprToken(tok));
+    if (this.match("SYMBOL", "(")) {
+      let depth = 1;
+      while (depth > 0) {
+        if (this.isEOF()) {
+          throw new Error(`[${marker.line}:${marker.col}] Unterminated PromptEndsHere condition`);
+        }
+        const tok = this.consume();
+        if (tok.value === "(") depth++;
+        if (tok.value === ")") depth--;
+        if (depth > 0) {
+          conditionTokens.push(toExprToken(tok));
+        }
+      }
+    } else {
+      const line = this.peek().line;
+      while (!this.isEOF() && this.peek().line === line && this.peek().type !== "COMMENT" && this.peek().value !== "{" && this.peek().value !== "}") {
+        conditionTokens.push(toExprToken(this.consume()));
+      }
+      if (conditionTokens.length === 0) {
+        throw new Error(`[${marker.line}:${marker.col}] PromptEndsHere needs a condition, e.g. PromptEndsHere when (@t == @T)`);
       }
     }
-    return endBlock({ condition: conditionTokens });
+    return endBlock({ condition: this.trimTrailingColon(conditionTokens) });
   }
-  parseLoopOutside() {
-    this.consume("KEYWORD", "ForEach");
-    this.consume("SYMBOL", "(");
+  /**
+   * The header of a ForEach, shared by both scopes: `ForEach(v: iterable)`,
+   * `ForEach v in iterable`, and every combination in between. The parentheses
+   * are optional, and the separator may be `:` or `in`.
+   */
+  parseLoopHeader() {
+    this.consume("KEYWORD");
+    const parenthesised = this.match("SYMBOL", "(");
     const index = this.parseIndex();
-    this.consume("SYMBOL", ":");
+    if (!this.match("SYMBOL", ":") && !this.match("KEYWORD", "in")) {
+      const tok = this.peek();
+      throw new Error(`[${tok.line}:${tok.col}] Expected ":" or "in" between the loop variable and its iterable, got "${tok.value}"`);
+    }
     let iterable;
-    if (this.peek().value === "range" && this.peekNext().value === "(") {
+    if (this.isRangeCall()) {
       iterable = this.parseRangeExpr();
     } else {
       const iterTokens = [];
-      while (!(this.peek().value === ")" && this.peekNext().value === "{")) {
+      let depth = 0;
+      while (true) {
         if (this.isEOF()) throw new Error("Unterminated ForEach iterable");
+        const tok = this.peek();
+        if (depth === 0 && (tok.value === "{" || parenthesised && tok.value === ")")) break;
+        if (tok.value === "(") depth++;
+        if (tok.value === ")") depth--;
         iterTokens.push(toExprToken(this.consume()));
       }
-      iterable = Iterable({ tokens: iterTokens });
+      iterable = Iterable({ tokens: this.trimTrailingColon(iterTokens) });
     }
-    this.consume("SYMBOL", ")");
+    if (parenthesised) this.consume("SYMBOL", ")");
+    this.matchOptionalColon();
+    return { index, iterable };
+  }
+  parseLoopOutside() {
+    const { index, iterable } = this.parseLoopHeader();
+    const openLine = this.peek().line;
     this.consume("SYMBOL", "{");
     const body = [];
-    while (this.peek().value !== "}") {
+    while (!this.atBlockEnd()) {
+      this.skipSeparators();
+      if (this.atBlockEnd()) break;
       body.push(this.parseTopLevelBlock());
     }
-    this.consume("SYMBOL", "}");
+    this.consumeBlockClose(openLine, "ForEach body");
     return loopBlockOutsideRole({ index, iterable, body });
   }
   parseRangeExpr() {
-    this.consume("IDENT", "range");
+    this.consume("IDENT");
     this.consume("SYMBOL", "(");
     const start = [];
     let depth = 0;
@@ -1254,44 +1542,48 @@ var Parser = class {
     return rangeExpr({ start, end, step });
   }
   parseConditionalOutside() {
-    this.consume("KEYWORD", "If");
-    const ifCondTokens = [];
-    while (this.peek().value !== "{") {
-      if (this.isEOF()) throw new Error("Unterminated If condition");
-      ifCondTokens.push(toExprToken(this.consume()));
-    }
+    const ifTok = this.consume("KEYWORD", "If");
+    const ifCondTokens = this.parseConditionHeader("If");
+    let openLine = this.peek().line;
     this.consume("SYMBOL", "{");
     const ifBody = [];
-    while (this.peek().value !== "}") {
+    while (!this.atBlockEnd()) {
+      this.skipSeparators();
+      if (this.atBlockEnd()) break;
       ifBody.push(this.parseTopLevelBlock());
     }
-    this.consume("SYMBOL", "}");
+    this.consumeBlockClose(openLine, `If body (line ${ifTok.line})`);
     const elseIfConditions = [];
     const elseIfBodies = [];
     let elseBody = void 0;
     while (this.peekSkippingComments()?.type === "KEYWORD" && (this.peekSkippingComments().value === "ElseIf" || this.peekSkippingComments().value === "Else")) {
       this.skipComments();
-      const type = this.consume().value;
+      const branch = this.consume();
+      const type = this.resolveElseBranch(branch.value);
       if (type === "ElseIf") {
-        const eiCondTokens = [];
-        while (this.peek().value !== "{") {
-          eiCondTokens.push(toExprToken(this.consume()));
-        }
+        const eiCondTokens = this.parseConditionHeader("ElseIf");
+        openLine = this.peek().line;
         this.consume("SYMBOL", "{");
         const eiBody = [];
-        while (this.peek().value !== "}") {
+        while (!this.atBlockEnd()) {
+          this.skipSeparators();
+          if (this.atBlockEnd()) break;
           eiBody.push(this.parseTopLevelBlock());
         }
-        this.consume("SYMBOL", "}");
+        this.consumeBlockClose(openLine, `ElseIf body (line ${branch.line})`);
         elseIfConditions.push(eiCondTokens);
         elseIfBodies.push(eiBody);
       } else if (type === "Else") {
+        this.matchOptionalColon();
+        openLine = this.peek().line;
         this.consume("SYMBOL", "{");
         const eBody = [];
-        while (this.peek().value !== "}") {
+        while (!this.atBlockEnd()) {
+          this.skipSeparators();
+          if (this.atBlockEnd()) break;
           eBody.push(this.parseTopLevelBlock());
         }
-        this.consume("SYMBOL", "}");
+        this.consumeBlockClose(openLine, `Else body (line ${branch.line})`);
         elseBody = eBody;
         break;
       }
@@ -1304,68 +1596,97 @@ var Parser = class {
       elseBody
     });
   }
-  parseLoopInside() {
-    this.consume("KEYWORD", "ForEach");
-    this.consume("SYMBOL", "(");
-    const index = this.parseIndex();
-    this.consume("SYMBOL", ":");
-    let iterable;
-    if (this.peek().value === "range" && this.peekNext().value === "(") {
-      iterable = this.parseRangeExpr();
-    } else {
-      const iterTokens = [];
-      while (!(this.peek().value === ")" && this.peekNext().value === "{")) {
-        if (this.isEOF()) throw new Error("Unterminated ForEach iterable");
-        iterTokens.push(toExprToken(this.consume()));
+  /**
+   * Capture a condition, which runs from after the keyword to the `{` that opens
+   * the body. Surrounding parentheses are conventional but not required, and a
+   * trailing `:` before the brace is punctuation rather than part of the
+   * expression.
+   */
+  parseConditionHeader(keyword) {
+    const tokens = [];
+    while (this.peek().value !== "{") {
+      if (this.isEOF()) {
+        const tok = this.peek();
+        throw new Error(`[${tok.line}:${tok.col}] Unterminated ${keyword} condition: expected "{" to open the body`);
       }
-      iterable = Iterable({ tokens: iterTokens });
+      tokens.push(toExprToken(this.consume()));
     }
-    this.consume("SYMBOL", ")");
+    if (tokens.length === 0) {
+      const tok = this.peek();
+      throw new Error(`[${tok.line}:${tok.col}] ${keyword} needs a condition before "{"`);
+    }
+    return this.trimTrailingColon(tokens);
+  }
+  /**
+   * Which branch an Else-family keyword opens. `Else If` written as two words is
+   * the same construct as `ElseIf`, so the `If` is absorbed here.
+   */
+  resolveElseBranch(keyword) {
+    if (keyword === "Else" && this.peekSkippingComments()?.value === "If") {
+      this.skipComments();
+      this.consume("KEYWORD", "If");
+      return "ElseIf";
+    }
+    return keyword;
+  }
+  parseLoopInside() {
+    const header2 = this.parseLoopHeader();
+    const index = header2.index;
+    const iterable = header2.iterable;
+    const openLine = this.peek().line;
     this.consume("SYMBOL", "{");
     const body = [];
-    while (this.peek().value !== "}") body.push(this.parseRoleBuildingBlock());
-    this.consume("SYMBOL", "}");
+    while (!this.atBlockEnd()) {
+      this.skipSeparators();
+      if (this.atBlockEnd()) break;
+      body.push(this.parseRoleBuildingBlock());
+    }
+    this.consumeBlockClose(openLine, "ForEach body");
     return loopBlockInsideRole({ index, iterable, body });
   }
   parseConditionalInside() {
-    this.consume("KEYWORD", "If");
-    const ifCondTokens = [];
-    while (this.peek().value !== "{") {
-      if (this.isEOF()) throw new Error("Unterminated If condition");
-      ifCondTokens.push(toExprToken(this.consume()));
-    }
+    const ifTok = this.consume("KEYWORD", "If");
+    const ifCondTokens = this.parseConditionHeader("If");
+    let openLine = this.peek().line;
     this.consume("SYMBOL", "{");
     const ifBody = [];
-    while (this.peek().value !== "}") {
+    while (!this.atBlockEnd()) {
+      this.skipSeparators();
+      if (this.atBlockEnd()) break;
       ifBody.push(this.parseRoleBuildingBlock());
     }
-    this.consume("SYMBOL", "}");
+    this.consumeBlockClose(openLine, `If body (line ${ifTok.line})`);
     const elseIfConditions = [];
     const elseIfBodies = [];
     let elseBody = void 0;
     while (this.peekSkippingComments()?.type === "KEYWORD" && (this.peekSkippingComments().value === "ElseIf" || this.peekSkippingComments().value === "Else")) {
       this.skipComments();
-      const type = this.consume().value;
+      const branch = this.consume();
+      const type = this.resolveElseBranch(branch.value);
       if (type === "ElseIf") {
-        const eiCondTokens = [];
-        while (this.peek().value !== "{") {
-          eiCondTokens.push(toExprToken(this.consume()));
-        }
+        const eiCondTokens = this.parseConditionHeader("ElseIf");
+        openLine = this.peek().line;
         this.consume("SYMBOL", "{");
         const eiBody = [];
-        while (this.peek().value !== "}") {
+        while (!this.atBlockEnd()) {
+          this.skipSeparators();
+          if (this.atBlockEnd()) break;
           eiBody.push(this.parseRoleBuildingBlock());
         }
-        this.consume("SYMBOL", "}");
+        this.consumeBlockClose(openLine, `ElseIf body (line ${branch.line})`);
         elseIfConditions.push(eiCondTokens);
         elseIfBodies.push(eiBody);
       } else if (type === "Else") {
+        this.matchOptionalColon();
+        openLine = this.peek().line;
         this.consume("SYMBOL", "{");
         const eBody = [];
-        while (this.peek().value !== "}") {
+        while (!this.atBlockEnd()) {
+          this.skipSeparators();
+          if (this.atBlockEnd()) break;
           eBody.push(this.parseRoleBuildingBlock());
         }
-        this.consume("SYMBOL", "}");
+        this.consumeBlockClose(openLine, `Else body (line ${branch.line})`);
         elseBody = eBody;
         break;
       }
@@ -1380,43 +1701,47 @@ var Parser = class {
   }
   // parseSwitchOutside and parseSwitchInside would follow the same scoping pattern.
   parseSwitchOutside() {
-    this.consume("KEYWORD", "Switch");
-    const exprTokens = [];
-    while (this.peek().value !== "{") {
-      if (this.isEOF()) throw new Error("Expected '{' after Switch expression");
-      exprTokens.push(toExprToken(this.consume()));
-    }
+    const switchTok = this.consume("KEYWORD", "Switch");
+    const exprTokens = this.parseConditionHeader("Switch");
+    const switchOpenLine = this.peek().line;
     this.consume("SYMBOL", "{");
     const cases = [];
     let defaultCase;
     while (true) {
       this.skipComments();
-      if (this.peek().value === "}") break;
+      this.skipSeparators();
+      if (this.atBlockEnd()) break;
+      const branch = this.peek();
       const kw = this.consume("KEYWORD").value;
       if (kw === "Case") {
-        const matchTokens = [];
-        while (this.peek().value !== "{") {
-          if (this.isEOF()) throw new Error("Expected '{' after Case match");
-          matchTokens.push(toExprToken(this.consume()));
-        }
+        const matchTokens = this.parseConditionHeader("Case");
+        const openLine = this.peek().line;
         this.consume("SYMBOL", "{");
         const body = [];
-        while (this.peek().value !== "}") {
+        while (!this.atBlockEnd()) {
+          this.skipSeparators();
+          if (this.atBlockEnd()) break;
           body.push(this.parseTopLevelBlock());
         }
-        this.consume("SYMBOL", "}");
+        this.consumeBlockClose(openLine, `Case body (line ${branch.line})`);
         cases.push(caseBlockOutsideRole({ match: matchTokens, body }));
       } else if (kw === "Default") {
+        this.matchOptionalColon();
+        const openLine = this.peek().line;
         this.consume("SYMBOL", "{");
         const body = [];
-        while (this.peek().value !== "}") {
+        while (!this.atBlockEnd()) {
+          this.skipSeparators();
+          if (this.atBlockEnd()) break;
           body.push(this.parseTopLevelBlock());
         }
-        this.consume("SYMBOL", "}");
+        this.consumeBlockClose(openLine, `Default body (line ${branch.line})`);
         defaultCase = defaultCaseBlockOutsideRole({ body });
+      } else {
+        throw new Error(`[${branch.line}:${branch.col}] Unexpected "${kw}" inside Switch: expected Case or Default`);
       }
     }
-    this.consume("SYMBOL", "}");
+    this.consumeBlockClose(switchOpenLine, `Switch (line ${switchTok.line})`);
     return switchBlockOutsideRole({
       expression: exprTokens,
       cases,
@@ -1424,43 +1749,47 @@ var Parser = class {
     });
   }
   parseSwitchInside() {
-    this.consume("KEYWORD", "Switch");
-    const exprTokens = [];
-    while (this.peek().value !== "{") {
-      if (this.isEOF()) throw new Error("Expected '{' after Switch expression");
-      exprTokens.push(toExprToken(this.consume()));
-    }
+    const switchTok = this.consume("KEYWORD", "Switch");
+    const exprTokens = this.parseConditionHeader("Switch");
+    const switchOpenLine = this.peek().line;
     this.consume("SYMBOL", "{");
     const cases = [];
     let defaultCase;
     while (true) {
       this.skipComments();
-      if (this.peek().value === "}") break;
+      this.skipSeparators();
+      if (this.atBlockEnd()) break;
+      const branch = this.peek();
       const kw = this.consume("KEYWORD").value;
       if (kw === "Case") {
-        const matchTokens = [];
-        while (this.peek().value !== "{") {
-          if (this.isEOF()) throw new Error("Expected '{' after Case match");
-          matchTokens.push(toExprToken(this.consume()));
-        }
+        const matchTokens = this.parseConditionHeader("Case");
+        const openLine = this.peek().line;
         this.consume("SYMBOL", "{");
         const body = [];
-        while (this.peek().value !== "}") {
+        while (!this.atBlockEnd()) {
+          this.skipSeparators();
+          if (this.atBlockEnd()) break;
           body.push(this.parseRoleBuildingBlock());
         }
-        this.consume("SYMBOL", "}");
+        this.consumeBlockClose(openLine, `Case body (line ${branch.line})`);
         cases.push(caseBlockInsideRole({ match: matchTokens, body }));
       } else if (kw === "Default") {
+        this.matchOptionalColon();
+        const openLine = this.peek().line;
         this.consume("SYMBOL", "{");
         const body = [];
-        while (this.peek().value !== "}") {
+        while (!this.atBlockEnd()) {
+          this.skipSeparators();
+          if (this.atBlockEnd()) break;
           body.push(this.parseRoleBuildingBlock());
         }
-        this.consume("SYMBOL", "}");
+        this.consumeBlockClose(openLine, `Default body (line ${branch.line})`);
         defaultCase = defaultCaseBlockInsideRole({ body });
+      } else {
+        throw new Error(`[${branch.line}:${branch.col}] Unexpected "${kw}" inside Switch: expected Case or Default`);
       }
     }
-    this.consume("SYMBOL", "}");
+    this.consumeBlockClose(switchOpenLine, `Switch (line ${switchTok.line})`);
     return switchBlockInsideRole({
       expression: exprTokens,
       cases,
@@ -2268,7 +2597,7 @@ function renderConditionalInsideRole(block) {
     const elseHeader = `<span class="keyword">Else</span>:`;
     result += wrapBlock("conditional-block-inside-role", elseHeader, renderBody(block.elseBody));
   }
-  return result;
+  return `<div class="conditional-chain">${result}</div>`;
 }
 function renderConditionalOutsideRole(block) {
   const renderBody = (body) => body.map(
@@ -2485,6 +2814,11 @@ function updatePreview(panel, doc, cursorLine, context) {
       path.join(context.extensionPath, "media", "html2canvas.min.js")
     )
   );
+  const captureFixUri = panel.webview.asWebviewUri(
+    vscode2.Uri.file(
+      path.join(context.extensionPath, "media", "preview-capture.js")
+    )
+  );
   const cspSource = panel.webview.cspSource;
   const nonce = makeNonce();
   panel.webview.html = `<!DOCTYPE html>
@@ -2600,6 +2934,7 @@ function updatePreview(panel, doc, cursorLine, context) {
     </div>
   </div>
   <script nonce="${nonce}" src="${html2canvasUri}"></script>
+  <script nonce="${nonce}" src="${captureFixUri}"></script>
   <script nonce="${nonce}">
 ${getWebviewScript()}
   </script>
@@ -2674,6 +3009,12 @@ function getWebviewScript() {
       // Render at zoom = 1 regardless of current preview zoom.
       const prevTransform = host.style.transform;
       host.style.transform = 'scale(1)';
+      // html2canvas cannot reproduce inline-flex text, CSS custom properties
+      // or gradients, which is what the ACDL renderer uses for context vars,
+      // templates and time indices. Swap them out for the capture.
+      const restoreCapture = window.acdlPrepareCapture
+        ? window.acdlPrepareCapture(capture)
+        : () => {};
       try {
         // eslint-disable-next-line no-undef
         const canvas = await html2canvas(capture, {
@@ -2684,6 +3025,7 @@ function getWebviewScript() {
         });
         return canvas;
       } finally {
+        restoreCapture();
         host.style.transform = prevTransform;
       }
     }

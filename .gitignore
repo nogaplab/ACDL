@@ -5,10 +5,16 @@ node_modules/
 .venv/
 .idea/
 .vscode/
-.claude/
+# Local Claude Code state stays out, but the agent definitions are project
+# tooling and travel with the repo.
+.claude/*
+!.claude/agents/
 Paper/
 MintAgent/
 mint-org/
 .venv-linux/
-acdl-verify/traces/
+acdl-verify
 openclaw/
+Hermes/
+.github/
+AI-Scientist/

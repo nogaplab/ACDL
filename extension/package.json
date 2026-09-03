@@ -2,7 +2,7 @@
   "name": "acdl-language",
   "displayName": "ACDL - Agentic Context Description Language",
   "description": "Syntax highlighting, diagnostics, preview, and go-to-definition for ACDL (Agentic Context Description Language)",
-  "version": "0.2.0",
+  "version": "0.2.2",
   "publisher": "NogaPelegPelc",
   "license": "MIT",
   "repository": {
@@ -184,7 +184,8 @@
     "sync-css": "node -e \"require('fs').copyFileSync('../src/styles.css', 'media/preview.css')\"",
     "build": "npm run sync-css && node esbuild.mjs",
     "watch": "npm run sync-css && node esbuild.mjs --watch",
-    "package": "npm run sync-css && npx vsce package -o ../dist/website/acdl-language-0.2.0.vsix"
+    "vscode:prepublish": "npm run build",
+    "package": "npm run build && node -e \"const v=require('./package.json').version; require('child_process').execSync('npx vsce package -o ../dist/website/acdl-language-'+v+'.vsix',{stdio:'inherit'})\""
   },
   "devDependencies": {
     "@types/vscode": "^1.80.0",

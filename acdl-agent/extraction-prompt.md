@@ -77,6 +77,10 @@ Be exhaustive about the parts that are easy to miss:
 - Messages appended *after* the tool call returns (tool results, retries, errors).
 - Truncation, pruning, and compaction logic — these are structural and must appear.
 - The current turn's input, which is often built differently from historical turns.
+  Historical turns are complete — user input, the model's answer, and any tool
+  results all exist. Turn `@T` is not: the code appends the user's message and
+  then calls the model, so the turn ends there. Note where in the message list
+  that cut-off falls; it is the last thing in the prompt.
 
 ## Phase 4 — Abstract into ACDL
 
@@ -105,6 +109,40 @@ Translate what you traced, using these mappings:
 - `sys.*` — came from the agent's own machinery: state, memory, tool definitions,
   tool results, timestamps, retrieved documents, summaries.
 - `resp.*` — was produced by the model itself on an earlier call.
+
+**The current turn has no response yet — this is the most common mistake.**
+The spec describes the message array *as it is sent*, so nothing indexed `@T`
+can be something the model has not written yet:
+- `env.*[@T]` and `sys.*[@T]` are fine — the user's input, the timestamp,
+  retrieved documents, agent state. They exist before the call.
+- `resp.*[@T]` is always wrong. So is a tool response at `@T` for a tool the
+  model has not requested, or a trailing `A:` on the current turn.
+
+Treat turns `1..@T-1` and turn `@T` as two different things, because the code
+does: the history loop replays complete turns, and then the current turn is
+appended as input only. Either write them separately —
+
+```acdl
+ForEach(t: range(1, @T)) {
+    U: env.user_question[@t]
+    A: resp.answer[@t]
+}
+U: env.user_question[@T]
+```
+
+— or, if the source really does share one loop, run it to `range(1, @T + 1)`
+and cut it with `PromptEndsHere when (@t == @T)` before the response line.
+
+The exception is sub-steps. If the agent has a tool loop inside a turn, the
+sub-steps of the current turn that have already run (`@T.i` for `i < I`) did
+produce assistant messages and tool results, and those do belong in the prompt.
+Only the current sub-step `@T.I` is unwritten.
+
+**Use fragments only for content that repeats.** `StrFrag` / `RolesFrag` earn
+their place when the same block appears in two or more places — across specs in
+the file, or in two branches of the same spec. If a chunk of ACDL appears exactly
+once, write it inline; a single-use fragment just makes the reader jump around
+and clutters the rendered diagram.
 
 **Template vs. context variable:** if the text is fixed at authoring time (it lives
 in the source or a prompt file), it is a template. If it is filled from runtime
@@ -184,6 +222,12 @@ Go back through the source and check, in both directions:
    and mid-tool-call cases.
 5. **Loop bounds are right** — does the history loop include the current turn or
    stop before it?
+6. **Nothing at `@T` is a model output.** Grep your own spec for `resp.` and for
+   any `A:` or `T:` line indexed `@T`; each one must either be a completed
+   sub-step (`@T.i`, `i < I`) or be deleted. The prompt must end with input the
+   model has not answered.
+7. **Every fragment is invoked more than once.** If one is used a single time,
+   inline it.
 
 If the ACDL toolchain is available in the working environment, validate the file:
 `npm run cli -- out.html your-spec.acdl` (or `node scripts/diff.mjs` against a
@@ -222,6 +266,9 @@ Well-commented, one spec per distinct prompt, marks on the meaningful regions, a
 - Never include the actual prose of prompts in the spec. Templates are opaque by
   design; put a short summary in a `//` comment instead.
 - Never invent structure that is not in the code — no "agents usually also do X".
+- Never put a model output at `@T`. The current turn is input only; the prompt
+  stops where the model starts writing.
+- Never define a fragment for a chunk that appears only once.
 - Prefer a smaller, correct spec over a larger, speculative one.
 - Read the actual source. Do not extract from README files, docs, or blog posts
   describing the agent; they describe intent, and the spec must describe the code.

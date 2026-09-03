@@ -3,7 +3,8 @@ import { ArithmeticOperator } from "./types";
 export type NamespaceKeyword =
   | "sys"
   | "env"
-  | "resp";
+  | "resp"
+  | "prompt";
 
 export type ControlKeyword =
   | "If"
@@ -38,7 +39,13 @@ export type LogicalOperator =
   | "<"
   | "^"
   | "&"
-  | "|";
+  | "|"
+  // Typographic comparison operators, accepted verbatim so a spec pasted out of
+  // a document keeps rendering the operator its author wrote.
+  | "≠"
+  | "≤"
+  | "≥"
+  | "≈";
 
 export type Token =
   | { type: "STRING"; value: string; line: number; col: number; spaceBefore?: boolean }

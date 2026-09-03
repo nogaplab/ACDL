@@ -1,10 +1,16 @@
 import { StreamLanguage, StringStream } from "@codemirror/language";
 
+// Keyword recognition mirrors the scanner, which matches case-insensitively and
+// accepts a few spelling variants. Sets are keyed by the lower-cased word.
 const NAMESPACE_KEYWORDS = new Set(["env", "sys", "resp", "prompt"]);
 const CONTROL_KEYWORDS = new Set([
-  "If", "ElseIf", "Else", "ForEach", "Switch", "Case", "Default", "break", "continue", "name", "for", "in", "Mark", "when",
+  "if", "elseif", "elsif", "elif", "else", "foreach", "switch", "case", "default",
+  "break", "continue", "name", "for", "in", "mark", "when", "and", "or", "not",
+  "strfrag", "stringfrag", "rolesfrag", "rolefrag", "frag",
 ]);
-const ROLE_LETTERS = new Set(["S", "U", "A", "T", "N"]);
+const ROLE_MARKERS = new Set([
+  "s", "u", "a", "t", "n", "system", "user", "assistant", "tool", "none",
+]);
 
 interface AcdlState {
   /* Track if we just saw a '.' to treat the next identifier as a path segment */
@@ -15,8 +21,8 @@ function tokenize(stream: StringStream, state: AcdlState): string | null {
   // Whitespace
   if (stream.eatSpace()) return null;
 
-  // Comment: // to end-of-line, braces included (matches the scanner)
-  if (stream.match("//")) {
+  // Comment: // or # to end-of-line, braces included (matches the scanner)
+  if (stream.match("//") || stream.match("#")) {
     stream.skipToEnd();
     state.afterDot = false;
     return "comment";
@@ -61,16 +67,21 @@ function tokenize(stream: StringStream, state: AcdlState): string | null {
       return "variable";
     }
 
-    // Role identifier: single letter S/U/A/T/N followed by :
-    if (ROLE_LETTERS.has(word) && stream.peek() === ":") {
+    const lower = word.toLowerCase();
+
+    // Role marker: S/U/A/T/N or the role spelled out, followed by :
+    if (ROLE_MARKERS.has(lower) && stream.peek() === ":") {
       return "tag";
     }
 
-    // Namespace keywords
-    if (NAMESPACE_KEYWORDS.has(word)) return "keyword";
+    // Namespace keywords. `prompt` only counts before a dot, since `Prompt[@T]:`
+    // is a spec title rather than the namespace.
+    if (NAMESPACE_KEYWORDS.has(lower) && (lower !== "prompt" || stream.peek() === ".")) {
+      return "keyword";
+    }
 
     // Control keywords
-    if (CONTROL_KEYWORDS.has(word)) return "builtin";
+    if (CONTROL_KEYWORDS.has(lower)) return "builtin";
 
     // Template: ALL_CAPS (at least 2 chars to not match role letters)
     if (/^[A-Z][A-Z0-9_]+$/.test(word)) return "def";

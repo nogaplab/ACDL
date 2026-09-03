@@ -39,7 +39,7 @@ export type Identifier = {
 // Template text and function types
 // might want to add types for all context bases later, if we need tham to behave differently
 
-export type ContextBase = "sys" | "resp" | "env" ;
+export type ContextBase = "sys" | "resp" | "env" | "prompt";
 
 export type ContextVar = {
     kind: "context-var";

@@ -1,0 +1,544 @@
+// ============================================================================
+// Claude Code — context-assembly specification
+//
+// Scope: how the message array sent to the Anthropic Messages API is built.
+// Every model call in this codebase funnels through queryModel()
+// (src/services/api/claude.ts:1017), which is the last place the array is
+// touched before `anthropic.beta.messages.create`. The agentic loop that
+// feeds it lives in queryLoop() (src/query.ts:241).
+//
+// Time model — MainAgent[@T.I]:
+//   @T = one user turn. One call to query() per turn; the turn's messages are
+//        appended to a persistent array held in AppState / QueryEngine.
+//   I  = one iteration of queryLoop's `while (true)` = one API call. Each
+//        completed sub-step appends the assistant message plus the merged
+//        tool-result user message (src/query.ts:1716).
+//
+// ROLE NOTE: this agent never emits a `tool`-role message. Tool results are
+// user-role messages carrying `tool_result` content blocks
+// (src/services/api/claude.ts:588-631 — userMessageToMessageParam always
+// returns role 'user'; only 'user' and 'assistant' reach the API). They are
+// therefore written `U:` throughout, not `T:`.
+//
+// MERGE NOTE: normalizeMessagesForAPI (src/utils/messages.ts:1989) merges
+// consecutive user messages into one. Every `U: { ... }` below that lists
+// several content elements is one API message produced by that merge.
+// ============================================================================
+
+
+// ----------------------------------------------------------------------------
+// Content of one user-input message.
+// Attachments are computed as separate internal messages *after* the prompt
+// (src/utils/processUserInput/processTextPrompt.ts:97 returns
+// [userMessage, ...attachmentMessages]), then reorderAttachmentsForAPI
+// (src/utils/messages.ts:1481-1527) bubbles them backwards past the plain
+// user message until they hit an assistant / tool_result message — so in the
+// array that reaches the API they precede the prompt text and merge with it
+// into a single user message. Used by both the history loop and the current
+// turn below.
+// ----------------------------------------------------------------------------
+StrFrag UserTurnInput[@t]: {
+    // <- utils/attachments.ts:773-815  computed from the raw input string:
+    //    @-mentioned files, MCP resource mentions, @agent- mentions,
+    //    turn-zero skill discovery
+    ForEach(att: sys.input_attachments[@t]) {
+        att.content
+    }
+    // <- utils/attachments.ts:824-941  thread-safe attachments, in source
+    //    order: queued commands, date change, ultrathink, deferred-tools
+    //    delta, agent-listing delta, MCP-instructions delta, changed files,
+    //    nested memory, dynamic/listed skills, plan mode, todo reminders,
+    //    teammate mailbox, team context, critical system reminder
+    ForEach(att: sys.thread_attachments[@t]) {
+        att.content
+    }
+    // <- utils/attachments.ts:944-987  main thread only (skipped when
+    //    toolUseContext.agentId is set, i.e. inside a subagent): IDE
+    //    selection / opened file, output style, diagnostics, LSP
+    //    diagnostics, unified tasks, async hook responses, token usage,
+    //    budget, verify-plan reminder
+    If (sys.is_main_thread == true) {
+        ForEach(att: sys.main_thread_attachments[@t]) {
+            att.content
+        }
+    }
+    // <- processUserInput/processUserInput.ts:231-262  UserPromptSubmit hook
+    //    output, truncated to 10K chars (applyTruncation, :274-279)
+    ForEach(hook: sys.user_prompt_submit_hook_context[@t]) {
+        hook.content
+    }
+    // <- processUserInput/processTextPrompt.ts:75-94  the user's own text,
+    //    last in the merged message. Pasted/attached images follow it in the
+    //    same message (:76).
+    env.user_input[@t]
+    ForEach(img: env.pasted_images[@t]) {
+        img.block
+    }
+}
+
+
+// ----------------------------------------------------------------------------
+// One completed sub-step: the assistant message of one API response, plus the
+// user message that the loop appended before re-entering. Used by the history
+// loop and by the already-completed sub-steps of the current turn.
+//
+// A sub-step is one iteration of queryLoop's `while (true)`. It re-enters
+// either because the model requested tools (query.ts:1062, the normal case) or
+// because a recovery path fired (query.ts:1223-1341). Both shapes are one
+// assistant message followed by one user message, so they share this fragment.
+// ----------------------------------------------------------------------------
+RolesFrag ToolStep[@t, i]: {
+    // <- query.ts:1716 (...assistantMessages)  one assistant message per API
+    //    response; streamed blocks sharing a message id are merged by
+    //    messages.ts:2246-2264
+    A: {
+        // <- messages.ts:2201-2244  thinking and text blocks, in the order
+        //    the model streamed them
+        resp.content[@t.i]
+        // <- messages.ts:2211-2240  every parallel tool call of this sub-step
+        //    lives in this same assistant message. Empty on a recovery step.
+        ForEach(tool: sys.tool_requests[@t.i]) {
+            tool.id_name_and_args
+        }
+    }
+    Switch sys.step_outcome[@t.i] {
+        // <- query.ts:1384-1400  runTools yields one user message per tool
+        //    result; messages.ts:2187-2199 merges them into one.
+        Case tool_use: {
+            U: {
+                ForEach(tool: sys.tool_requests[@t.i]) {
+                    // <- compact/microCompact.ts:479-490 and
+                    //    utils/toolResultStorage.ts:924-936: an older or
+                    //    oversized result is replaced in place by a fixed
+                    //    placeholder; the message itself is never removed.
+                    If (sys.result_cleared[@t.i, tool] == true) {
+                        TOOL_RESULT_CLEARED_PLACEHOLDER
+                    }
+                    Else {
+                        tool.id_and_result
+                    }
+                }
+                // <- query.ts:1580-1590  attachments recomputed after the tool
+                //    batch (queued commands / task notifications drained
+                //    mid-turn)
+                ForEach(att: sys.mid_turn_attachments[@t.i]) {
+                    att.content
+                }
+                // <- query.ts:1599-1614  relevant-memory prefetch, consumed on
+                //    the first iteration where it has settled
+                ForEach(mem: sys.relevant_memories[@t.i]) {
+                    mem.content
+                }
+                // <- query.ts:1620-1628  inter-turn skill-discovery prefetch
+                ForEach(skill: sys.discovered_skills[@t.i]) {
+                    skill.content
+                }
+            }
+        }
+        // <- query.ts:1224-1236  output token limit hit; the truncated
+        //    assistant message stays in the array and a resume nudge follows
+        Case max_output_tokens: {
+            U: RESUME_AFTER_OUTPUT_LIMIT
+        }
+        // <- query.ts:1267-1287, query/stopHooks.ts  a Stop hook blocked the
+        //    turn from ending; its reason text is appended
+        Case stop_hook_blocked: {
+            U: sys.stop_hook_blocking_error[@t.i]
+        }
+        // <- query.ts:1321-1329  token-budget continuation nudge
+        Case token_budget: {
+            U: TOKEN_BUDGET_NUDGE(sys.turn_output_tokens[@t.i])
+        }
+    }
+}
+
+
+// ============================================================================
+// The main agent: REPL turn, SDK turn, and every subagent turn all run through
+// query() -> queryLoop() -> queryModel().
+// ============================================================================
+MainAgent[@T.I]: {
+
+    Mark 1 {
+    // <- claude.ts:1358-1369  the whole system prompt is assembled here and
+    //    passed as `system`. api.ts:427-434 splits it into at most three
+    //    text blocks (attribution header, CLI prefix, everything else joined
+    //    with "\n\n") purely to place cache_control breakpoints — it is one
+    //    logical system message.
+    S: {
+        // <- claude.ts:1360, constants/system.ts:73-93  billing/attribution
+        //    header line; empty when disabled
+        ATTRIBUTION_HEADER(sys.entrypoint, sys.message_fingerprint[@T])
+        // <- claude.ts:1361-1364, constants/system.ts:30-46  one of three
+        //    fixed identity lines chosen by interactive vs SDK vs
+        //    SDK-with-append-prompt
+        CLI_SYSPROMPT_PREFIX
+        // <- REPL.tsx:2781-2787 / QueryEngine.ts:321-325, resolved in
+        //    utils/systemPrompt.ts:41-123 — exactly one of these four bodies
+        Switch sys.system_prompt_source[@T] {
+            // <- utils/systemPrompt.ts:62-75
+            Case coordinator: {
+                COORDINATOR_SYSTEM_PROMPT
+            }
+            // <- utils/systemPrompt.ts:77-83, 116-117  main-thread agent
+            //    persona replaces the default prompt
+            Case agent: {
+                sys.main_thread_agent_prompt
+            }
+            // <- utils/systemPrompt.ts:118-119, queryContext.ts:62-63
+            //    --system-prompt / SDK systemPrompt suppresses the default
+            //    build entirely
+            Case custom: {
+                sys.custom_system_prompt
+            }
+            // <- constants/prompts.ts:560-576  the default build, in order
+            Default {
+                // <- prompts.ts:562  identity + persona
+                INTRO_SECTION(sys.output_style)
+                // <- prompts.ts:563  harness description
+                HARNESS_SECTION
+                // <- prompts.ts:564-567  omitted when the active output style
+                //    turns coding instructions off
+                If (sys.keep_coding_instructions == true) {
+                    DOING_TASKS_SECTION
+                }
+                // <- prompts.ts:568  irreversible/outward-facing actions
+                ACTIONS_SECTION
+                // <- prompts.ts:569  built from the enabled tool names
+                USING_YOUR_TOOLS_SECTION(sys.enabled_tool_names[@T])
+                // <- prompts.ts:570, 430-442
+                TONE_AND_STYLE_SECTION
+                // <- prompts.ts:571, 403-428
+                OUTPUT_EFFICIENCY_SECTION
+                // <- prompts.ts:573  marker separating the globally cacheable
+                //    prefix from per-user content
+                If (sys.global_cache_scope == true) {
+                    DYNAMIC_BOUNDARY_MARKER
+                }
+                // <- prompts.ts:491-555  registry-managed dynamic sections,
+                //    resolved in declaration order (systemPromptSections.ts:48).
+                //    Each may resolve to null and drop out.
+                // <- prompts.ts:492-494, 340-400  skills / subagent / session rules
+                SESSION_GUIDANCE_SECTION
+                // <- prompts.ts:495  memory-directory mechanics + MEMORY.md
+                MEMORY_SECTION(sys.memory_dir)
+                // <- prompts.ts:499-501, 606-639  cwd, platform, OS, model id,
+                //    knowledge cutoff, additional working directories
+                ENV_INFO_SECTION(sys.cwd, sys.model_id, sys.additional_dirs)
+                // <- prompts.ts:502-504
+                LANGUAGE_SECTION(sys.language_setting)
+                // <- prompts.ts:505-507
+                OUTPUT_STYLE_SECTION(sys.output_style)
+                // <- prompts.ts:513-520, 579-604  concatenated instructions of
+                //    every connected MCP server; skipped when the delta
+                //    attachment carries them instead
+                If (sys.mcp_instructions_delta_enabled == false) {
+                    MCP_SERVER_INSTRUCTIONS(sys.connected_mcp_servers[@T])
+                }
+                // <- prompts.ts:521, 797-805
+                SCRATCHPAD_SECTION(sys.scratchpad_dir)
+                // <- prompts.ts:522  function-result-clearing / compaction notice
+                CONTEXT_MANAGEMENT_SECTION
+                // <- prompts.ts:523-526
+                SUMMARIZE_TOOL_RESULTS_SECTION
+                // <- prompts.ts:538-551  present only under the token-budget build
+                TOKEN_BUDGET_SECTION
+            }
+        }
+        // <- utils/systemPrompt.ts:121 / QueryEngine.ts:324  --append-system-prompt,
+        //    plus everything main.tsx:1364-2208 folds into it (chrome hints,
+        //    custom agent instructions, proactive prompt)
+        sys.append_system_prompt
+        // <- query.ts:449-451, utils/api.ts:437-447  systemContext rendered as
+        //    "key: value" lines and appended as the last block.
+        //    context.ts:110-146: git branch, main branch, user, short status
+        //    (truncated at 2000 chars) and last 5 commits, snapshotted once at
+        //    session start.
+        ForEach(k: sys.system_context[@T]) {
+            k.key_and_value
+        }
+        // <- claude.ts:1366  only when the server-side advisor tool is active
+        If (sys.advisor_enabled[@T] == true) {
+            ADVISOR_TOOL_INSTRUCTIONS
+        }
+        // <- claude.ts:1354-1355, 1367  only when Chrome MCP tools are present
+        //    and tool search is on
+        If (sys.inject_chrome_instructions[@T] == true) {
+            CHROME_TOOL_SEARCH_INSTRUCTIONS
+        }
+    }
+    }
+
+    Mark 2 {
+    // Request preamble — two synthetic user messages prepended to the array
+    // at assembly time, in this order.
+    // <- claude.ts:1330-1345  ephemeral list of tools the model may load via
+    //    ToolSearch; skipped when the persisted delta attachment is enabled
+    If (sys.tool_search_enabled[@T] == true & sys.deferred_tools_delta_enabled == false) {
+        U: AVAILABLE_DEFERRED_TOOLS(sys.deferred_tool_names[@T])
+    }
+    // <- query.ts:660, utils/api.ts:449-474  userContext wrapped in a
+    //    <system-reminder> block. Contents: CLAUDE.md / memory files
+    //    (context.ts:180), today's date (context.ts:181), and the coordinator /
+    //    scratchpad additions from QueryEngine.ts:302-308.
+    //    Suppressed entirely when userContext is empty (api.ts:457).
+    If (sys.user_context[@T] != none) {
+        U: USER_CONTEXT_REMINDER(sys.claude_md, sys.current_date, sys.coordinator_context)
+    }
+    }
+
+    Mark 3 {
+    // Compaction. query.ts:365 slices the array at the last compact boundary,
+    // so everything before it is gone from the prompt. C is the turn at which
+    // that boundary was written; C = 0 when the conversation has never been
+    // compacted (findLastCompactBoundaryIndex returns -1, messages.ts:4646).
+    // <- query.ts:365, utils/messages.ts:4643-4656
+    Name C := sys.last_compact_turn[@T]
+    If (@$C > 0) {
+        // <- compact/compact.ts:330-337  the boundary marker itself is a
+        //    `system` message and is filtered out before the API call
+        //    (messages.ts:2066-2072) — it never reaches the model.
+        // <- compact/compact.ts:614-624  the summary, wrapped in framing text
+        //    that names the transcript path
+        U: {
+            COMPACT_SUMMARY_FRAMING(sys.transcript_path)
+            sys.conversation_summary[@$C]
+        }
+        // <- compact/compact.ts:925-948, 334-336  post-compact restoration:
+        //    recently-read files re-attached, async-agent notes, the current
+        //    plan, plan-mode instructions, and PreCompact hook output.
+        //    Partial compact additionally splices a preserved run of raw
+        //    messages in here (compact.ts:334 messagesToKeep) — not modelled
+        //    as separate roles because which end is preserved depends on the
+        //    compact direction (compact.ts:345-348).
+        U: {
+            ForEach(att: sys.post_compact_attachments[@$C]) {
+                att.content
+            }
+        }
+    }
+    }
+
+    Mark 4 {
+    // Completed turns since the compact boundary. Each ran to a final
+    // assistant message with no tool_use block — that is the loop-exit
+    // condition at query.ts:1062.
+    ForEach(t: range(@$C + 1, @T)) {
+        // <- processTextPrompt.ts:97 + messages.ts:1481-1527, 2187-2199
+        U: {
+            Frag UserTurnInput[@t]
+        }
+        // <- query.ts:1716  every tool-using sub-step of that turn
+        ForEach(i: range(1, @t.substeps + 1)) {
+            Frag ToolStep[@t, i]
+        }
+        // <- query.ts:1062-1357  the final assistant message that ended the turn
+        A: resp.response[@t]
+    }
+    }
+
+    Mark 5 {
+    // The current turn. Input only — the model has not answered it yet.
+    // <- REPL.tsx:2855 onQuery / QueryEngine.ts:410-416 processUserInput:
+    //    the user's message is appended and query() is called immediately.
+    U: {
+        Frag UserTurnInput[@T]
+    }
+    // <- query.ts:1716  sub-steps of this turn that have already completed.
+    //    Runs to I-1: sub-step I is the call being assembled right now, and
+    //    its assistant message is exactly what this request will produce.
+    ForEach(i: range(1, I)) {
+        Frag ToolStep[@T, i]
+    }
+    // Nothing follows: the model writes the next assistant message.
+    }
+}
+
+
+// ============================================================================
+// Subagents (AgentTool / Task, teammates, forks).
+//
+// A subagent is NOT a different prompt shape — src/tools/AgentTool/runAgent.ts:748
+// calls the same query() with the same loop, so everything in MainAgent's
+// Mark 2-5 applies verbatim (with sys.is_main_thread false, which drops the
+// main-thread attachment group). Only the system prompt and the seed messages
+// differ, so only those are specified here.
+// ============================================================================
+SubAgent[@T.I, agent]: {
+
+    Mark 1 {
+    // <- runAgent.ts:508-518 -> getAgentSystemPrompt (runAgent.ts:906-932).
+    //    Note there is no getSystemPrompt() build here: a subagent does not
+    //    inherit the main agent's tone/tools/session sections.
+    S: {
+        // <- claude.ts:1360-1364  same two prefix lines as the main agent
+        ATTRIBUTION_HEADER(sys.entrypoint, sys.message_fingerprint[@T])
+        CLI_SYSPROMPT_PREFIX
+        // <- AgentTool.tsx:623-625, runAgent.ts:508-509  a fork inherits the
+        //    parent's rendered system prompt byte-for-byte for cache reuse
+        If (sys.is_fork[agent] == true) {
+            sys.parent_system_prompt
+        }
+        Else {
+            // <- runAgent.ts:915  the agent definition's own prompt body
+            //    (built-in agent, .claude/agents/*.md, or plugin agent);
+            //    DEFAULT_AGENT_PROMPT on failure (runAgent.ts:926)
+            sys.agent_prompt[agent]
+            // <- constants/prompts.ts:766-770  fixed subagent notes: absolute
+            //    paths, what to return, no emojis
+            SUBAGENT_NOTES
+            // <- constants/prompts.ts:777-783
+            If (sys.skill_search_enabled == true) {
+                DISCOVER_SKILLS_GUIDANCE
+            }
+            // <- constants/prompts.ts:784, 606-639  same env block as the main
+            //    agent, computed for the agent's own model
+            ENV_INFO_SECTION(sys.cwd, sys.agent_model[agent], sys.additional_dirs)
+        }
+        // <- runAgent.ts:673  inherited from the parent
+        sys.append_system_prompt
+        // <- query.ts:449-451, runAgent.ts:406-410  gitStatus is dropped for
+        //    the read-only Explore and Plan agents
+        If (sys.agent_type[agent] != explore & sys.agent_type[agent] != plan) {
+            ForEach(k: sys.system_context[@T]) {
+                k.key_and_value
+            }
+        }
+    }
+    }
+
+    Mark 2 {
+    // <- query.ts:660, runAgent.ts:396-398  same <system-reminder> preamble as
+    //    the main agent, except that CLAUDE.md is dropped for agents whose
+    //    definition sets omitClaudeMd (Explore, Plan).
+    U: USER_CONTEXT_REMINDER(sys.claude_md, sys.current_date, sys.coordinator_context)
+    }
+
+    Mark 3 {
+    // Seed messages — the subagent's turn 1 input. <- runAgent.ts:373
+    // <- runAgent.ts:370-373, AgentTool.tsx:630  fork children only: the
+    //    parent's entire conversation is replayed ahead of the task prompt,
+    //    with incomplete tool calls filtered out (filterIncompleteToolCalls,
+    //    runAgent.ts:371). Same shape as MainAgent Mark 4, but indexed over
+    //    the PARENT's turns @p, not the child's.
+    If (sys.is_fork[agent] == true) {
+        ForEach(@p: range(1, sys.parent_turn_count[agent] + 1)) {
+            U: {
+                Frag UserTurnInput[@p]
+            }
+            ForEach(i: range(1, @p.substeps + 1)) {
+                Frag ToolStep[@p, i]
+            }
+            A: resp.response[@p]
+        }
+    }
+    U: {
+        // <- AgentTool.tsx:538-540  the `prompt` argument of the tool call
+        //    (buildForkedMessages at :512 for forks)
+        env.task_prompt[agent]
+        // <- AgentTool.tsx:599-601  fork + worktree only
+        If (sys.has_worktree[agent] == true) {
+            WORKTREE_PATH_NOTICE(sys.worktree_path[agent])
+        }
+    }
+    // <- runAgent.ts:546-555  SubagentStart hook output
+    If (sys.subagent_start_hook_context[agent] != none) {
+        U: sys.subagent_start_hook_context[agent]
+    }
+    // <- runAgent.ts:628-644  skills named in the agent's frontmatter, each
+    //    expanded into its own user message
+    ForEach(skill: sys.preloaded_skills[agent]) {
+        U: {
+            SKILL_LOADING_METADATA(skill.name)
+            skill.content
+        }
+    }
+    }
+
+    // From here the loop is identical to MainAgent Mark 4-5 (query.ts:748
+    // enters the same queryLoop): completed turns, then the current turn's
+    // input and completed sub-steps.
+}
+
+
+// ============================================================================
+// Compactor — the summarization call that produces the conversation summary
+// consumed by MainAgent Mark 3.
+// <- src/services/compact/compact.ts:1292-1322
+// ============================================================================
+Compactor[@T]: {
+
+    // <- compact.ts:1301-1303  a single hard-coded line. Note that the main
+    //    agent's system prompt is NOT reused here.
+    S: SUMMARIZER_ROLE_LINE
+
+    Mark 1 {
+    // <- compact.ts:1293-1300  the conversation as the main loop would send
+    //    it, after the last compact boundary, with all images stripped
+    //    (stripImagesFromMessages) and reinjected attachments removed
+    //    (stripReinjectedAttachments), then run through the same
+    //    normalizeMessagesForAPI.
+    // <- compact.ts:1295 getMessagesAfterCompactBoundary; 0 if never compacted
+    Name P := sys.last_compact_turn[@T]
+    ForEach(t: range(@$P + 1, @T)) {
+        U: {
+            Frag UserTurnInput[@t]
+        }
+        ForEach(i: range(1, @t.substeps + 1)) {
+            Frag ToolStep[@t, i]
+        }
+        A: resp.response[@t]
+    }
+    // The newest turn may be incomplete. Autocompact fires from inside
+    // queryLoop (query.ts:454) after the turn's input has been appended but
+    // before its response exists; manual /compact (compact.ts:790) runs
+    // between turns, where turn @T is already answered.
+    U: {
+        Frag UserTurnInput[@T]
+    }
+    ForEach(i: range(1, @T.substeps + 1)) {
+        Frag ToolStep[@T, i]
+    }
+    If (sys.compact_trigger[@T] == manual) {
+        A: resp.response[@T]
+    }
+    }
+
+    Mark 2 {
+    // <- compact.ts:840-843 (partial) / :441-451 (full)  the summarization
+    //    instruction, appended as the final user message.
+    //    getPartialCompactPrompt merges hook-supplied instructions and the
+    //    user's /compact argument (compact.ts:826-834).
+    U: {
+        COMPACT_INSTRUCTIONS(sys.compact_direction[@T])
+        If (sys.compact_custom_instructions[@T] != none) {
+            sys.compact_custom_instructions[@T]
+        }
+    }
+    // <- compact.ts:874-898  on prompt-too-long the call is retried with the
+    //    head of the history dropped; the shape is otherwise unchanged.
+    }
+}
+
+
+// ============================================================================
+// Auxiliary single-shot queries.
+//
+// ~20 call sites (queryHaiku, sideQuery, queryModelWithoutStreaming) share one
+// trivial shape: a fixed system prompt plus exactly one user message. They are
+// specified once here rather than 20 times. Call sites are listed in the
+// extraction report.
+// <- claude.ts:3241-3272 (queryHaiku), utils/sideQuery.ts:140-182 (sideQuery)
+// ============================================================================
+AuxQuery[task]: {
+    S: {
+        // <- sideQuery.ts:150-161  prepended unless the caller sets
+        //    skipSystemPromptPrefix; queryHaiku goes through queryModel and
+        //    always gets it (claude.ts:1361)
+        CLI_SYSPROMPT_PREFIX
+        // <- sideQuery.ts:162-166, claude.ts:3272  the task's own fixed prompt
+        TASK_SYSTEM_PROMPT(task)
+    }
+    // <- claude.ts:3259-3268, sideQuery.ts:183  exactly one user message
+    U: env.task_input[task]
+}

@@ -2,6 +2,41 @@
 
 All notable changes to the ACDL Language Support extension will be documented in this file.
 
+## [0.2.2] - 2026-09-03
+
+### Fixed
+
+- **Copy image / Save image** no longer drop content. html2canvas cannot render text
+  inside `inline-flex` elements, does not resolve CSS custom properties, and ignores
+  `repeating-linear-gradient`, so exported PNGs came out with blank template blocks
+  (`SESSION_SEARCH_GUIDANCE`), blank function names (`buildMemoryContextBlock(...)`),
+  index brackets missing their `@` (`sys.tool_requests[ t.i ]` instead of
+  `sys.tool_requests[@t.i]`), and misplaced mark brackets. The preview now applies the
+  same pre-capture substitutions as the web and batch exporters, then restores the DOM.
+
+## [0.2.1] - 2026-08-23
+
+### Fixed
+
+- Comments run to end of line. A `}` inside a comment no longer ends it, so a comment
+  quoting a code literal (`// Context { systemPrompt, messages, tools }`) no longer
+  spills its remainder into the parser as source. Applies to both diagnostics and
+  syntax highlighting.
+- Comments are allowed between the branches of an `If` / `ElseIf` / `Else` chain, and
+  between `Case` / `Default` arms of a `Switch`. Structural lookahead now sees past
+  them instead of treating a comment as the end of the construct.
+- Invisible characters that survive a copy from HTML or PDF — zero-width space, ZWNJ,
+  ZWJ, word joiner, BOM, soft hyphen — are treated as whitespace instead of raising
+  `Unexpected character`.
+- `Unexpected character` errors now name the offending code point (e.g. `U+200B`),
+  which is the only way to identify an invisible one.
+
+### Changed
+
+- An `If` / `ElseIf` / `Else` chain renders as a single unit in the preview: its
+  branches always stack vertically instead of flowing side by side when the
+  surrounding role body has room for both.
+
 ## [0.2.0] - 2026-07-02
 
 ### Added

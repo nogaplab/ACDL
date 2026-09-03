@@ -6,17 +6,54 @@ and checks that the message arrays it actually sends match what the spec predict
 Where [`acdl-agent`](../acdl-agent) reads code and writes a spec, `acdl-verify` reads a spec
 and tests it against behaviour. The two compose: extract, verify, correct, repeat.
 
-> **Status.** The proxy, Level A checking, binding discovery, runtime confirmation, sweeps,
-> the `resp.*` answer schema and per-condition ablation all work end-to-end. Still design:
-> Level B placement verdicts, coverage instrumentation, mutation scoring, the Docker
-> sandbox, and the annotated `.verified.acdl` output. See *What runs today*.
+> **Status.** One command runs the whole thing: `pipeline.ts` chains planning, the
+> nondeterminism baseline, Level A checking, binding discovery, runtime confirmation, the
+> `resp.*` probe, sweeps and per-condition ablation, and writes the verdict, the annotated
+> `.verified.acdl` and the report. Still design: coverage instrumentation, mutation scoring,
+> the Docker sandbox, and the LLM scenario planner. See *What runs today*.
 
 ## What runs today
+
+### One command
+
+```bash
+bun run acdl-verify/pipeline.ts   --spec   acdl-agent/out/supportbot/SupportBot.acdl   --target acdl-tests/test1-supportbot   --run    'python -m supportbot --message {input}'
+```
+
+Every stage below is also a command of its own — that is how you debug one — but the
+pipeline is what routes their artefacts into each other and ends in a single verdict:
+
+```
+══════════════════════════════════════════════════════════════════════════════
+SURVIVED — 9 confirmed, 0 refuted, 1 unexercised (15 episode(s), 21.9s)
+══════════════════════════════════════════════════════════════════════════════
+  ✓ plan       ok       0.0s  6 target(s), 1 condition(s), 6 with citations
+  · discover   reused   0.0s  5 binding(s) from …/bindings.json; 5/5 grounded
+  — verify     skipped  0.0s  all 5 binding(s) were already confirmed by an earlier run
+  ✓ level-a    ok       0.3s  via env.customer_tier's recipe: 2 confirmed, 0 refuted
+  ✓ answers    ok      20.2s  0/1 resp.* variables can be driven
+  ✓ sweep      ok       0.8s  3 run(s); 1/1 axes moved the prompt
+  ✓ ablate     ok       0.7s  1 condition(s), 5 placement claim(s), 0 refuted
+```
+
+Three properties are what make it an orchestrator rather than a shell script:
+
+- **Stages degrade, they do not abort.** A stage that throws is recorded as failed and the
+  run continues; the claims it would have decided become *unexercised*. A target whose
+  binding discovery fails still gets a Level A verdict, a report, and an annotated spec.
+- **Artefacts are the interface.** Each stage reads what the last one wrote, so a re-run
+  reuses whatever is on disk — discovery costs model calls and nobody should pay twice
+  because a later stage crashed. `--fresh` recomputes everything.
+- **The verdict is mechanical.** `REFUTED` if any claim was refuted, `SURVIVED` if some
+  claim was decided and none refuted, `INCONCLUSIVE` if nothing was decided at all. Exit
+  code 1, 0, 2 respectively.
+
+### The stages, one at a time
 
 Record a trace by driving a target entirely from a scenario file — no API key, no network:
 
 ```bash
-bun run acdl-verify/proxy.ts \
+bun run acdl-verify/episode/proxy.ts \
   --scenario acdl-verify/scenarios/acdl-agent-loop3.json \
   --out      acdl-verify/traces/acdl-agent-loop3.jsonl \
   --var      tier=premium \
@@ -52,7 +89,7 @@ against **any** provider, including ones the registry has never heard of.
 Check a spec against that trace:
 
 ```bash
-bun run acdl-verify/check.ts \
+bun run acdl-verify/spec/check.ts \
   --spec  acdl-agent/acdl-agent.acdl \
   --trace acdl-verify/traces/acdl-agent-loop3.jsonl
 ```
@@ -72,26 +109,51 @@ free choices (taken from the trace, therefore NOT verified):
   - call 3: size of sys.tool_calls[@i] = 1 (collection length is not stated in the spec)
 ```
 
+### Layout
+
+Four stages, one directory each, in the order the pipeline runs them. Anything
+that spans all four stays at the root — `transport.ts` today, alongside whatever
+drives the passes end to end and renders their output.
+
+| Directory | Stage |
+|-----------|-------|
+| [`spec/`](spec/) | what the specification claims, and what it predicts |
+| [`bindings/`](bindings/) | how the target is controlled — the binding map |
+| [`episode/`](episode/) | running the target once and recording what it sent |
+| [`proof/`](proof/) | the experiments: does the recording match the claim |
+| [`tests/`](tests/) | `bun test acdl-verify/` — every module above |
+| [`artifacts/`](artifacts/) | binding maps and their reports, as produced by a real run |
+| [`scenarios/`](scenarios/) | scripted replies, one file per scenario |
+| `traces/` | recorded episodes (gitignored) |
+
 | File | What it is |
 |------|------------|
-| [`proxy.ts`](proxy.ts) | recording proxy: provider registry, JSONL trace with manifest, scripted / record / replay modes, `--run` driver |
-| [`evaluate.ts`](evaluate.ts) | ACDL AST → predicted message array; reports what it had to leave free |
-| [`check.ts`](check.ts) | Anthropic wire→ACDL normalization, Level A verdicts, prefix monotonicity |
-| [`provenance.ts`](provenance.ts) | spec → verification targets, each carrying the source lines the extractor cited |
-| [`discover.ts`](discover.ts) | the binding-discovery agent: proposes a control handle per target |
-| [`bindings.ts`](bindings.ts) | binding schema, the evidence check, `bindings.json` I/O, the review report |
-| [`runner.ts`](runner.ts) | episodes, matrices, the nondeterminism baseline and masking |
-| [`responder.ts`](responder.ts) | live replies from a real model, on a subscription rather than an API key |
-| [`sweep.ts`](sweep.ts) | run a target many times, varying one axis at a time, and attribute the effects |
-| [`answers.ts`](answers.ts) | the `resp.*` schema, and finding how to deliver a chosen answer |
-| [`ablate.ts`](ablate.ts) | per-condition verdicts: the spec's predicted delta against the observed one |
-| [`verify.ts`](verify.ts) | runtime confirmation: canary and differential proofs, recipe generation |
-| [`scenarios/`](scenarios/) | scripted replies, one file per scenario |
-| `*.test.ts` | `bun test acdl-verify/` — provider matrix, streaming, trace format, target extraction, the evidence check |
+| **`spec/`** | |
+| [`provenance.ts`](spec/provenance.ts) | spec → verification targets, each carrying the source lines the extractor cited |
+| [`evaluate.ts`](spec/evaluate.ts) | ACDL AST → predicted message array; reports what it had to leave free |
+| [`check.ts`](spec/check.ts) | Anthropic wire→ACDL normalization, Level A verdicts, prefix monotonicity |
+| [`placement.ts`](spec/placement.ts) | Level B — is each value in the message, and the iteration, the spec puts it in |
+| **`bindings/`** | |
+| [`bindings.ts`](bindings/bindings.ts) | binding schema, the evidence check, `bindings.json` I/O, the review report |
+| [`discover.ts`](bindings/discover.ts) | the binding-discovery agent: proposes a control handle per target |
+| [`shape.ts`](bindings/shape.ts) | how a reply is composed, learned from the code that decomposes it |
+| **`episode/`** | |
+| [`proxy.ts`](episode/proxy.ts) | recording proxy: provider registry, JSONL trace with manifest, scripted / record / replay modes, `--run` driver |
+| [`runner.ts`](episode/runner.ts) | episodes, matrices, the time-index route, the nondeterminism baseline and masking |
+| [`responder.ts`](episode/responder.ts) | live replies from a real model, on a subscription rather than an API key |
+| [`answers.ts`](episode/answers.ts) | the `resp.*` schema: which variables exist, and what domain each condition gives them |
+| **`proof/`** | |
+| [`verify.ts`](proof/verify.ts) | runtime confirmation: canary and differential proofs, recipe generation |
+| [`sweep.ts`](proof/sweep.ts) | run a target many times, varying one axis at a time, and attribute the effects |
+| [`ablate.ts`](proof/ablate.ts) | per-condition verdicts: the spec's predicted delta against the observed one |
+| [`compound.ts`](proof/compound.ts) | conditions over several variables: one assignment per sub-condition |
+| **root** | |
+| [`pipeline.ts`](pipeline.ts) | the orchestrator: stage order, artefact routing, degradation, and the one verdict |
+| [`report.ts`](report.ts) | the two artefacts a person reads: the annotated `.verified.acdl` and the report |
+| [`transport.ts`](transport.ts) | the model *we* ask — API or Claude CLI — shared by every pass that needs one |
 
-Not yet built: Level A/B/C verdicts driven off the confirmed bindings, the
-nondeterminism baseline, coverage instrumentation, mutation scoring as a command, the
-Docker sandbox, and the LLM planning layer.
+Not yet built: mutation scoring, coverage instrumentation, the Docker sandbox, and the
+LLM scenario planner.
 
 ### The trace format
 
@@ -131,7 +193,7 @@ Three levels of checking, each needing more setup than the last:
 | Level | What it checks | Setup required |
 |-------|----------------|----------------|
 | **A — shape** | message count, role sequence, loop bounds, one-block-vs-many-messages, prefix monotonicity across a tool loop | none beyond a recorded trace |
-| **B — placement** | which content lands in which message, and in what order within it | a binding map |
+| **B — placement** | which message each value lands in, which loop iteration it belongs to, and that claimed templates are present | confirmed bindings |
 | **C — causal** | that each `If` / `Switch` actually gates what the spec says it gates | a binding map + controllable inputs |
 
 The binding map is *discovered*, not written by hand — see **Binding discovery** below.
@@ -157,16 +219,16 @@ If env.customer_tier == "premium" {
 }
 ```
 
-[`provenance.ts`](provenance.ts) turns those `<-` comments into a target list, each entry
+[`provenance.ts`](spec/provenance.ts) turns those `<-` comments into a target list, each entry
 carrying the exact source window the extractor cited. The agent is never asked to search a
 codebase; it is handed the six lines the answer is in and asked to trace backwards from
 where the value is *used* to where it *enters the process*. On the two real specs in
 `acdl-agent/out/`, every one of 31 and 53 targets carries citations.
 
 ```bash
-bun run acdl-verify/discover.ts   --spec   acdl-agent/out/supportbot/SupportBot.acdl   --target acdl-tests/test1-supportbot   --report acdl-agent/out/supportbot/extraction-report.md
+bun run acdl-verify/bindings/discover.ts   --spec   acdl-agent/out/supportbot/SupportBot.acdl   --target acdl-tests/test1-supportbot   --report acdl-agent/out/supportbot/extraction-report.md
 
-bun run acdl-verify/discover.ts --spec … --target … --dry-run   # targets only, no model call
+bun run acdl-verify/bindings/discover.ts --spec … --target … --dry-run   # targets only, no model call
 ```
 
 ### Two transports
@@ -216,16 +278,17 @@ does **not** prove that setting the handle moves the prompt. That is `verificati
   it is proved differentially instead, by running both arms and requiring the requests to
   differ
 
-That pass is [`verify.ts`](verify.ts), below.
+That pass is [`verify.ts`](proof/verify.ts), below.
 
 ### Handle kinds
 
-The taxonomy is closed, and three of the eight kinds are admissions rather than answers:
+The taxonomy is closed, and three of the nine kinds are admissions rather than answers:
 
 | Kind | Meaning |
 |------|---------|
 | `env` `flag` `file` `stdin` | a real input surface the runner can drive |
 | `response` | a `resp.*` value: not controlled by the codebase at all — the proxy's scripted reply says the words |
+| `loop` | `time` only: nothing sets it, because the value is reached by running the target's own loop that many turns |
 | `harness` | no input surface: the value is only reachable by importing the module and calling the builder with synthetic state |
 | `constant` | hardcoded here; only a source edit changes it |
 | `unreachable` | nothing in this codebase sets it |
@@ -235,6 +298,46 @@ own first test target — has no CLI, no environment reads, and builds its state
 in a `__main__` block. A flag-only binding map would have failed on the very first example,
 which is why the agent is told in as many words that "there is no handle" is a correct
 answer and inventing one is not.
+
+### Driving a config file
+
+`env`, `flag` and `stdin` all deliver a value across the process boundary. A config file is
+the one input surface that lives on disk *inside the checkout*, which is why it was reported
+rather than driven for a long time: writing one needs to know the file's format, and a wrong
+guess edits the target instead of observing it.
+
+Both objections are answered rather than waved away. The recipe states the format and the
+**dotted key path**, cited from the loader it read — the same evidence discipline as
+everywhere else — and [`episode/files.ts`](episode/files.ts) changes that one key and leaves
+the rest of the document alone. YAML keeps its comments and key order; JSON, TOML, `.env` and
+INI keep everything but formatting. A value replacing a number stays a number, because the
+target's own loader is what would crash on `"3"`.
+
+Where the file is written is a choice the recipe makes, and the two are not equivalent:
+
+| `scope` | What happens | When |
+|---------|--------------|------|
+| `scratch` | a patched copy is written to the episode's own directory, seeded from the real file so the target's other settings survive, and the run command is pointed at it with `{file:<name>}` | whenever the target can be told where its config is — a `--config` flag, an `$APP_CONFIG` variable |
+| `target` | the real file is patched in place and restored when the episode ends | only when the path is fixed and nothing can override it |
+
+`scratch` touches nothing in the checkout and is always preferred. `target` is a write into
+someone's working tree, so it is bounded three ways: the write is undone in a `finally`, so a
+throw or a non-zero exit still restores it; the backup is recorded in a manifest under the
+system temp directory, so a run killed outright is restored by the *next* run before it does
+anything else; and a path that resolves outside the target root is refused rather than
+followed.
+
+```jsonc
+// the recipe a config-driven target gets
+{ "language": "none",
+  "files": [{ "path": "config.yaml", "scope": "scratch", "format": "yaml",
+              "keyPath": "customer.tier", "value": "{value}" }],
+  "env": { "APP_CONFIG": "{file:config.yaml}" } }
+```
+
+A format outside `json` / `yaml` / `toml` / `dotenv` / `ini` / `text` is refused, and so is a
+key path a format cannot hold — `a.b` in a `.env` file. Both are reported as findings about
+the codebase rather than approximated.
 
 `response` exists because `env.*`/`sys.*` and `resp.*` are asymmetric. The first two are
 *inputs* to the process and need a handle in the code; `resp.*` is an *output* of the model,
@@ -275,13 +378,14 @@ request carrying the canary or it does not, and no amount of plausible-looking c
 substitutes for that.
 
 ```bash
-bun run acdl-verify/verify.ts   --bindings acdl-verify/bindings-supportbot.json   --target   acdl-tests/test1-supportbot
+bun run acdl-verify/proof/verify.ts   --bindings acdl-verify/artifacts/bindings-supportbot.json   --target   acdl-tests/test1-supportbot
 ```
 
 Each grounded binding gets a **recipe** — env vars, arguments, stdin, or a generated
 driver program — written by the same agent and then run. `constant`, `unreachable` and
 `response` bindings are skipped: the first two have no handle, and the proxy already owns
-the third.
+the third. So is `time`, whatever kind it came back as: `@T` is not a variable a recipe
+sets, it is a number of turns an episode runs for.
 
 ### Two proofs
 
@@ -357,7 +461,7 @@ A single episode proves a binding. Checking a *spec* needs a family of them, bec
 claims are about how the array changes as things vary.
 
 ```bash
-bun run acdl-verify/sweep.ts --bindings bindings-supportbot.json   --time 1,2,3 --var env.customer_tier=basic,premium
+bun run acdl-verify/proof/sweep.ts --bindings acdl-verify/artifacts/bindings-supportbot.json   --time 1,2,3 --var env.customer_tier=basic,premium
 ```
 
 ```
@@ -382,32 +486,71 @@ which is exactly the `0 → 1 → 2` progression above, measured at the 0/1 boun
 `range(1, @T)` and `range(1, @T+1)` diverge. The premium arm adds its trailing `S` at every
 index, so the branch does not interact with the loop.
 
-### Time is not a variable, and there are two ways to reach it
+### Time is not a variable, and the honest way to reach it is to run
 
 `sys.*` and `env.*` are inputs, set through a binding's recipe. `@T` is not an input at
 all — it is how far into the episode we are, and what that *means* is target-specific: a
 turn for a conversational agent, a step for a ReAct loop. Two routes reach a chosen value,
-and `--time` means the same thing either way because the runner picks between them:
+and they are not equivalent:
 
-| Route | Cost | When it is used |
-|-------|------|-----------------|
-| **seed the state** — make the agent believe it is already at turn N | one call | a generated driver (reads `ACDL_TIME`), or a run command containing `{time}` |
-| **replay the loop** — keep answering until turn N, then end the turn | N calls | anything else: a target we merely launch, which has never heard of `ACDL_TIME` |
+| Route | Cost | What it proves |
+|-------|------|----------------|
+| **run the loop** — keep answering until turn N, then end the turn | N cheap calls | what the target builds at turn N, having actually got there |
+| **seed the state** — make the agent believe it is already at turn N | one call | what the target builds when *we* hand it an N-turn history |
 
-Seeding is what you want, and it is a question worth asking the target's code, so `time` is
-a discovery target in its own right. On SupportBot the agent answered:
+Only the first is evidence about the target. A seeded episode is checked against a
+position the code may never occupy: if the real loop would have compacted at turn 30,
+dropped a tool result, or summarised itself, the seed quietly says otherwise, and the spec
+comes back confirmed against our fabrication. So the runner's policy
+([`chooseTimeRoute`](episode/runner.ts)) is: **if there is a loop to drive, drive it.**
+
+| Situation | Route |
+|-----------|-------|
+| a `language: none` recipe — we launch the target, so its own loop exists | **replay**, `N` turns |
+| a generated driver — it calls the builder directly and has no loop at all | seed via `ACDL_TIME` |
+| a run command that templates `{time}` itself, or `--time-route seed` | seed — asked for explicitly |
+
+Replaying costs one model call per turn, which is what a cheap model is for: `--live`
+(bare, default `haiku`) answers each turn with a real reply. Without it the loop is still
+driven for real, by a tool call built from the target's own tool schema — the state
+accumulates either way, only the words are less interesting. Every episode records which
+route it took (`EpisodeResult.time`), and a seeded one prints a note saying the turns
+never happened.
+
+**What one tick of `@T` is depends on the agent**, so `--time-unit` says which:
+
+| Unit | One tick is | How the runner reaches turn N |
+|------|-------------|-------------------------------|
+| `substep` (default) | another pass round the loop inside one invocation — a tool call and its result | answer N−1 calls with a tool call, then end the turn |
+| `turn` | another exchange in the conversation | invoke the entrypoint N times against the same session, one exchange each |
+
+The distinction matters because getting it wrong is worse than seeding: fifty tool calls
+inside one exchange is not turn fifty of a conversation, and nothing in the trace would say
+so. A `turn` episode runs `--run` once per turn against one live proxy, so the trace holds
+the whole conversation; the command may carry `{turn}`, and every invocation is given
+`ACDL_TURN`. The target's own persistence — a session file, a memory store — is what
+carries state across them, which is why discovery is asked what makes a second invocation
+continue the first conversation rather than start a new one. Without such a handle, N
+invocations are N separate turn 1s.
+
+The discovery pass still asks the target's code about `time`, but the question has
+changed: *what entrypoint drives the loop, and what makes it take another turn?* A seeding
+handle is recorded as a fallback — for an index too deep to be worth running — rather than
+as the answer. On SupportBot, that fallback is:
 
 > `build_messages(turn=N, ...)` with `state.history` preloaded with N−1 `TurnHistory`
 > entries — the turn counter is a plain integer argument, so any N is reachable in a
 > single call.
 
-Where no seeding route exists, the runner falls back to replaying: it answers each call
-with a tool call drawn from the tools the target itself offered, until the requested turn,
-then ends the turn. The agent's own loop does the counting, so nothing needs to be told
-anything. On a ReAct target that produces exactly what the spec predicts:
+… which is exactly what makes it a fallback: those N−1 entries are ours, not the agent's.
+
+Replaying answers each call with a tool call drawn from the tools the target itself
+offered, until the requested turn, then ends the turn. The agent's own loop does the
+counting, so nothing needs to be told anything. On a ReAct target that produces exactly
+what the spec predicts:
 
 ```bash
-bun run acdl-verify/sweep.ts --bindings b.json --run 'node agent.js' --time 1,2,3
+bun run acdl-verify/proof/sweep.ts --bindings b.json --run 'node agent.js' --time 1,2,3
 ```
 ```
   time=1   1 call(s)  [S U]
@@ -457,7 +600,7 @@ does not know to call them.
 runs on a subscription and needs no API key:
 
 ```bash
-bun run acdl-verify/proxy.ts --live haiku --max-turns 4 --run 'python -m someagent'
+bun run acdl-verify/episode/proxy.ts --live haiku --max-turns 4 --run 'python -m someagent'
 ```
 
 The target still never reaches the network: the proxy composes the reply, so the trace has
@@ -483,7 +626,7 @@ The **domain** needs no discovery — a spec that branches on a `resp.*` states 
 comparison values:
 
 ```bash
-bun run acdl-verify/answers.ts --spec acdl-agent/out/mint/MintAgent.acdl
+bun run acdl-verify/episode/answers.ts --spec acdl-agent/out/mint/MintAgent.acdl
 ```
 ```
 resp.* variables: 3, of which 1 gate a branch
@@ -493,42 +636,90 @@ resp.* variables: 3, of which 1 gate a branch
     gates:  If resp.execute_code[step] != none
 ```
 
-The **delivery** is found by experiment rather than by asking a model. The candidate set is
-small and bounded by the tools the target itself offered, so each one is simply tried:
+The **delivery** is not guessed. A target does not receive "a value somewhere" — it
+receives an assistant turn and *decomposes* it, and which parts it looks for is a property
+of its parser. So [`shape.ts`](bindings/shape.ts) reads the code that consumes a reply, cited from
+the spec's own `resp.*` provenance, and describes the parts a reply is built from:
 
 ```bash
-bun run acdl-verify/answers.ts --spec S.acdl --target . --run 'node agent.js'
+bun run acdl-verify/episode/answers.ts --spec S.acdl --target . --run 'node agent.js'
 ```
 ```
-pilot episode…
-  1 call(s); tools offered: list_dir, read_file
-  only one call: a resp.* value can never be observed re-entering the context here
+reading the parser…
+response shape (3 part(s)): There is no textual protocol here: the reply is decomposed by
+wire block type only. render_blocks walks message.content and reads bare text blocks and
+tool_use blocks; no tag, fence, or delimiter is ever matched, so any invented wrapper would
+be parsed as part of the text itself. The thinking block is never read by this file at all
+— it is round-tripped verbatim by the SDK tool_runner, so it must be a real thinking block
+(not text) with its signature intact. A tool_use block is the part the spec does not name
+but the loop requires…
 
-probing delivery…
-  ✓ resp.thinking: emitted list_dir.input and came back at assistant[1].content[0].input.input
+  resp.thinking            thinking block             "{value}"
+  resp.reasoning           text block                 "{value}"
+  (structural)             tool_use read_file.path    "{value}"
+
+emitting one reply with every part filled…
+  ✓ resp.thinking: carried in the thinking block, came back at assistant[1].content[0].thinking
+  ✓ resp.reasoning: carried in the text block, came back at assistant[1].content[1].text
 ```
 
-Emit a canary one way, run the episode, and see whether it reappears in the **next**
-request. A strategy that produces a reply the target discards has controlled nothing,
-however plausible it looked — and a text reply that ends the turn is exactly that case,
-which is why the first candidate failed above.
+Three things that fall out of building the whole response at once:
 
-**Landing somewhere is not being that variable.** A probe that finds *a* route into the
-context has not shown it found *this* variable's route. Three checks separate the two, and
-all three come from the spec rather than from a model:
+- **Delimiters are copied, not invented.** A parser matching `<execute>(.*?)</execute>` is
+  not satisfied by a tag named after the ACDL variable — which is exactly what guessing
+  from `resp.execute_code` produces. Parts sharing one text block are concatenated into
+  that block, because a tag protocol is two parts of one string, not two blocks.
+- **Structural parts are found.** The spec names no tool call, but the loop only continues
+  while a reply contains one, so a text-only reply ends the turn and nothing can be
+  observed re-entering the context. The shape includes that part even though no `resp.*`
+  maps to it.
+- **Identity is settled by construction.** Every part carries its own canary in a single
+  episode, so two variables can never be confused — they were never the same string. The
+  earlier version probed one variable at a time, found that `resp.thinking` and
+  `resp.reasoning` could both only reach the same tool-input field, and had to report both
+  `ambiguous`. Reading the parser puts them in a thinking block and a text block, which is
+  where they actually live.
 
-- **Role.** The observed landing role must match the nearest enclosing `S:`/`U:`/`A:`/`T:`.
-  A mismatch is `misplaced`.
-- **Distinctness.** Two variables cannot occupy one position. A slot is probed against the
-  positions earlier slots already claimed, and keeps searching for a route of its own; if
-  every route it can reach is taken, it is `ambiguous` — and so is the incumbent, because
-  being asked about first is not evidence.
-- **Order.** Inside one message, spec order must be wire order, or the later slot is
-  `misplaced`.
+Every part still cites the line it was learned from, and a part whose citation fails the
+evidence check is dropped — the same discipline as a binding, since a described parser that
+is not there is worth no more than an invented flag.
 
-On a target whose assistant turns carry only tool calls, `resp.thinking` and
-`resp.reasoning` both reach the same position and the honest answer is `0/2 can be driven`.
-An earlier version confirmed whichever was asked about first.
+`--probe-only` falls back to trying deliveries one at a time, for when no model is
+available to read the parser. It carries the older caveats: a landing site already claimed
+by another variable makes both `ambiguous`, and role is the only identity check available.
+
+### Level B: is each value where the spec says it is?
+
+`evaluate` already produced the spec's ordered slots per message, and the canary pass
+already recorded where each value landed; [`placement.ts`](spec/placement.ts) puts the two side
+by side.
+
+```
+✓ CONFIRMED  placement  env.message          message(s) 1, 3, 5 (user), as the spec places it
+✓ CONFIRMED  placement  message 0 templates  3 template(s) claimed; 340 characters of fixed
+                                             text are present. Their order is not checkable
+                                             from a rendered message and is not claimed to be.
+
+iteration mapping:
+✓ CONFIRMED  env.message by iteration  t=1→message 1, t=2→message 3
+```
+
+**Which iteration went where** is the claim counting cannot reach. `env.x[@t]` and a spec
+misreading `@t+1` produce the same message count and the same role sequence; only the values
+differ, and one canary repeated across a loop makes every message hold the same string. So
+each iteration gets a value of its own, passed as a JSON array in `ACDL_<KEY>_SERIES`, and
+traced back. A shifted index is then refuted outright: *the spec puts t=1 in message 1, its
+value is in 3*.
+
+**Templates get presence, not order.** A rendered message is one string with no boundary
+between `SUPPORT_GUIDELINES` and `COMPANY_POLICIES`, so their order is unfalsifiable and no
+verdict is offered in either direction. Presence is testable: subtract everything the
+episode injected, and what remains is content the target put there itself. A message holding
+nothing but the injected values refutes the templates the spec promised.
+
+Two things deliberately produce no verdict, because a verdict would be one that could not
+have failed: two variables sharing a slot (the arguments of one template — the spec does not
+order them), and two variables landing at the same observed position.
 
 ## Ablation: does each condition do what the spec says?
 
@@ -537,7 +728,7 @@ makes. `If env.tier == "premium" { S: NOTICE }` claims something sharper — tha
 that one value adds *one system message*.
 
 ```bash
-bun run acdl-verify/ablate.ts --spec SupportBot.acdl   --bindings bindings-supportbot.json --target acdl-tests/test1-supportbot --time 3
+bun run acdl-verify/proof/ablate.ts --spec SupportBot.acdl   --bindings acdl-verify/artifacts/bindings-supportbot.json --target acdl-tests/test1-supportbot --time 3
 ```
 ```
 If env.customer_tier == "premium"   (line 44)
@@ -600,9 +791,29 @@ every delta:
 condition **fail**. A pass that assumed "the literal makes it true" would refute every
 correct spec written that way — and `!=` is the most common form in the corpus.
 
-Compound conditions (`a == x & b == y`) are declined with `UNEXERCISED` rather than tested,
-because pairing the second literal with the first subject would test something the spec
-never claimed. One scenario per sub-condition is the design; it is not built yet.
+### Conditions over several variables
+
+`a == x & b == y` is not one condition with two names in it: it is two conditions whose
+conjunction gates a branch. Moving one variable and leaving the other wherever it happened
+to be proves nothing, since the branch may have stayed shut because of the one nobody
+touched. So [`compound.ts`](proof/compound.ts) assigns **every** subject in every arm:
+
+```
+true   all hold               {"sys.a":"x","sys.b":"y"}
+false  only sys.a == x fails  {"sys.a":"OFF","sys.b":"y"}
+false  only sys.b == y fails  {"sys.a":"x","sys.b":"OFF"}
+```
+
+Each arm is judged against what the **spec predicts for that arm** — under `&`, an
+assignment where one conjunct fails predicts the branch stays shut. So "each conjunct
+independently decides the outcome" is not a criterion the checker invented; it is what the
+spec already says, measured one assignment at a time. A spec writing `a & b` where the code
+reads only `a` is `CONFIRMED` on the both-hold arm and `REFUTED` on the arm where `b` fails
+alone.
+
+This needs an episode that sets several variables at once, which is why the generated
+driver reads every variable from its own `ACDL_<KEY>` rather than only the primary one.
+Mixed `&` and `|` in one expression is refused rather than given invented precedence.
 
 ## Checking a controlled episode
 
@@ -631,30 +842,66 @@ Three things changed to make that work:
 
 ## Requirements
 
-- Docker (default; `--no-sandbox` to run the target directly, at your own risk)
-- Python 3.11+ for the runner
-- `ANTHROPIC_API_KEY` — for the planning agent, and for `acdl-verify record` if you use it.
-  Binding discovery can instead run on a Claude subscription with
-  `--transport claude-cli`, which needs no key. During checking **the target agent never
-  reaches a real model**; its calls are answered locally.
+- `bun`, to run the pipeline and every stage of it
+- whatever the target itself needs — Python 3.11+ for a Python target, Node for a Node one
+- a model for two stages only: binding discovery, and the recipe writing inside `verify`.
+  Either `ANTHROPIC_API_KEY`, or a Claude subscription via `--transport claude-cli`, which
+  needs no key. Everything else — every episode, every comparison, every verdict — is
+  deterministic and offline
+- **the target agent never reaches a real model** during a run: its calls are answered
+  locally by the recording proxy
+
+> **Not yet: the sandbox.** The section below describes the intended posture. Today the
+> pipeline runs the target as an ordinary child process, with the same permissions you have.
+> Run it on code you would already run.
 
 ## Quickstart
 
 ```bash
-acdl-verify \
+bun run acdl-verify/pipeline.ts \
   --target ~/src/some-agent \
   --spec   ~/out/some-agent/SomeAgent.acdl \
   --run    'python -m someagent --input {input}'
 ```
 
-Discovery, scenario planning, recording, checking, and reporting run in that order. Results
-land in `out/<target-name>/`.
-
-To check a plan before spending anything:
+or, the same thing through npm:
 
 ```bash
-acdl-verify --target ~/src/some-agent --spec SomeAgent.acdl --plan-only
+npm run verify -- --spec ... --target ... --run '...'
 ```
+
+The stages run in this order, and each writes what the next one reads:
+
+| # | Stage | Costs | What it decides |
+|---|-------|-------|-----------------|
+| 1 | `plan` | nothing | does the spec parse, and what does it name |
+| 2 | `baseline` | `--repeats` episodes | what the target varies on its own -- the mask every later comparison subtracts |
+| 3 | `level-a` | nothing | shape: message count, roles, prefix monotonicity, re-read from the baseline trace |
+| 4 | `discover` | model calls | how to set each variable the spec names |
+| 5 | `verify` | 1-3 episodes per binding | that each handle really moves the prompt, and where its value lands |
+| 6 | `answers` | 2 episodes + a model call | which `resp.*` variables an episode can deliver |
+| 7 | `sweep` | one episode per cell | which axes move the prompt, time included |
+| 8 | `ablate` | 2-4 episodes per condition | Levels B and C: placement, iteration mapping, and each branch |
+| 9 | `report` | nothing | the verdict, the annotated spec, `results.json` |
+
+Stage 3 gets a second attempt after stage 5. A target that never speaks HTTP on its own --
+a library whose builder is called directly -- records no baseline trace, and once `verify`
+has written recipes, one of them can drive the Level A episode instead. Which recipe is not
+arbitrary: a generated driver hardcodes whatever it does not set, so the pipeline drives a
+binding that some condition *reads*, at a value that condition names, and records that in
+the manifest. An episode that does not say which arm it ran leaves `check` to assume one,
+and an assumed branch is not allowed to refute a message count -- it downgrades the claim
+to `UNEXERCISED` and says which condition to set.
+
+To see what would be verified before spending anything:
+
+```bash
+bun run acdl-verify/pipeline.ts --target ~/src/some-agent --spec SomeAgent.acdl --plan-only
+```
+
+Re-running is cheap: every stage reuses the artefacts already in the output directory, so a
+second run re-checks what is free and skips the episodes and model calls that already have
+answers. `--fresh` regenerates everything.
 
 ## The drive command
 
@@ -806,11 +1053,11 @@ whose next observation depends on the action taken — the proxy runs in two mod
 
 ```bash
 # once: forwards to the real API, saves request AND response
-bun run acdl-verify/proxy.ts --base-url https://api.anthropic.com \
+bun run acdl-verify/episode/proxy.ts --base-url https://api.anthropic.com \
     --out traces/deep-game.jsonl --run '...'
 
 # thereafter: answers from the recording, offline and deterministic
-bun run acdl-verify/proxy.ts --replay traces/deep-game.jsonl --run '...'
+bun run acdl-verify/episode/proxy.ts --replay traces/deep-game.jsonl --run '...'
 ```
 
 Replay serves the recorded bytes back untouched — including an SSE stream, which is kept
@@ -879,35 +1126,48 @@ Each verdict is stamped with the **tier** at which it was reached:
 | `stubbed` | the full agent loop, real control flow, scripted model replies |
 
 A `CONFIRMED@static` claim and a `CONFIRMED@stubbed` claim are not the same evidence, and the
-report never conflates them.
+report never conflates them. Today every verdict is reached at one of the last two tiers —
+`harnessed` when a generated driver calls the builder directly, `stubbed` when the target's
+own entrypoint runs — and which one it was is recorded per episode, in the trace manifest
+and in the `time` note each stage prints.
 
-### Are the scenarios any good?
+### Are the scenarios any good? — *not built yet*
 
-A scenario set that passes everything may simply be too weak to fail. After checking,
-`acdl-verify` mutates the **spec** — flips a condition, shifts a loop bound by one, changes a
-role, splits a braced block into separate messages — and re-checks each mutant against the
-traces already recorded. A mutant that still passes marks a region the scenarios cannot
-discriminate, and every claim in that region is downgraded to `UNEXERCISED`.
+A scenario set that passes everything may simply be too weak to fail, and nothing in a run
+today detects that. The intended answer: after checking, mutate the **spec** — flip a
+condition, shift a loop bound by one, change a role, split a braced block into separate
+messages — and re-check each mutant against the traces already recorded. A mutant that still
+passes marks a region the scenarios cannot discriminate, and every claim in that region is
+downgraded to `UNEXERCISED`. The report would carry the score (`19/24 mutants killed`) and
+list the survivors, at no additional execution cost: it is a re-check of recorded JSONL.
 
-The report carries the resulting score (`19/24 mutants killed`) and lists the survivors. This
-costs no additional execution; it is a re-check of recorded JSONL.
+Until it exists, every report says so in *What this run did not check*, because a `SURVIVED`
+verdict from a weak scenario set looks exactly like one from a strong one.
 
 ## Outputs
 
-Written to `out/<target-name>/`:
+Written to `acdl-verify/out/<target-name>/`, or wherever `--out` points:
 
 | File | Contents |
 |------|----------|
-| `<Agent>.verified.acdl` | the input spec, annotated per line: `// ✓ CONFIRMED@stubbed (S2,S7)`, `// ✗ REFUTED: …`, `// ? UNEXERCISED`. Still valid ACDL, so it renders and diffs with the main toolchain |
-| `verification-report.md` | claim table, refutations with minimal repros, mutation score, unspecified-structure list, uncontrollable claims |
-| `traces/*.jsonl` | every recorded request, verbatim — the evidence, re-checkable without re-running |
-| `scenarios/*.yaml` | the generated scenarios, editable and re-runnable by hand |
-| `harness/` | the proxy config and launch scripts, so a human can reproduce any single run |
+| `<Agent>.verified.acdl` | the input spec with a verdict written above every line that carries one: `// ✓ CONFIRMED condition arm "== premium": +[S] at 6 — as predicted`, `// ✗ REFUTED …`, `// ? UNEXERCISED …`. Still valid ACDL, so it renders and diffs with the main toolchain |
+| `verification-report.md` | the verdict, the stage table, every claim at all three levels, refutations with their traces, the binding tally, axis effects, and an explicit list of what the run did *not* check |
+| `results.json` | the same run, machine-readable — every verdict, stage, count and artefact path. The two files above are rendered from it |
+| `bindings.json` | the binding map, updated in place as each stage learns more: proposed, grounded, then confirmed with the placement each canary observed |
+| `bindings-report.md` | the same map as prose, per binding, with the cited source line for each. The one artefact with model-authored content, so the one worth reviewing |
+| `mask.json` | paths that move between identical runs. Every comparison in the run subtracts these; a later run can reuse the file instead of re-deriving it |
+| `traces/**/*.jsonl` | every recorded request, verbatim, grouped by the stage that produced it — the evidence, re-checkable without re-running |
+| `scenarios/pipeline.json` | the scripted replies the pipeline's own episodes were answered with |
+| `harness/reproduce.md` | the exact command for every stage of *this* run, and the generated drivers that produced the evidence |
+
+Annotations go on a line of their own above the line they are about, not appended to it: the
+extractor's `// <- file:line` provenance already owns the end of many of those lines, and a
+second `//` there would bury the verdict inside the first comment.
 
 Render the annotated spec:
 
 ```bash
-npm run cli -- verified.html out/<target-name>/<Agent>.verified.acdl
+npm run cli -- verified.html acdl-verify/out/<target-name>/<Agent>.verified.acdl
 ```
 
 ## Sandboxing
@@ -947,21 +1207,34 @@ Stated up front, because these are the honest limits:
 
 ## Options
 
+Flags of `pipeline.ts`. Each stage's own command takes the subset that applies to it.
+
 | Flag | Default | Notes |
 |------|---------|-------|
-| `--target` | current directory | codebase to verify against |
 | `--spec` | *required* | the `.acdl` file under test |
-| `--run` | inferred, then confirmed | drive command for one episode |
-| `--report` | — | `extraction-report.md` from `acdl-agent`; its `file:line` evidence table tells the planner where to intervene |
-| `--level` | `C` | stop after `A` or `B` to skip binding discovery |
-| `--scenarios` | generated | path to hand-written scenarios, used instead of generated ones |
-| `--responder` | `script` | default responder for generated scenarios: `constant`, `script`, `replay`, `policy`, `live` |
-| `--recordings` | `recordings/` | where `acdl-verify record` writes, and `replay` reads |
-| `--mutate` / `--no-mutate` | on | spec mutation scoring |
-| `--sandbox` / `--no-sandbox` | on | container isolation |
-| `--timeout` | `120s` | per scenario |
-| `-o, --out` | `out/<target-name>/` | |
-| `--plan-only` | off | print discovery results and the scenario plan, execute nothing |
+| `--target` | *required* | codebase to verify against |
+| `--run` | — | drive command for one episode. Without it, only the stages that need no episode of their own can run |
+| `--out` | `acdl-verify/out/<target-name>/` | |
+| `--name` | first prompt block | which block, when the file holds more than one |
+| `--report` | — | `extraction-report.md` from `acdl-agent`, as extra evidence for discovery |
+| `--level` | `C` | `A` stops after shape, `B` after placement. `B` costs no episodes beyond the ones `verify` already ran |
+| `--time` | `3` | time index the proof stages run at |
+| `--time-route` | `auto` | `replay` insists on running the target's own loop; `seed` fabricates the position instead |
+| `--time-unit` | `substep` | `turn` re-invokes the entrypoint once per exchange, which is what a conversational `@T` means |
+| `--repeats` | `2` | identical runs for the nondeterminism baseline. Two is the minimum that can show anything |
+| `--probes` | `2` | values outside every arm, for the partition test |
+| `--retries` | `1` | re-asks after a rejected proposal or a recipe that produced no episode |
+| `--sweep` | `1,2,3` | time indices to sweep; `--no-sweep` to skip the stage |
+| `--var k=a,b` | — | sweep a variable over those values, repeatable |
+| `--transport` | `auto` | `api` needs `ANTHROPIC_API_KEY`; `claude-cli` runs on a subscription. `auto` picks the CLI when no key is set |
+| `--model` | opus | model id, or a `claude-cli` alias like `opus` / `sonnet` / `haiku` |
+| `--timeout` | `600` | seconds one model call may take |
+| `--python` | `python` | interpreter for generated Python drivers |
+| `--fresh` | off | recompute every stage, ignoring artefacts already on disk |
+| `--plan-only` | off | print what would be verified; call no model and run no episode |
+| `--quiet` | off | only the final verdict |
+
+Exit code: `0` survived, `1` refuted, `2` nothing could be decided.
 
 ## Design notes
 

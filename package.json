@@ -14,7 +14,13 @@
     "build:extension": " npm run sync-css && cd extension && npm run package",
     "build:standalone": "node scripts/build-standalone.js",
     "build:content": "node scripts/build-content.js",
-    "build:website": "node scripts/build-website.js"
+    "build:website": "node scripts/build-website.js",
+    "deploy": "node scripts/deploy-website.js",
+    "check": "bun run src/acdl-check.ts",
+    "verify": "bun run acdl-verify/pipeline.ts",
+    "verify:test": "bun test acdl-verify/",
+    "test:parser": "bun test src/parser.test.ts",
+    "test": "bun test src/parser.test.ts src/acdl-check.test.ts acdl-verify/"
   },
   "devDependencies": {
     "@types/bun": "^1.1.0",
@@ -44,7 +50,9 @@
     "pdf-lib": "^1.17.1",
     "pdfkit": "^0.17.2",
     "puppeteer": "^24.37.5",
+    "smol-toml": "^1.8.0",
     "svg2pdf.js": "^2.7.0",
+    "yaml": "^2.9.0",
     "zod": "^4.4.3"
   }
 }

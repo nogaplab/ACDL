@@ -44,6 +44,8 @@ The language and rendering pipeline live here:
   into rendered output and lay it out as SVG.
 - **`render-to-svg.ts` / `render-to-png.ts` / `render-to-pdf.ts`** — export renderers
   for the respective formats.
+- **`acdl-check.ts`** — validate `.acdl` files and report where they go wrong (see
+  [Checking a spec](#checking-a-spec)).
 - **`main-cli.ts`** — command-line entry point.
 - **`diff.ts` / `main-diff.ts`** — structural diff between two `.acdl` files (see
   [Diffing ACDL files](#diffing-acdl-files)).
@@ -69,6 +71,40 @@ npm run cli -- output.html ACDL_examples/other/example.acdl
 npm run render-svg
 npm run render-png
 npm run render-pdf
+```
+
+## Checking a spec
+
+The parser is deliberately forgiving — keywords are case-insensitive, most
+punctuation is optional, and the spellings people reach for by habit (`elif`,
+`# comments`, `for x in y`, a stray `;`) all parse. §13 of the
+[language reference](acdl-agent/acdl-language.md) lists exactly what it accepts.
+The point is that a first draft, or a spec a model generated, renders instead of
+failing on a capital letter; the canonical spelling is still what the renderer
+prints and what you should write.
+
+When a file does fail, `acdl-check` says where:
+
+```bash
+npm run check -- ACDL_examples/other/example.acdl
+npm run check -- ACDL_examples/**/*.acdl --quiet
+```
+
+It reports the failing line with a caret under the column, leads with the block
+that was left open when braces do not balance (the parser's own position for a
+missing `}` is the end of the file), and catches the two things the grammar
+cannot: a `$name` that is never bound, and a `Frag` that is never defined. Exit
+status is `0` when every file is clean and `1` otherwise, so it drops into CI.
+
+To have the errors fixed rather than just reported, use the **`acdl-syntax`
+agent** ([`.claude/agents/acdl-syntax.md`](.claude/agents/acdl-syntax.md)). It
+runs the checker, makes the smallest edit that fixes each error, and repeats
+until the file parses — fixing only how the spec is written, never what it says.
+Ask Claude Code to "fix the syntax in <file>.acdl", or invoke the agent by name.
+
+```bash
+# the parser's own test suite, including every tolerance above
+npm test
 ```
 
 ## Diffing ACDL files
