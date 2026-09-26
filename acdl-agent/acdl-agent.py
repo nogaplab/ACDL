@@ -7,6 +7,7 @@ of the source, and has it produce:
 
     <out>/<name>.acdl              the specification
     <out>/extraction-report.md     evidence table, decisions, uncertainties
+    <out>/<name>.compact.acdl      the same spec without citations, for reading
     <out>/transcript.json          full run transcript (for auditing)
 
 The two prompt files live next to this script and are resolved relative to it, so the
@@ -325,11 +326,13 @@ def read_file(path: str, offset: int = 1, limit: int = 400) -> str:
 def write_output(filename: str, content: str) -> str:
     """Write a deliverable to the output directory. This is how you deliver your results.
 
-    Call this for the `.acdl` specification and again for the extraction report.
-    Writing the same filename twice overwrites it, so you can revise.
+    Call this for the `.acdl` specification, for the extraction report, and for the
+    `.compact.acdl` reader copy. Writing the same filename twice overwrites it, so you
+    can revise.
 
     Args:
-        filename: Plain filename, no directories, e.g. "MyAgent.acdl" or "extraction-report.md".
+        filename: Plain filename, no directories, e.g. "MyAgent.acdl",
+            "extraction-report.md", or "MyAgent.compact.acdl".
         content: Full file contents.
     """
     sb = _sb()
@@ -368,11 +371,15 @@ def build_system_prompt(language_ref: Path, extraction_prompt: Path) -> str:
         "You have read-only tools over the target codebase: `list_dir`, `glob_files`, "
         "`grep`, and `read_file`. You cannot run the code, and you cannot modify it. "
         "Read the actual source — never infer structure from README files or docs.\n\n"
-        "Deliver your results by calling `write_output` twice:\n"
+        "Deliver your results by calling `write_output` three times:\n"
         "  1. The specification, as `<AgentName>.acdl`.\n"
-        "  2. The extraction report, as `extraction-report.md`.\n\n"
-        "Do not print either deliverable into your reply instead of writing it — the "
-        "files are the deliverable. After both files are written, end your turn with a "
+        "  2. The extraction report, as `extraction-report.md`.\n"
+        "  3. The reader copy, as `<AgentName>.compact.acdl`, written last, per "
+        "the Output section of your task definition: the same spec with comments "
+        "unwrapped to one line each and citations removed, every non-comment line "
+        "byte-identical.\n\n"
+        "Do not print any deliverable into your reply instead of writing it — the "
+        "files are the deliverable. After all three are written, end your turn with a "
         "short summary: the agent's time model, how many specs you wrote, and the "
         "uncertainties a human should check first."
     )
@@ -568,6 +575,13 @@ def main() -> int:
     if not any(f.endswith(".acdl") for f in produced):
         print("\nWARNING: no .acdl file was produced. Check transcript.json.")
         return 1
+
+    # The reader copy is a comment-only transformation of the spec, so it is missing
+    # rather than wrong when the model skips it. Content is checked by acdl-extract.sh.
+    specs = [f for f in produced if f.endswith(".acdl") and not f.endswith(".compact.acdl")]
+    missing = [f for f in specs if f[: -len(".acdl")] + ".compact.acdl" not in produced]
+    if missing:
+        print(f"\nWARNING: no reader copy (.compact.acdl) for: {', '.join(missing)}")
     return 0
 
 

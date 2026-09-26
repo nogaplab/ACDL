@@ -57,6 +57,14 @@ export class Parser {
     while (this.peek() && this.peek().type === "COMMENT") this.consume("COMMENT");
   }
 
+  /** Consume any run of comment tokens at the current position, keeping their text. */
+  private collectComments(): string[] {
+    const out: string[] = [];
+    while (this.peek() && this.peek().type === "COMMENT") out.push(this.consume("COMMENT").value as string);
+    return out;
+  }
+
+
   /**
    * Consumes a token of a specific type and/or value.
    * Since Token.value is (string | null), we use type assertions for IDENT values.
@@ -68,6 +76,12 @@ export class Parser {
     }
     if (value && (tok as any).value !== value) {
       throw new Error(`[${tok.line}:${tok.col}] Expected value "${value}", got "${(tok as any).value}"`);
+    }
+    // Every token passes through here, so this is the one place the rule about
+    // `#msg` needs enforcing — whether it was reached through an argument list,
+    // an index, or a captured condition.
+    if (tok.type === "MSG" && this.roleDepth === 0) {
+      throw new Error(`[${tok.line}:${tok.col}] #msg is the number of the current message, so it can only appear inside a role message (S:, U:, A:, T:)`);
     }
     this.pos++;
     this.lastConsumedLine = tok.line;
@@ -114,6 +128,23 @@ export class Parser {
 
   /** Marks without an explicit number are numbered in source order. */
   private markCounter = 0;
+
+  /**
+   * How many message bodies enclose the current position. `#msg` is only
+   * meaningful where there is a current message: inside a role message, an
+   * `N:` message, or a StrFrag body (which only ever expands inside one).
+   */
+  private roleDepth = 0;
+
+  /** Run `body` with the current position counted as inside a message. */
+  private insideMessage<T>(body: () => T): T {
+    this.roleDepth++;
+    try {
+      return body();
+    } finally {
+      this.roleDepth--;
+    }
+  }
 
   /**
    * The role the token at `offset` introduces, or undefined if it introduces
@@ -290,11 +321,13 @@ export class Parser {
     this.consume("SYMBOL", "{");
 
     const body: AST.RoleBuildingBlock[] = [];
-    while (!this.atBlockEnd()) {
-      this.skipSeparators();
-      if (this.atBlockEnd()) break;
-      body.push(this.parseRoleBuildingBlock());
-    }
+    this.insideMessage(() => {
+      while (!this.atBlockEnd()) {
+        this.skipSeparators();
+        if (this.atBlockEnd()) break;
+        body.push(this.parseRoleBuildingBlock());
+      }
+    });
     this.consumeBlockClose(openLine, `StrFrag "${name}"`);
 
     console.log("parsed StrFrag definition");
@@ -424,20 +457,22 @@ export class Parser {
 
     const body: AST.RoleBuildingBlock[] = [];
 
-    if (this.peek().value === "{") {
-      const openLine = this.peek().line;
-      this.consume("SYMBOL", "{");
-      while (!this.atBlockEnd()) {
-        this.skipSeparators();
-        if (this.atBlockEnd()) break;
-        body.push(this.parseRoleBuildingBlock());
+    this.insideMessage(() => {
+      if (this.peek().value === "{") {
+        const openLine = this.peek().line;
+        this.consume("SYMBOL", "{");
+        while (!this.atBlockEnd()) {
+          this.skipSeparators();
+          if (this.atBlockEnd()) break;
+          body.push(this.parseRoleBuildingBlock());
+        }
+        this.consumeBlockClose(openLine, "N message");
+      } else {
+        // Single-line syntax
+        const startLine = this.peek().line;
+        body.push(this.parseRoleBuildingBlockSingleLine(startLine));
       }
-      this.consumeBlockClose(openLine, "N message");
-    } else {
-      // Single-line syntax
-      const startLine = this.peek().line;
-      body.push(this.parseRoleBuildingBlockSingleLine(startLine));
-    }
+    });
 
     return Create.noneMessage({ body });
   }
@@ -585,23 +620,25 @@ export class Parser {
 
     const body: AST.RoleBuildingBlock[] = [];
 
-    // Check if this is a multi-line block with curly braces or a single-line block
-    if (this.peek().value === "{") {
-      // Multi-line syntax: U: { ... }
-      const openLine = this.peek().line;
-      this.consume("SYMBOL", "{");
-      while (!this.atBlockEnd()) {
-        this.skipSeparators();
-        if (this.atBlockEnd()) break;
-        body.push(this.parseRoleBuildingBlock());
+    this.insideMessage(() => {
+      // Check if this is a multi-line block with curly braces or a single-line block
+      if (this.peek().value === "{") {
+        // Multi-line syntax: U: { ... }
+        const openLine = this.peek().line;
+        this.consume("SYMBOL", "{");
+        while (!this.atBlockEnd()) {
+          this.skipSeparators();
+          if (this.atBlockEnd()) break;
+          body.push(this.parseRoleBuildingBlock());
+        }
+        this.consumeBlockClose(openLine, `${role} message`);
+      } else {
+        // Single-line syntax: U: obs.user_query[@i]
+        // Only consume content on the same line
+        const startLine = this.peek().line;
+        body.push(this.parseRoleBuildingBlockSingleLine(startLine));
       }
-      this.consumeBlockClose(openLine, `${role} message`);
-    } else {
-      // Single-line syntax: U: obs.user_query[@i]
-      // Only consume content on the same line
-      const startLine = this.peek().line;
-      body.push(this.parseRoleBuildingBlockSingleLine(startLine));
-    }
+    });
 
     return Create.roleMessage({ role, body });
   }
@@ -645,6 +682,8 @@ export class Parser {
 
     // Handle Templates/Functions (IDENT)
     if (tok.type === "IDENT") return this.parseTemplateOrFunc();
+
+    if (tok.type === "MSG") throw this.bareMsgError(tok);
 
     throw new Error(`[${tok.line}:${tok.col}] Unexpected ${tok.type} (${val}) in single-line role syntax`);
   }
@@ -706,7 +745,17 @@ export class Parser {
     // 5. Handle Templates/Functions (IDENT)
     if (tok.type === "IDENT") return this.parseTemplateOrFunc();
 
+    if (tok.type === "MSG") throw this.bareMsgError(tok);
+
     throw new Error(`[${tok.line}:${tok.col}] Unexpected ${tok.type} (${val}) inside role. Expected a context variable, template, function, control flow, Name, Frag, or a comment.`);
+  }
+
+  /**
+   * `#msg` is a value, not content: it stands in for a number wherever an
+   * argument or index does, and has nothing to say on a line of its own.
+   */
+  private bareMsgError(tok: Token): Error {
+    return new Error(`[${tok.line}:${tok.col}] #msg must be used as an argument or an index, e.g. sys.history[#msg] or SUMMARY(#msg), not on its own`);
   }
 
   /* ───────────────── Name Definitions ───────────────── */
@@ -1003,6 +1052,12 @@ export class Parser {
       return this.parseNameRef();
     }
 
+    // Current message number: #msg
+    if (tok.type === "MSG") {
+      this.consume("MSG");
+      return Create.msgRef();
+    }
+
     if (tok.type === "KEYWORD" && ["env", "sys", "resp", "prompt"].includes(tok.value as string)) {
       return this.parseContextVar();
     }
@@ -1102,6 +1157,12 @@ export class Parser {
     // NameRef: $varname
     if (tok.type === "SYMBOL" && tok.value === "$") {
       return this.parseNameRef();
+    }
+
+    // Current message number: #msg
+    if (tok.type === "MSG") {
+      this.consume("MSG");
+      return Create.msgRef();
     }
 
     // ContextVar: sys.foo, env.bar, resp.x, prompt.y
@@ -1320,7 +1381,9 @@ export class Parser {
 
     const elseIfConditions: AST.ExpressionToken[][] = [];
     const elseIfBodies: AST.PromptBlock[][] = [];
+    const elseIfComments: string[][] = [];
     let elseBody: AST.PromptBlock[] | undefined = undefined;
+    let elseComments: string[] | undefined = undefined;
 
     // 3. Handle ElseIf and Else chains.
     // Look past any comments between the closing brace and the next keyword, but
@@ -1330,7 +1393,7 @@ export class Parser {
       this.peekSkippingComments()?.type === "KEYWORD" &&
       (this.peekSkippingComments().value === "ElseIf" || this.peekSkippingComments().value === "Else")
     ) {
-        this.skipComments();
+        const branchComments = this.collectComments();
         const branch = this.consume();
         const type = this.resolveElseBranch(branch.value as string);
 
@@ -1350,6 +1413,7 @@ export class Parser {
 
             elseIfConditions.push(eiCondTokens);
             elseIfBodies.push(eiBody);
+            elseIfComments.push(branchComments);
         }
         else if (type === "Else") {
             this.matchOptionalColon();
@@ -1363,6 +1427,7 @@ export class Parser {
             }
             this.consumeBlockClose(openLine, `Else body (line ${branch.line})`);
             elseBody = eBody;
+            if (branchComments.length) elseComments = branchComments;
             break; // 'Else' must be the end of the chain
         }
     }
@@ -1372,7 +1437,9 @@ export class Parser {
         IfBody: ifBody,
         elseif: elseIfConditions,
         elseifBody: elseIfBodies,
-        elseBody: elseBody
+        elseBody: elseBody,
+        ...(elseIfComments.some(c => c.length) ? { elseifComments: elseIfComments } : {}),
+        ...(elseComments ? { elseComments } : {}),
     });
   }
 
@@ -1450,7 +1517,9 @@ export class Parser {
 
       const elseIfConditions: AST.ExpressionToken[][] = [];
       const elseIfBodies: AST.RoleBuildingBlock[][] = [];
+      const elseIfComments: string[][] = [];
       let elseBody: AST.RoleBuildingBlock[] | undefined = undefined;
+      let elseComments: string[] | undefined = undefined;
 
       // 3. Handle ElseIf and Else chains (see parseConditionalOutside: look past
       // comments, but only consume them once the keyword is confirmed).
@@ -1458,7 +1527,7 @@ export class Parser {
         this.peekSkippingComments()?.type === "KEYWORD" &&
         (this.peekSkippingComments().value === "ElseIf" || this.peekSkippingComments().value === "Else")
       ) {
-          this.skipComments();
+          const branchComments = this.collectComments();
           const branch = this.consume();
           const type = this.resolveElseBranch(branch.value as string);
 
@@ -1478,6 +1547,7 @@ export class Parser {
 
               elseIfConditions.push(eiCondTokens);
               elseIfBodies.push(eiBody);
+              elseIfComments.push(branchComments);
           }
           else if (type === "Else") {
               this.matchOptionalColon();
@@ -1491,6 +1561,7 @@ export class Parser {
               }
               this.consumeBlockClose(openLine, `Else body (line ${branch.line})`);
               elseBody = eBody;
+              if (branchComments.length) elseComments = branchComments;
               break; // 'Else' must be the end of the chain
           }
       }
@@ -1500,7 +1571,9 @@ export class Parser {
           IfBody: ifBody,
           elseif: elseIfConditions,
           elseifBody: elseIfBodies,
-          elseBody: elseBody
+          elseBody: elseBody,
+          ...(elseIfComments.some(c => c.length) ? { elseifComments: elseIfComments } : {}),
+          ...(elseComments ? { elseComments } : {}),
       });
   }
 
@@ -1519,9 +1592,19 @@ export class Parser {
 
     // 2. Parse Case and Default blocks
     while (true) {
-      this.skipComments();
-      this.skipSeparators();
-      if (this.atBlockEnd()) break;
+      // Comments above a Case/Default header describe that branch: keep them.
+      const branchComments: string[] = [];
+      while (this.peek().type === "COMMENT" || (this.peek().type === "SYMBOL" && this.peek().value === ";")) {
+        const tok = this.consume();
+        if (tok.type === "COMMENT") branchComments.push(tok.value as string);
+      }
+      if (this.atBlockEnd()) {
+        // Comments after the last branch have no header to attach to; keep
+        // them at the end of the last branch rather than dropping them.
+        const last = defaultCase ?? cases[cases.length - 1];
+        if (last) for (const text of branchComments) last.body.push(Create.commentBlock({ text }));
+        break;
+      }
       const branch = this.peek();
       const kw = this.consume("KEYWORD").value;
 
@@ -1536,7 +1619,7 @@ export class Parser {
           body.push(this.parseTopLevelBlock());
         }
         this.consumeBlockClose(openLine, `Case body (line ${branch.line})`);
-        cases.push(Create.caseBlockOutsideRole({ match: matchTokens, body }));
+        cases.push(Create.caseBlockOutsideRole({ match: matchTokens, body, ...(branchComments.length ? { comments: branchComments } : {}) }));
       }
       else if (kw === "Default") {
         this.matchOptionalColon();
@@ -1549,7 +1632,7 @@ export class Parser {
           body.push(this.parseTopLevelBlock());
         }
         this.consumeBlockClose(openLine, `Default body (line ${branch.line})`);
-        defaultCase = Create.defaultCaseBlockOutsideRole({ body });
+        defaultCase = Create.defaultCaseBlockOutsideRole({ body, ...(branchComments.length ? { comments: branchComments } : {}) });
       }
       else {
         throw new Error(`[${branch.line}:${branch.col}] Unexpected "${kw}" inside Switch: expected Case or Default`);
@@ -1578,9 +1661,19 @@ export class Parser {
 
     // 2. Parse Case and Default blocks
     while (true) {
-      this.skipComments();
-      this.skipSeparators();
-      if (this.atBlockEnd()) break;
+      // Comments above a Case/Default header describe that branch: keep them.
+      const branchComments: string[] = [];
+      while (this.peek().type === "COMMENT" || (this.peek().type === "SYMBOL" && this.peek().value === ";")) {
+        const tok = this.consume();
+        if (tok.type === "COMMENT") branchComments.push(tok.value as string);
+      }
+      if (this.atBlockEnd()) {
+        // Comments after the last branch have no header to attach to; keep
+        // them at the end of the last branch rather than dropping them.
+        const last = defaultCase ?? cases[cases.length - 1];
+        if (last) for (const text of branchComments) last.body.push(Create.commentBlock({ text }));
+        break;
+      }
       const branch = this.peek();
       const kw = this.consume("KEYWORD").value;
 
@@ -1595,7 +1688,7 @@ export class Parser {
           body.push(this.parseRoleBuildingBlock());
         }
         this.consumeBlockClose(openLine, `Case body (line ${branch.line})`);
-        cases.push(Create.caseBlockInsideRole({ match: matchTokens, body }));
+        cases.push(Create.caseBlockInsideRole({ match: matchTokens, body, ...(branchComments.length ? { comments: branchComments } : {}) }));
       }
       else if (kw === "Default") {
         this.matchOptionalColon();
@@ -1608,7 +1701,7 @@ export class Parser {
           body.push(this.parseRoleBuildingBlock());
         }
         this.consumeBlockClose(openLine, `Default body (line ${branch.line})`);
-        defaultCase = Create.defaultCaseBlockInsideRole({ body });
+        defaultCase = Create.defaultCaseBlockInsideRole({ body, ...(branchComments.length ? { comments: branchComments } : {}) });
       }
       else {
         throw new Error(`[${branch.line}:${branch.col}] Unexpected "${kw}" inside Switch: expected Case or Default`);

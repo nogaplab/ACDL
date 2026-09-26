@@ -32,6 +32,7 @@ import {
   ExpressionToken,
   NameDef,
   NameRef,
+  MsgRef,
   ListComprehension,
   EndBlock,
   StrFragDef,
@@ -170,6 +171,10 @@ export function nameDef(params: Omit<NameDef, "kind">): NameDef {
 
 export function nameRef(params: Omit<NameRef, "kind">): NameRef {
   return { ...params, kind: "name-ref" };
+}
+
+export function msgRef(): MsgRef {
+  return { kind: "msg-ref" };
 }
 
 export function listComprehension(params: Omit<ListComprehension, "kind">): ListComprehension {

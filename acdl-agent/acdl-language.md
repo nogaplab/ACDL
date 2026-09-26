@@ -259,6 +259,33 @@ No prefix; they address other dimensions — named entities or context-variable
 keys: `[bomb]`, `[sys.agent_name]`. Multiple indices are comma-separated.
 Arithmetic (`+ - * / %`) is allowed in any index position: `@t-1`, `@t % 25`.
 
+### The current message number
+
+`#msg` is the position of the message being assembled in the message array:
+1 for the first message the model will see, 2 for the second, and so on. It is
+a value, not content, so it goes wherever a number would — as an argument of a
+function or template, or as an index of a context variable, alone or in
+arithmetic:
+
+```acdl
+U: {
+    sys.history[#msg]                   // the entry for this message
+    sys.history[#msg-1].text            // the entry before it
+    summarize(env.notes[@T], #msg)      // as a function argument
+    MESSAGE_HEADER(#msg)                // as a template argument
+}
+```
+
+Because it counts messages, `#msg` only means something inside one: it may
+appear inside a role message (`S:`, `U:`, `A:`, `T:`), inside an `N:` message,
+or in a `StrFrag` body (which only ever expands inside a message). Anywhere
+else — a top-level `ForEach` bound, a top-level `Name`, a `RolesFrag` argument,
+the spec title — it is an error. It is also not content on its own: a bare
+`#msg` line inside a message is rejected.
+
+The renderer prints `#msg` as `#current_message`, in orange, wherever it
+appears.
+
 ---
 
 ## 6. Templates
@@ -378,6 +405,18 @@ Switch sys.action_type[@t] {
 ```
 
 `break` and `continue` are available inside loops with standard semantics.
+
+### What a condition is for
+
+A condition exists to show what the structure depends on. Write it on the
+inputs the agent reads — a setting, a role, a count, a size — not on a
+variable that records the result. `Switch sys.summary_role` says only that a
+role was chosen; `If $lastHeadRole == user & $firstTailRole != assistant`
+says why. If a reader could not predict the branch from the variables' names,
+the condition is hiding the decision it was supposed to reveal. A `Switch` on
+genuine data — the role stored on a history row, the entries of a config
+file — is fine; the test is whether the code *computed* the value from other
+state. If it did, write that computation.
 
 ### Early termination
 
@@ -518,6 +557,10 @@ rendered diagram reads worse for it. If the block appears once, write it inline.
 `//` to end of line. A comment on its own line renders at the current nesting
 level; a comment after a content element renders beside it. Use inline comments
 generously to say what a template contains or why a branch exists.
+
+`#` also opens a comment, with one exception: `#msg` on its own (§5) is the
+current message number, not a comment. `#msgs`, `# msg` and any other `#` text
+are comments.
 
 ---
 

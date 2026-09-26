@@ -2,7 +2,7 @@
   "name": "acdl-language",
   "displayName": "ACDL - Agentic Context Description Language",
   "description": "Syntax highlighting, diagnostics, preview, and go-to-definition for ACDL (Agentic Context Description Language)",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "publisher": "NogaPelegPelc",
   "license": "MIT",
   "repository": {
@@ -52,6 +52,19 @@
         "path": "./syntaxes/acdl.tmLanguage.json"
       }
     ],
+    "configurationDefaults": {
+      "editor.tokenColorCustomizations": {
+        "textMateRules": [
+          {
+            "scope": "variable.language.current-message.acdl",
+            "settings": {
+              "foreground": "#f97316",
+              "fontStyle": "bold"
+            }
+          }
+        ]
+      }
+    },
     "commands": [
       {
         "command": "acdl.showPreview",
@@ -74,7 +87,7 @@
       },
       {
         "command": "acdl.savePreviewImage",
-        "title": "ACDL: Save Preview Image...",
+        "title": "ACDL: Save Preview as PDF / PNG...",
         "icon": "$(save)"
       },
       {
@@ -88,6 +101,14 @@
       {
         "command": "acdl.resetZoomPreview",
         "title": "ACDL: Reset Preview Zoom"
+      },
+      {
+        "command": "acdl.previewNextBlock",
+        "title": "ACDL: Preview Next Block"
+      },
+      {
+        "command": "acdl.previewPrevBlock",
+        "title": "ACDL: Preview Previous Block"
       }
     ],
     "keybindings": [
@@ -119,6 +140,18 @@
         "command": "acdl.resetZoomPreview",
         "key": "ctrl+alt+0",
         "mac": "cmd+alt+0",
+        "when": "acdl.previewVisible"
+      },
+      {
+        "command": "acdl.previewNextBlock",
+        "key": "ctrl+alt+right",
+        "mac": "cmd+alt+right",
+        "when": "acdl.previewVisible"
+      },
+      {
+        "command": "acdl.previewPrevBlock",
+        "key": "ctrl+alt+left",
+        "mac": "cmd+alt+left",
         "when": "acdl.previewVisible"
       }
     ],
@@ -176,6 +209,14 @@
         {
           "command": "acdl.resetZoomPreview",
           "when": "acdl.previewVisible"
+        },
+        {
+          "command": "acdl.previewNextBlock",
+          "when": "acdl.previewVisible"
+        },
+        {
+          "command": "acdl.previewPrevBlock",
+          "when": "acdl.previewVisible"
         }
       ]
     }
@@ -190,6 +231,7 @@
   "devDependencies": {
     "@types/vscode": "^1.80.0",
     "esbuild": "^0.20.0",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "pdf-lib": "^1.17.1"
   }
 }

@@ -58,6 +58,32 @@ loop-over-history form either way — but check for the differences that a
 persistent list hides (e.g. a system message mutated in place, messages dropped
 or rewritten after the fact, tool results trimmed).
 
+**State the turn definition, then enumerate what a turn can contain — from the
+code, not from convention.** "`@T` = one call to `run_conversation()`" is a
+definition. "A turn is one user message, some tool rounds, and one answer" is an
+assumption, and nothing in that definition implies it. Before writing the history
+loop, answer each of these by reading the loop body and the persistence path, and
+record the answers in the header comment:
+
+- Can a turn contain **more than one user-role row**? (A continuation prompt after
+  an output cap; a mid-turn correction; a nudge the loop writes to itself.)
+- Can a turn end with **zero assistant rows**? (Interrupted before the first
+  reply; failed before any response.)
+- Can a turn contain an **assistant row that is neither a tool call nor its final
+  answer**? (A provisional answer the loop refused; a truncated fragment.)
+- Which rows does **the loop itself append** — not the user, not the model — and
+  for each: does it **persist** into later turns, or exist only while the turn is
+  live? Persisting rows belong in the history loop; live-only rows belong only
+  under `@t == @T`.
+- Is the **closing row** always present, and is it always the model's answer, or
+  can the system write it (an interruption placeholder, a guardrail notice)?
+
+Then build the history loop from *those* answers. If a turn can hold several
+user rows, the sub-step loop needs a case for each kind; if it can end with no
+assistant row, the closing row goes under an `If`; if some rows are live-only,
+they are guarded. Do not write `U, (A T)*, A` because that is what a turn usually
+looks like. Write what a turn looks like in this system.
+
 ## Phase 3 — Trace one call, message by message
 
 Pick a representative call and enumerate, in order, every message that reaches the
@@ -109,6 +135,75 @@ Translate what you traced, using these mappings:
 - `sys.*` — came from the agent's own machinery: state, memory, tool definitions,
   tool results, timestamps, retrieved documents, summaries.
 - `resp.*` — was produced by the model itself on an earlier call.
+
+**Conditions must name the inputs of a decision, not its outcome.** A spec line
+can be perfectly true and still say nothing. The failure looks like this:
+
+```acdl
+Switch sys.summary_role[@$C] {          // true by definition — and empty
+    Case user:      { U: sys.conversation_summary[@$C] }
+    Case assistant: { A: sys.conversation_summary[@$C] }
+}
+```
+
+`sys.summary_role` is defined as "whatever role the code chose", so the Switch
+merely restates that a choice was made. The structure of the context — which
+role the summary gets, and when it gets no row at all — is exactly the thing
+the code decides here, and the spec has hidden it behind a name.
+
+The test: **could a reader predict the branch from the variables' values, using
+only what the names say?** If a variable's only possible definition is "the
+branch the code took", it is an *outcome variable* and the condition is a
+tautology. Replace it with the code's actual decision, written on the facts
+the code reads:
+
+```acdl
+Name lastHeadRole  := sys.role_of_last_protected_head_row[@$C]
+Name firstTailRole := sys.role_of_first_surviving_tail_row[@$C]
+If $lastHeadRole == assistant | $lastHeadRole == tool | $lastHeadRole == none {
+    If $firstTailRole != user { U: sys.conversation_summary[@$C] }     // preferred role, no collision
+    ElseIf $lastHeadRole == tool { A: sys.conversation_summary[@$C] }  // flipped; still alternates with the head
+    // otherwise no row is emitted: the summary is merged into the first tail row (see Mark 4)
+}
+Else {
+    If $firstTailRole != assistant { A: sys.conversation_summary[@$C] }
+}
+```
+
+Now the reader sees what the structure depends on (the neighbours' roles), and
+the third, message-less outcome is visible instead of living in a comment.
+
+The same rule applies to every conditional that governs shape or content:
+
+- A gated rewrite (pruning, truncation, image stripping) is written on the
+  setting that enables it and the position or size test that selects the row —
+  `If $summarizeOldToolResults == true & tc.count_of_messages_more_recent_than_this >= $mostRecentMessagesKeptInFull`
+  — never on a per-row `kind` / `form` / `state` that merely records that it
+  was rewritten.
+- A row that exists only under some condition is written under that condition
+  (`If (@t == @T)`, `If sys.turn_has_closing_reply[@t]`), not left to a comment.
+- When the setting is numeric in the code but functions as a switch, name it
+  as the switch and record the numeric reality in a trailing comment.
+
+**A comment of the form "when X, Y happens instead" is an unwritten branch.**
+If a comment describes an alternative outcome — a summary that is sometimes
+merged into its neighbour rather than emitted as its own row, a tool result that
+is sometimes replaced by a one-line summary, a closing message that is sometimes
+absent — the spec is missing a branch, and the comment is where it went. Write the
+branch: an `If` / `ElseIf` on the condition that selects it, and the content it
+produces. If the outcome is that *no* message is emitted, an empty branch holding
+only a comment is still a branch, and it is the honest one. Comments explain
+branches; they never stand in for them.
+
+Outcome variables are allowed in exactly one situation: referring back to a
+decision that is already written out elsewhere in the same spec, when
+restating it would be longer than the reference. Bind it by name next to the
+decision, and say in its comment that it is the outcome of the block above.
+
+What this rule does **not** forbid: a `Switch` on data that is genuinely data —
+`Switch m.role` over stored rows, `Switch pf.role` over a config file's entries.
+Those are inputs. The line to draw is: *did the code compute this value from
+other state?* If yes, show the computation; if no, it is an input.
 
 **The current turn has no response yet — this is the most common mistake.**
 The spec describes the message array *as it is sent*, so nothing indexed `@T`
@@ -165,6 +260,21 @@ right, and say in a comment which turn the loop stops at.
 the identifier in the source. `env.user_query`, not `env.msg_str`. Templates should
 be named for what the text is for: `TOOL_USE_RULES`, `OUTPUT_FORMAT`,
 `SAFETY_CONSTRAINTS`.
+
+**Name settings for what they do, not for their config key.**
+`summarizeOldToolResults`, not `proactive_prune_size_threshold_tokens`;
+`mostRecentMessagesKeptInFull`, not `protect_last_n`. When a number functions as
+a switch — a threshold where `0` means off — name it as the switch, compare it as
+one (`== true`), and put the numeric reality in a trailing comment:
+
+```acdl
+Name summarizeOldToolResults := sys.summarize_tool_results_older_than_newest_rows   // in config a token size (proactive_prune_tokens); 0 = off
+```
+
+The standard for every name in a condition: a reader who knows nothing about the
+code must be able to read the condition as a sentence — "summarising old tool
+results is on, and at least n messages are more recent than this one" — using
+the names alone.
 
 **Granularity:** aim for a spec that fits on one page. Collapse detail that does
 not change the structure (three consecutive literal paragraphs concatenated into
@@ -228,6 +338,22 @@ Go back through the source and check, in both directions:
    model has not answered.
 7. **Every fragment is invoked more than once.** If one is used a single time,
    inline it.
+8. **No condition is a tautology.** For every `Switch` and every `If` on a
+   `sys.*` variable — especially names ending in `_kind`, `_role`, `_form`,
+   `_outcome`, `_state`, `_ending` — find the code that produces that value.
+   If it is computed from other state, rewrite the condition on that state.
+   If you cannot say what values it takes without reading the branch bodies,
+   it is an outcome variable. The only acceptable ones point back at a
+   decision already written out in the spec. Cover the branch bodies and ask
+   whether the condition alone tells you which branch fires.
+9. **No comment describes an alternative outcome.** Read every comment. If one
+   says "when …, instead …", "unless …", or "otherwise … is merged / dropped /
+   replaced", that is a branch the spec does not have. Write it.
+10. **The history loop matches the turn answers from Phase 2.** For each answer
+    you recorded — several user rows per turn, a possibly-absent closing row,
+    live-only rows, a system-written closer — point at the line of the spec that
+    expresses it. An answer with no corresponding line means the loop was written
+    from the conventional shape, not from this system.
 
 If the ACDL toolchain is available in the working environment, validate the file:
 `npm run cli -- out.html your-spec.acdl` (or `node scripts/diff.mjs` against a
@@ -237,7 +363,7 @@ prior version). A parse error means the syntax is wrong; fix it.
 
 ## Output
 
-Produce two things.
+Produce three things.
 
 ### 1. The specification — a single `.acdl` file
 
@@ -259,6 +385,38 @@ Well-commented, one spec per distinct prompt, marks on the meaningful regions, a
   unsure about). List these explicitly rather than guessing silently; where you had
   to guess in the spec itself, mark it with a `// UNVERIFIED:` comment.
 
+### 3. A reader copy — `<AgentName>.compact.acdl`
+
+Write this last, once the annotated spec is final. It is the same specification
+with the audit apparatus taken out, for someone who wants to *read* the spec
+rather than check it. Five rules:
+
+- **Drop every `file:line` citation, and the `// <-` marker with it** — there is
+  no longer a citation for the marker to distinguish. A comment that was nothing
+  but a citation disappears entirely. A comment that mixed a citation with an
+  explanation keeps the explanation and loses the location. Keep bare function,
+  class, and file names where those are how a reader would find the code
+  (`normalizeMessagesForAPI`, `getPartialCompactPrompt`, `SOUL.md`); it is only
+  the `:1234` line numbers and the path prefixes that go.
+- **One comment, one line.** Do not hand-wrap a comment across several `//`
+  lines, and do not continuation-indent it — let the reader's editor wrap. This
+  applies to prose only: a deliberate multi-line layout — the time-model block,
+  a list of the specs in the file, an aligned table in the header — is structure,
+  not wrapping, and stays as it is (minus its line numbers).
+- **Change nothing but comments.** Every non-comment line must be byte-identical
+  to the annotated file, in the same order. If you find yourself rewording a spec
+  line, dropping a `Mark`, or collapsing a branch, stop: that change belongs in
+  the annotated file or nowhere. The two files must be the same specification.
+- **Say where the provenance went.** One line in the header pointing at the
+  annotated `.acdl` and at `extraction-report.md`.
+- **Drop comments that inventory behaviour the spec already states.** A list of
+  the sanitisation passes, a restatement of what a branch does, a note that a
+  fragment is used twice — if the reader can see it from the code lines, the
+  comment is noise in the reader copy. Keep a comment only where a name alone
+  would not carry the meaning.
+
+The annotated `.acdl` remains the file of record. Both files must parse.
+
 ---
 
 ## Rules
@@ -266,6 +424,13 @@ Well-commented, one spec per distinct prompt, marks on the meaningful regions, a
 - Never include the actual prose of prompts in the spec. Templates are opaque by
   design; put a short summary in a `//` comment instead.
 - Never invent structure that is not in the code — no "agents usually also do X".
+- Never put a decision behind a name. A condition must be on the facts the code
+  reads, not on a variable that means "what the code decided". True is not enough;
+  the spec must show what the structure depends on.
+- Never leave an alternative outcome in a comment. "When X, Y happens instead" is
+  a branch; write it.
+- Never assume the shape of a turn. State the turn definition, answer what a turn
+  can contain from the code, and build the history loop from those answers.
 - Never put a model output at `@T`. The current turn is input only; the prompt
   stops where the model starts writing.
 - Never define a fragment for a chunk that appears only once.

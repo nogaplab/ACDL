@@ -47,8 +47,16 @@ export type LogicalOperator =
   | "≥"
   | "≈";
 
+/**
+ * `#msg` — the number of the message currently being assembled. Spelled
+ * `#msg` in source, rendered as `#current_message`. A single token so that the
+ * scanner can tell it apart from a `#` line comment.
+ */
+export type MsgSymbol = "#msg";
+
 export type Token =
   | { type: "STRING"; value: string; line: number; col: number; spaceBefore?: boolean }
+  | { type: "MSG"; value: MsgSymbol; line: number; col: number; spaceBefore?: boolean }
   | { type: "KEYWORD"; value: Keyword; line: number; col: number; spaceBefore?: boolean }
   | { type: "IDENT"; value: string; line: number; col: number; spaceBefore?: boolean }
   | { type: "NUMBER"; value: string; line: number; col: number; spaceBefore?: boolean }

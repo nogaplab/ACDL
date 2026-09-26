@@ -67,11 +67,14 @@ export const COLORS = {
   templateBg: '#faf5ff',
   func: '#9333ea',
   funcBg: '#faf5ff',
+  frag: '#ea580c',
+  fragBg: '#fff7ed',
   context: '#0da66b',
   contextBg: '#e0ffdd',
   variable: '#0969da',
   variableBg: 'rgba(9, 105, 218, 0.12)',
   nameRef: '#ec4899',
+  msgRef: '#f97316',   // #msg → #current_message, orange
   comment: '#6e7781',
   string: '#a31515',
 

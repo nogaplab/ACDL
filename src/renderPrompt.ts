@@ -38,7 +38,13 @@ import {
   RolesFragDef,
   StrFragInvocation,
   RolesFragInvocation,
+  MSG_DISPLAY,
 } from "./types";
+
+/** `#msg` renders as `#current_message`, in orange, wherever it appears. */
+function renderMsgRef(): string {
+  return `<span class="msg-ref">${escapeHtml(MSG_DISPLAY)}</span>`;
+}
 
 
 function wrapBlock(
@@ -146,7 +152,7 @@ function renderExpressionTokens(tokens: ExpressionToken[]): string {
         ["env", "sys", "resp", "prompt"].includes(tok.value) &&
         i + 1 < tokens.length &&
         tokens[i + 1].type === "SYMBOL" &&
-        tokens[i + 1].value === ".") {
+        (tokens[i + 1].value === "." || tokens[i + 1].value === "[")) {
 
       // Collect all tokens that form the context var path
       const contextVarTokens: string[] = [tok.value];
@@ -269,9 +275,20 @@ function renderExpressionTokens(tokens: ExpressionToken[]): string {
           }
         }
 
-        // Continue if we're inside parens/brackets
+        // #msg keeps its own colour even inside an index
+        if (t.type === "MSG") {
+          contextVarTokens.push(renderMsgRef());
+          i++;
+          continue;
+        }
+
+        // Continue if we're inside parens/brackets. Plain text inside [...]
+        // is an index, shown in blue like indices everywhere else.
         if (parenDepth > 0 || bracketDepth > 0) {
-          contextVarTokens.push(escapeHtml(t.value));
+          const text = escapeHtml(t.value);
+          contextVarTokens.push(bracketDepth > 0 && parenDepth === 0
+            ? `<span class="expr-index">${text}</span>`
+            : text);
           i++;
           continue;
         }
@@ -455,6 +472,27 @@ function renderExpressionTokens(tokens: ExpressionToken[]): string {
       }
     }
 
+    // General function call: identifier followed by "(" gets the same purple
+    // box as a func-block in a role body (min/max stay plain, like elsewhere).
+    if (tok.type === "IDENT" &&
+        tok.value !== "min" && tok.value !== "max" &&
+        i + 1 < tokens.length &&
+        tokens[i + 1].value === "(") {
+      const funcName = escapeHtml(tok.value);
+      i += 2; // skip name and "("
+      const argTokens: ExpressionToken[] = [];
+      let depth = 1;
+      while (i < tokens.length && depth > 0) {
+        const t = tokens[i];
+        if (t.value === "(") depth++;
+        if (t.value === ")") depth--;
+        if (depth > 0) argTokens.push(t);
+        i++;
+      }
+      pushContent(`<span class="func-block"><span class="func-name">${funcName}</span><span class="func-parens">(</span><span class="func-args-wrapper">${renderExpressionTokens(argTokens)}</span><span class="func-parens">)</span></span>`);
+      continue;
+    }
+
     // Check for $ followed by identifier (name reference) before regular rendering
     if (tok.type === "SYMBOL" && tok.value === "$" && i + 1 < tokens.length) {
       const nextTok = tokens[i + 1];
@@ -514,6 +552,10 @@ function renderExpressionTokens(tokens: ExpressionToken[]): string {
         pushContent(`<span class="expr-string">"${escaped}"</span>`);
         break;
 
+      case "MSG":
+        pushContent(renderMsgRef());
+        break;
+
       default:
         pushContent(escaped);
     }
@@ -563,6 +605,8 @@ function renderIndexContent(value: IndexValue): string {
     case "name-ref":
       // Simplified rendering for name-ref in index context - just the pink text without $ prefix
       return `<span class="name-ref">${escapeHtml(value.name)}</span>`;
+    case "msg-ref":
+      return renderMsgRef();
   }
 }
 
@@ -659,6 +703,14 @@ function renderTopLevelBlock(block: PromptBlock): string {
 
 function renderCommentBlock(block: CommentBlock): string {
   return `<div class="comment-block">// ${escapeHtml(block.text)}</div>`;
+}
+
+/** Comments written on their own lines just above a Case/Default/ElseIf/Else header. */
+function renderBranchComments(comments?: string[]): string {
+  if (!comments || comments.length === 0) return "";
+  return comments
+    .map(text => `<div class="comment-block branch-comment">// ${escapeHtml(text)}</div>`)
+    .join("\n");
 }
 
 /**
@@ -959,6 +1011,9 @@ function renderTextArgs(arg: TextArgs): string {
 
     case "str-frag-invocation":
       return renderStrFragInvocation(arg);
+
+    case "msg-ref":
+      return renderMsgRef();
   }
 }
 
@@ -1205,7 +1260,7 @@ function renderLoopInsideRole(block: LoopBlockInsideRole): string {
  */
 function renderSwitchOutsideRole(block: SwitchBlockOutsideRole): string {
   const exprHtml = `<span class="switch-expr">${renderExpressionTokens(block.expression)}</span>`;
-  const header = `<span class="keyword">Switch</span>(${exprHtml}):`;
+  const header = `<span class="keyword">Switch</span> ${exprHtml}:`;
 
   const casesHtml = block.cases
     .map((c: CaseBlockOutsideRole) => {
@@ -1215,7 +1270,7 @@ function renderSwitchOutsideRole(block: SwitchBlockOutsideRole): string {
         )
         .join("\n");
 
-      return wrapBlock(
+      return renderBranchComments(c.comments) + wrapBlock(
         "switch-case",
         `<span class="keyword">Case</span> <span class="case-match">${renderExpressionTokens(c.match)}</span>:`,
         bodyHtml
@@ -1231,7 +1286,7 @@ function renderSwitchOutsideRole(block: SwitchBlockOutsideRole): string {
           )
           .join("\n");
 
-        return wrapBlock(
+        return renderBranchComments(block.defaultCase.comments) + wrapBlock(
           "switch-default",
           `<span class="keyword">Default</span>:`,
           bodyHtml
@@ -1273,7 +1328,7 @@ function renderSwitchOutsideRole(block: SwitchBlockOutsideRole): string {
  */
 function renderSwitchInsideRole(block: SwitchBlockInsideRole): string {
   const exprHtml = `<span class="switch-expr">${renderExpressionTokens(block.expression)}</span>`;
-  const header = `<span class="keyword">Switch</span>(${exprHtml}):`;
+  const header = `<span class="keyword">Switch</span> ${exprHtml}:`;
 
   const casesHtml = block.cases
     .map((c: CaseBlockInsideRole) => {
@@ -1283,7 +1338,7 @@ function renderSwitchInsideRole(block: SwitchBlockInsideRole): string {
         )
         .join("\n");
 
-      return wrapBlock(
+      return renderBranchComments(c.comments) + wrapBlock(
         "switch-case",
         `<span class="keyword">Case</span> <span class="case-match">${renderExpressionTokens(c.match)}</span>:`,
         bodyHtml
@@ -1299,7 +1354,7 @@ function renderSwitchInsideRole(block: SwitchBlockInsideRole): string {
           )
           .join("\n");
 
-        return wrapBlock(
+        return renderBranchComments(block.defaultCase.comments) + wrapBlock(
           "switch-default",
           `<span class="keyword">Default</span>:`,
           bodyHtml
@@ -1355,13 +1410,13 @@ function renderConditionalInsideRole(block: ConditionalBlockInsideRole): string 
   // ELSEIFs
   for (let i = 0; i < block.elseif.length; i++) {
     const elseifHeader = `<span class="keyword">ElseIf</span> <span class="condition-expr">${renderExpressionTokens(block.elseif[i])}</span>:`;
-    result += wrapBlock("conditional-block-inside-role", elseifHeader, renderBody(block.elseifBody[i]));
+    result += renderBranchComments(block.elseifComments?.[i]) + wrapBlock("conditional-block-inside-role", elseifHeader, renderBody(block.elseifBody[i]));
   }
 
   // ELSE
   if (block.elseBody && block.elseBody.length > 0) {
     const elseHeader = `<span class="keyword">Else</span>:`;
-    result += wrapBlock("conditional-block-inside-role", elseHeader, renderBody(block.elseBody));
+    result += renderBranchComments(block.elseComments) + wrapBlock("conditional-block-inside-role", elseHeader, renderBody(block.elseBody));
   }
 
   // The branches are siblings, and a role body is a wrapping flex row: without a
@@ -1416,13 +1471,13 @@ function renderConditionalOutsideRole(block: ConditionalBlockOutsideRole): strin
   // ELSEIFs
   for (let i = 0; i < block.elseif.length; i++) {
     const elseifHeader = `<span class="keyword">ElseIf</span> <span class="condition-expr">${renderExpressionTokens(block.elseif[i])}</span>:`;
-    result += wrapBlock("conditional-block-outside-role", elseifHeader, renderBody(block.elseifBody[i]));
+    result += renderBranchComments(block.elseifComments?.[i]) + wrapBlock("conditional-block-outside-role", elseifHeader, renderBody(block.elseifBody[i]));
   }
 
   // ELSE
   if (block.elseBody && block.elseBody.length > 0) {
     const elseHeader = `<span class="keyword">Else</span>:`;
-    result += wrapBlock("conditional-block-outside-role", elseHeader, renderBody(block.elseBody));
+    result += renderBranchComments(block.elseComments) + wrapBlock("conditional-block-outside-role", elseHeader, renderBody(block.elseBody));
   }
 
   return result;
@@ -1439,7 +1494,7 @@ export function renderStrFragDef(frag: StrFragDef, style: string = "default"): s
     ? `[${frag.params.map(renderTextArgs).join(", ")}]`
     : "";
 
-  const titleHtml = `<div class="frag-def-title"><h1>${escapeHtml(frag.name)}${paramsHtml}</h1><span class="frag-badge">SF</span></div>`;
+  const titleHtml = `<div class="frag-def-title"><h1>${escapeHtml(frag.name)}${paramsHtml}</h1><span class="frag-badge">StrFrag</span></div>`;
 
   const bodyHtml = frag.body
     .map((b: RoleBuildingBlock) => {
@@ -1459,7 +1514,7 @@ export function renderRolesFragDef(frag: RolesFragDef, style: string = "default"
     ? `[${frag.params.map(renderTextArgs).join(", ")}]`
     : "";
 
-  const titleHtml = `<div class="frag-def-title"><h1>${escapeHtml(frag.name)}${paramsHtml}</h1><span class="frag-badge">RF</span></div>`;
+  const titleHtml = `<div class="frag-def-title"><h1>${escapeHtml(frag.name)}${paramsHtml}</h1><span class="frag-badge">RolesFrag</span></div>`;
 
   const bodyHtml = frag.body.map(renderPromptBodyItem).join("\n");
 

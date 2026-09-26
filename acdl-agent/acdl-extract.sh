@@ -84,12 +84,15 @@ Use Read, Grep, and Glob to explore the target codebase. Read the actual source 
 never infer structure from README files or docs. Do not run the code, and do not
 modify anything inside the target codebase.
 
-Deliver your results by writing two files into the output directory named below:
+Deliver your results by writing three files into the output directory named below:
   1. The specification, as <AgentName>.acdl
   2. The extraction report, as extraction-report.md
+  3. The reader copy, as <AgentName>.compact.acdl — written last, per the Output
+     section of your task definition: same spec, comments unwrapped to one line
+     each, citations removed, every non-comment line byte-identical.
 
-Write only into that output directory. Do not print either deliverable into your
-reply instead of writing it — the files are the deliverable. When both files are
+Write only into that output directory. Do not print any deliverable into your
+reply instead of writing it — the files are the deliverable. When all three are
 written, finish with a short summary: the agent's time model, how many specs you
 wrote, and the uncertainties a human should check first.
 EOF
@@ -168,6 +171,34 @@ set -e
 
 # Written only now that the run is over, so it cannot be read back mid-run.
 printf '%s' "$SYSTEM" > "$OUT/system-prompt.txt"
+
+# The reader copy is a comment-only transformation of the spec, so the two files
+# must agree on every line that is not a comment. A divergence means the model
+# rewrote the spec while transcribing it, which is the one failure mode of
+# generating the copy rather than deriving it.
+spec_code() { grep -vE '^[[:space:]]*//' "$1" | grep -vE '^[[:space:]]*$'; }
+
+check_reader_copies() {
+  local spec compact
+  for spec in "$OUT"/*.acdl; do
+    [[ -e "$spec" ]] || continue
+    case "$spec" in *.compact.acdl) continue ;; esac
+    compact="${spec%.acdl}.compact.acdl"
+    if [[ ! -f "$compact" ]]; then
+      echo "warning: no reader copy for $(basename "$spec") — expected $(basename "$compact")"
+      continue
+    fi
+    if diff <(spec_code "$spec") <(spec_code "$compact") > /dev/null; then
+      echo "reader copy ok: $(basename "$compact") (comments only)"
+    else
+      echo "warning: $(basename "$compact") differs from $(basename "$spec") outside comments:"
+      diff <(spec_code "$spec") <(spec_code "$compact") | head -20 | sed 's/^/  /'
+    fi
+  done
+}
+
+echo
+check_reader_copies
 
 echo
 if [[ $STATUS -ne 0 ]]; then

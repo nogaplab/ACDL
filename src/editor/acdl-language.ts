@@ -21,6 +21,12 @@ function tokenize(stream: StringStream, state: AcdlState): string | null {
   // Whitespace
   if (stream.eatSpace()) return null;
 
+  // #msg: the current message number. The one `#` that is not a comment.
+  if (stream.match(/^#msg(?![\p{L}\p{N}_])/iu)) {
+    state.afterDot = false;
+    return "atom";
+  }
+
   // Comment: // or # to end-of-line, braces included (matches the scanner)
   if (stream.match("//") || stream.match("#")) {
     stream.skipToEnd();

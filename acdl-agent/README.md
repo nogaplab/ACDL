@@ -48,7 +48,13 @@ Written to `out/<target-name>/` by default, or wherever `-o` points:
 |------|----------|
 | `<AgentName>.acdl` | The specification — one spec per structurally distinct prompt |
 | `extraction-report.md` | Evidence table (`file:line` per spec line), abstraction decisions, uncertainties |
+| `<AgentName>.compact.acdl` | Reader copy of the spec: citations dropped, comments unwrapped to one line each |
 | `transcript.json` | Every assistant turn, for auditing how a conclusion was reached |
+
+The annotated `.acdl` is the file of record — the `// <-` citation above each line is
+what makes the spec checkable against the source. The reader copy is the same spec with
+that apparatus removed, for reading rather than auditing; the two differ only in
+comments, which `acdl-extract.sh` verifies after the run.
 
 Render or diff the result with the main ACDL toolchain:
 

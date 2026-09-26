@@ -1,20 +1,49 @@
 import { EditorView } from "@codemirror/view";
-import { Parser } from "./parser";
-import { renderPrompts } from "./renderPrompt";
-import { renderPromptsSvg } from "./renderPromptSvg";
-import { enableCollapsibleBlocks } from "./ui";
 import { createEditor } from "./editor/setup.js";
+import {
+  BlockRange,
+  BLOCKS_CSS,
+  DEFAULT_WRAP_WIDTH,
+  clampWrapWidth,
+  escapeHtml,
+  listRenderableBlocks,
+  pageFontFaceCss,
+  renderBlockSvg,
+  renderBlocksHtml,
+  svgSize,
+} from "./render-blocks";
 
-// Re-export for PDF export functionality
-export { Parser, renderPromptsSvg };
+// The visualizer renders every block with the SVG renderer, exactly like the
+// VSCode extension's preview pane, so the page shows what PNG / PDF export
+// produce. Re-export what the page's export script needs.
+export { renderBlockSvg, svgSize };
 
 let editorView: EditorView;
+let wrapWidth = DEFAULT_WRAP_WIDTH;
+let renderedBlocks: BlockRange[] = [];
 
 /**
  * Returns the CodeMirror editor view instance.
  */
 export function getEditorView(): EditorView | null {
   return editorView || null;
+}
+
+/** Blocks shown by the last render, in file order. */
+export function getRenderedBlocks(): BlockRange[] {
+  return renderedBlocks;
+}
+
+export function getWrapWidth(): number {
+  return wrapWidth;
+}
+
+/** Change the wrap width (200–1000 px) and re-render at it. */
+export function setWrapWidth(width: number): void {
+  const w = clampWrapWidth(width);
+  if (w === wrapWidth) return;
+  wrapWidth = w;
+  doRender();
 }
 
 /**
@@ -27,6 +56,27 @@ export function doRender(): void {
   }
 }
 
+/**
+ * Install the page-level styles the inlined block SVGs rely on: the block
+ * layout and one @font-face pair for JetBrains Mono. The fonts come from the
+ * base64 the build injected (window.__ACDL_FONTS__) or, in the dev server,
+ * from /fonts.
+ */
+export function installBlockStyles(): void {
+  if (document.getElementById("acdl-block-styles")) return;
+  const fonts = (window as any).__ACDL_FONTS__ as { regular?: string; bold?: string } | undefined;
+  const regular = fonts?.regular
+    ? `data:font/truetype;base64,${fonts.regular}`
+    : "/fonts/JetBrainsMono-Regular.ttf";
+  const bold = fonts?.bold
+    ? `data:font/truetype;base64,${fonts.bold}`
+    : "/fonts/JetBrainsMono-Bold.ttf";
+  const style = document.createElement("style");
+  style.id = "acdl-block-styles";
+  style.textContent = pageFontFaceCss(regular, bold) + BLOCKS_CSS;
+  document.head.appendChild(style);
+}
+
 export function initFileHandlers() {
   const dropZone = document.getElementById("drop-zone");
   const fileInput = document.getElementById("acdl-upload") as HTMLInputElement;
@@ -35,6 +85,8 @@ export function initFileHandlers() {
   const renderBtn = document.getElementById("render-btn");
 
   if (!dropZone || !fileInput || !output || !editorContainer || !renderBtn) return;
+
+  installBlockStyles();
 
   // Initialize CodeMirror editor
   editorView = createEditor(editorContainer, "");
@@ -89,52 +141,26 @@ function validateAndProcess(file: File, output: HTMLElement) {
 }
 
 /**
- * The core logic: takes raw text, runs it through the Scanner/Parser,
- * and updates the DOM with the visualization or an error message.
+ * The core logic: takes raw text, parses it into blocks, renders each block
+ * with the SVG renderer at the wrap width, and updates the DOM with the
+ * stacked blocks or an error message.
  */
 function processAndRender(text: string, output: HTMLElement) {
   if (!text.trim()) {
+    renderedBlocks = [];
     output.innerHTML = `<div class="info-msg">Editor is empty. Write or drop a .acdl file to begin.</div>`;
     return;
   }
 
   try {
-    const parser = new Parser(text);
-    const prompts = parser.parseFile();
-
-    output.innerHTML = renderPrompts(prompts);
-    enableCollapsibleBlocks();
-    detectWrappedComments(output);
-    detectOverflow(output);
-  } catch (err: any) {
-    output.innerHTML = `<div class="error-msg"><strong>Parsing Error:</strong> ${err.message}</div>`;
-  }
-}
-
-/**
- * Detect comments that wrap to multiple lines and add a class for top alignment.
- * Single-line comments stay centered, multi-line comments align to top.
- */
-function detectWrappedComments(container: HTMLElement) {
-  const blockWithComments = container.querySelectorAll('.block-with-comment');
-  blockWithComments.forEach(el => {
-    const comment = el.querySelector('.inline-comment, .comment') as HTMLElement;
-    if (comment) {
-      // Check if comment height indicates wrapping (more than ~1.5 lines)
-      const lineHeight = parseFloat(getComputedStyle(comment).lineHeight) || 16;
-      if (comment.offsetHeight > lineHeight * 1.5) {
-        el.classList.add('comment-wrapped');
-      } else {
-        el.classList.remove('comment-wrapped');
-      }
+    const blocks = listRenderableBlocks(text);
+    if (blocks.length === 0) {
+      throw new Error("No prompts or fragments found in file");
     }
-  });
-}
-
-/**
- * Detect if content overflows the container and show/hide the warning.
- * TODO: Implement proper detection
- */
-export function detectOverflow(_container: HTMLElement) {
-  // Left for future implementation
+    renderedBlocks = blocks;
+    output.innerHTML = renderBlocksHtml(blocks, wrapWidth);
+  } catch (err: any) {
+    renderedBlocks = [];
+    output.innerHTML = `<div class="error-msg"><strong>Parsing Error:</strong> ${escapeHtml(err.message || String(err))}</div>`;
+  }
 }

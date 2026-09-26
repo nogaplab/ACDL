@@ -26,7 +26,19 @@ export type OtherIndex = {
 }
 
 // What can be inside an index - structured values that preserve their type for rendering
-export type IndexValue = Identifier | ContextVar | Func | ArithmeticExpr | NameRef;
+export type IndexValue = Identifier | ContextVar | Func | ArithmeticExpr | NameRef | MsgRef;
+
+// The current message number: `#msg` in source, rendered as `#current_message`.
+// Only meaningful inside a role message, and the parser rejects it elsewhere.
+export type MsgRef = {
+  kind: "msg-ref";
+}
+
+/** How a MsgRef is written in source. */
+export const MSG_SOURCE = "#msg";
+
+/** How a MsgRef is displayed in every rendered form. */
+export const MSG_DISPLAY = "#current_message";
 
 // Simple identifier for basic names like "t", "i", "T" or numbers like "123"
 // Can optionally have a path for dotted identifiers like "foo.bar.baz"
@@ -61,7 +73,7 @@ export type ArithmeticOperator = "-" | "+" | "%" | "*" | "/";
 // Token info for expressions in conditions, iterables, switch expressions
 // Preserves token type for syntax highlighting without restricting grammar
 export type ExpressionToken = {
-  type: "KEYWORD" | "IDENT" | "NUMBER" | "SYMBOL" | "LOGIC_OP" | "ARITH_OP" | "RANGE" | "STRING";
+  type: "KEYWORD" | "IDENT" | "NUMBER" | "SYMBOL" | "LOGIC_OP" | "ARITH_OP" | "RANGE" | "STRING" | "MSG";
   value: string;
   spaceBefore?: boolean; // true if there was whitespace before this token
 };
@@ -96,7 +108,7 @@ export type NameRef = {
     path?: PathDesc;        // optional path like .content.field
 }
 
-export type TextArgs = ContextVar | Index | Func | ArithmeticExpr | NameRef | Identifier | StrFragInvocation;
+export type TextArgs = ContextVar | Index | Func | ArithmeticExpr | NameRef | Identifier | StrFragInvocation | MsgRef;
 
 export type Func = {
     kind: "function";
@@ -167,6 +179,9 @@ export type ConditionalBlockOutsideRole = {
   elseif: Array<ExpressionToken[]>;
   elseifBody: Array<Array<PromptBlock>>;
   elseBody?: Array<PromptBlock>;
+  /** Comments on their own lines just above each ElseIf / the Else header. */
+  elseifComments?: Array<string[]>;
+  elseComments?: string[];
 };
 
 export type SwitchBlockOutsideRole = {
@@ -178,12 +193,15 @@ export type SwitchBlockOutsideRole = {
 
 export type CaseBlockOutsideRole = {
   kind: "case-block-outside-role";
+  /** Comments on their own lines just above the Case header. */
+  comments?: string[];
   match: ExpressionToken[];
   body: Array<PromptBlock>;
 };
 
 export type DefaultCaseBlockOutsideRole = {
   kind: "default-case-block-outside-role";
+  comments?: string[];
   body: Array<PromptBlock>;
 };
 
@@ -224,6 +242,9 @@ export type ConditionalBlockInsideRole = {
   elseif: Array<ExpressionToken[]>;
   elseifBody: Array<Array<RoleBuildingBlock>>;
   elseBody?: Array<RoleBuildingBlock>;
+  /** Comments on their own lines just above each ElseIf / the Else header. */
+  elseifComments?: Array<string[]>;
+  elseComments?: string[];
 };
 
 export type SwitchBlockInsideRole = {
@@ -235,12 +256,14 @@ export type SwitchBlockInsideRole = {
 
 export type CaseBlockInsideRole = {
   kind: "case-block-inside-role";
+  comments?: string[];
   match: ExpressionToken[];
   body: Array<RoleBuildingBlock>;
 };
 
 export type DefaultCaseBlockInsideRole = {
   kind: "default-case-block-inside-role";
+  comments?: string[];
   body: Array<RoleBuildingBlock>;
 };
 

@@ -151,10 +151,12 @@ export class Scanner {
     const ch = this.peek();
 
     // COMMENT — `//` and `#` run to end of line, block comments span lines.
+    // `#msg` is the one `#` that is not a comment: it names the current message.
     if (ch === "/" && this.peekNext() === "/") {
         return this.readLineComment(2);
     }
     if (ch === "#") {
+        if (this.atMsgRef()) return this.readMsgRef();
         return this.readLineComment(1);
     }
     if (ch === "/" && this.peekNext() === "*") {
@@ -232,6 +234,25 @@ export class Scanner {
     }
 
  /* ───────────── token readers ───────────── */
+
+  /**
+   * Whether the `#` at the current position starts `#msg` rather than a
+   * comment: the word `msg` in any casing, followed by something that cannot
+   * continue an identifier. `#msgs` and `# msg` are still comments.
+   */
+  private atMsgRef(): boolean {
+    const word = this.input.slice(this.pos + 1, this.pos + 4);
+    if (word.toLowerCase() !== "msg") return false;
+    const after = this.input[this.pos + 4];
+    return after === undefined || !this.isIdentPart(after);
+  }
+
+  /** The `#msg` token, normalised to lower case. */
+  private readMsgRef(): Token {
+    const startCol = this.col;
+    for (let i = 0; i < 4; i++) this.advance();
+    return { type: "MSG", value: "#msg", line: this.line, col: startCol };
+  }
 
   /**
    * A `//` or `#` comment, running to end of line. `openerLength` is how many

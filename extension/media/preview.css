@@ -50,12 +50,17 @@
   /* Functions - purple */
   --accent-function: #9333ea;
   --accent-function-bg: #faf5ff;
+  /* Fragments - orange */
+  --accent-frag: #ea580c;
+  --accent-frag-bg: #fff7ed;
   /* Context variables - teal */
   --accent-context: #0da66b;
   --accent-context-bg: #e0ffdd;
   /* Variables (all indexes, iterables) - light blue */
   --accent-variable: #0969da;
   --accent-variable-bg: rgba(9, 105, 218, 0.12);
+  /* The current message number (#msg, shown as #current_message) - orange */
+  --accent-msg: #f97316;
 
   /* Legacy aliases for backwards compatibility */
   --accent-index: var(--accent-variable);
@@ -452,6 +457,12 @@ body {
   color: var(--accent-variable);
 }
 
+/* Bare indices inside [...] of a context var in an expression */
+.expr-context-var .expr-index {
+  color: var(--accent-variable);
+  font-weight: 600;
+}
+
 .other-index {
   display: inline-flex;
   align-items: center;
@@ -656,6 +667,16 @@ body {
   font-size: 9px;
 }
 
+/* Case values are plain values: draw the whole match in blue */
+.case-match,
+.case-match .expr-ident,
+.case-match .expr-number,
+.case-match .expr-keyword,
+.case-match .expr-symbol,
+.case-match .expr-string {
+  color: var(--accent-variable);
+}
+
 /* Range expressions */
 .range-expr {
   display: inline;
@@ -746,6 +767,11 @@ body {
   font-size: 7px;
 }
 
+/* A comment sitting just above a Case / Default / ElseIf / Else header */
+.branch-comment {
+  margin: 3px 0 0 8px;
+}
+
 /* Name definitions: Name $varname := expr */
 .name-def {
   display: flex;
@@ -781,6 +807,32 @@ body {
 }
 
 /* ======================================================
+   CURRENT MESSAGE NUMBER (#msg → #current_message)
+   Orange wherever it appears: as an argument, inside an
+   index, or in a captured condition. The nested selectors
+   outrank the colour a context var or index gives its
+   children.
+   ====================================================== */
+
+.msg-ref,
+.context-var .msg-ref,
+.context-var .segment .msg-ref,
+.context-var-env .segment .msg-ref,
+.time-index .msg-ref,
+.other-index .msg-ref,
+.expr-context-var .msg-ref,
+.condition-expr .msg-ref,
+.loop-iterable .msg-ref,
+.switch-expr .msg-ref,
+.case-match .msg-ref {
+  color: var(--accent-msg);
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-size: 9px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* ======================================================
    FRAGMENT DEFINITIONS AND INVOCATIONS
    ====================================================== */
 
@@ -793,7 +845,7 @@ body {
   letter-spacing: 0.3px;
 }
 
-/* Fragment type badge [SF] or [RF] - subtle gray pill */
+/* Fragment type badge [StrFrag] or [RolesFrag] - subtle gray pill */
 .frag-badge {
   display: inline-block;
   background: #e5e7eb;
@@ -849,19 +901,19 @@ body {
   font-weight: 700;
 }
 
-/* Fragment invocation wrapper - contains keyword + purple bubble */
+/* Fragment invocation wrapper - contains keyword + orange bubble */
 .frag-invocation-wrapper {
   display: inline;
 }
 
-/* Fragment invocation - the purple bubble (like func-block) */
+/* Fragment invocation - the orange bubble (shaped like func-block) */
 .frag-invocation {
   display: inline-flex;
   align-items: center;
   vertical-align: middle;
-  background: var(--accent-function-bg);
-  border: 1px solid var(--accent-function);
-  color: var(--accent-function);
+  background: var(--accent-frag-bg);
+  border: 1px solid var(--accent-frag);
+  color: var(--accent-frag);
   padding: 2px 5px;
   border-radius: 3px;
   font-family: 'JetBrains Mono', 'SF Mono', monospace;
@@ -876,7 +928,14 @@ body {
 
 .frag-invocation .frag-name {
   font-weight: 600;
-  color: var(--accent-function);
+  color: var(--accent-frag);
+}
+
+/* Indices keep their blue inside the fragment bubble */
+.frag-invocation .time-index,
+.frag-invocation .other-index,
+.frag-invocation .at-symbol {
+  color: var(--accent-variable);
 }
 
 .frag-invocation .frag-args-wrapper {

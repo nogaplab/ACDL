@@ -36,6 +36,8 @@ import {
   RolesFragDef,
   StrFragInvocation,
   RolesFragInvocation,
+  MSG_SOURCE,
+  MSG_DISPLAY,
 } from "./types";
 
 import {
@@ -432,6 +434,8 @@ function indexValueToText(value: IndexValue): string {
       return `${indexValueToText(value.left as IndexValue)}${value.operator.join('')}${indexValueToText(value.right as IndexValue)}`;
     case 'name-ref':
       return value.name;
+    case 'msg-ref':
+      return MSG_DISPLAY;
   }
 }
 
@@ -480,6 +484,8 @@ function textArgsToText(arg: TextArgs): string {
     case 'str-frag-invocation':
       const fragArgs = arg.arguments.map(textArgsToText).join(', ');
       return `Frag ${arg.name}[${fragArgs}]`;
+    case 'msg-ref':
+      return MSG_DISPLAY;
   }
 }
 
@@ -498,7 +504,7 @@ function nameRefToText(ref: NameRef): string {
 }
 
 function expressionTokensToText(tokens: ExpressionToken[]): string {
-  return tokens.map(t => t.value).join('');
+  return tokens.map(t => (t.type === 'MSG' ? MSG_DISPLAY : t.value)).join('');
 }
 
 function iterableToText(iterable: Iterable): string {
@@ -672,7 +678,7 @@ function renderTemplateBlock(block: Template, x: number, y: number, maxWidth?: n
 
 // Render a function block
 // Segment type for multi-color rendering
-type SegmentType = 'default' | 'index' | 'nameRef' | 'contextVar';
+type SegmentType = 'default' | 'index' | 'nameRef' | 'contextVar' | 'msgRef';
 
 interface ColoredSegment {
   text: string;
@@ -710,6 +716,10 @@ function textArgsToColoredSegments(arg: TextArgs): ColoredSegment[] {
 
     case 'name-ref':
       segments.push({ text: nameRefToText(arg), type: 'nameRef' });
+      break;
+
+    case 'msg-ref':
+      segments.push({ text: MSG_DISPLAY, type: 'msgRef' });
       break;
   }
 
@@ -809,7 +819,25 @@ function renderTextArgsElement(arg: TextArgs, x: number, y: number, nested: bool
       return renderNameRef(arg, x, y, nested);
     case 'str-frag-invocation':
       return renderStrFragInvocation(arg, x, y);
+    case 'msg-ref':
+      return renderMsgRef(x, y, nested);
   }
+}
+
+// Render #msg as `#current_message` in orange (no box), sized like an index
+function renderMsgRef(x: number, y: number, nested: boolean = false): RenderResult {
+  const fontSize = FONT_SIZES.normal;
+  const padding = nested ? 2 : SPACING.blockPadding;
+  const svg = svgText(x, y + padding + fontSize * 0.85, MSG_DISPLAY, {
+    fill: COLORS.msgRef,
+    fontSize,
+    fontWeight: '700',
+  });
+  return {
+    svg,
+    width: measureText(MSG_DISPLAY, fontSize, true),
+    height: fontSize + padding * 2,
+  };
 }
 
 // Render context var in green box
@@ -825,20 +853,30 @@ function renderContextVarBoxed(block: ContextVar, x: number, y: number, nested: 
 
 // Render index as blue text (no box)
 function renderIndex(index: Index, x: number, y: number, nested: boolean = false): RenderResult {
-  const text = indexToText(index);
+  const segments: ColoredSegment[] = [];
+  addIndexSegments(segments, index);
   const fontSize = FONT_SIZES.normal;
   const padding = nested ? 2 : SPACING.blockPadding;
   const textY = y + padding + fontSize * 0.85;
 
-  const svg = svgText(x, textY, text, {
-    fill: COLORS.variable,
-    fontSize,
-    fontWeight: '700',
-  });
+  // Blue throughout, except a name reference (pink) or #msg (orange) inside it
+  const elements: string[] = [];
+  let currentX = x;
+  for (const seg of segments) {
+    const fill = seg.type === 'nameRef' ? COLORS.nameRef
+      : seg.type === 'msgRef' ? COLORS.msgRef
+      : COLORS.variable;
+    elements.push(svgText(currentX, textY, seg.text, {
+      fill,
+      fontSize,
+      fontWeight: '700',
+    }));
+    currentX += measureText(seg.text, fontSize, true);
+  }
 
   return {
-    svg,
-    width: measureText(text, fontSize, true),
+    svg: elements.join('\n'),
+    width: currentX - x,
     height: fontSize + padding * 2,
   };
 }
@@ -1192,6 +1230,10 @@ function renderColoredSegmentBox(
         color = COLORS.nameRef; // pink
         fontWeight = '600';
         break;
+      case 'msgRef':
+        color = COLORS.msgRef; // orange
+        fontWeight = '700';
+        break;
       case 'contextVar':
         color = COLORS.context; // green
         fontWeight = '600';
@@ -1215,19 +1257,33 @@ function renderColoredSegmentBox(
   };
 }
 
-// Helper to add index segments with proper coloring for name-refs
+// Helper to add index segments with proper coloring for name-refs and #msg
 function addIndexSegments(segments: ColoredSegment[], index: Index): void {
-  // Check if this is a time-index with a name-ref value (like @$C)
-  if (index.kind === 'time-index' && index.value.kind === 'name-ref') {
-    // Split into @ (blue/index) and variable name (pink/nameRef)
+  // The @ of a time index is blue whatever follows it
+  if (index.kind === 'time-index') {
     segments.push({ text: '@', type: 'index' });
-    segments.push({ text: index.value.name, type: 'nameRef' });
-  } else if (index.value.kind === 'name-ref') {
-    // Standalone name-ref without @ (like $C) - just the name in pink
-    segments.push({ text: index.value.name, type: 'nameRef' });
-  } else {
-    // Regular index - all blue
-    segments.push({ text: indexToText(index), type: 'index' });
+  }
+  segments.push(...indexValueToSegments(index.value));
+}
+
+// The value inside an index, as colored segments: blue by default, with a name
+// reference in pink and #msg in orange — even when they sit inside arithmetic
+// such as [#msg-1] or [@$C+1].
+function indexValueToSegments(value: IndexValue): ColoredSegment[] {
+  switch (value.kind) {
+    case 'name-ref':
+      // Just the name in pink, without the $
+      return [{ text: value.name, type: 'nameRef' }];
+    case 'msg-ref':
+      return [{ text: MSG_DISPLAY, type: 'msgRef' }];
+    case 'arithmetic':
+      return [
+        ...indexValueToSegments(value.left as IndexValue),
+        { text: value.operator.join(''), type: 'index' },
+        ...indexValueToSegments(value.right as IndexValue),
+      ];
+    default:
+      return [{ text: indexValueToText(value), type: 'index' }];
   }
 }
 
@@ -1287,6 +1343,21 @@ function renderNameRefBlock(block: NameRef, x: number, y: number): RenderResult 
     fontSize: FONT_SIZES.normal,
     bold: true,
   });
+}
+
+// Comments written on their own lines just above a Case/Default/ElseIf/Else header.
+function renderBranchComments(comments: string[] | undefined, x: number, y: number, maxWidth?: number): RenderResult {
+  if (!comments || comments.length === 0) return { svg: '', width: 0, height: 0 };
+  const parts: string[] = [];
+  let cy = y;
+  let width = 0;
+  for (const text of comments) {
+    const r = renderComment(text, x, cy, false, maxWidth);
+    parts.push(r.svg);
+    width = Math.max(width, r.width);
+    cy += r.height + 2;
+  }
+  return { svg: parts.join('\n'), width, height: cy - y };
 }
 
 // Render a comment
@@ -1626,52 +1697,69 @@ function renderEndBlock(block: EndBlock, x: number, y: number, maxWidth?: number
 /* ───────────────── Fragment Definitions ───────────────── */
 
 // Render a StrFragDef (String Fragment Definition) as SVG
-// Similar structure to a prompt container with badge approach: "Name[params] [SF]"
+// Similar structure to a prompt container with badge approach: "Name[params] [StrFrag]"
 function renderStrFragDefSvg(frag: StrFragDef, x: number, y: number, maxWidth?: number): RenderResult {
   const elements: string[] = [];
   const fontSize = FONT_SIZES.title;
   const badgeFontSize = 8;
   let currentY = y;
 
-  // Build title text: "Name[params]"
-  let titleText = frag.name;
+  // Title parts: "Name[params]" with index parameters in blue, like prompt titles.
+  const titleParts: Array<{ text: string; fill: string }> = [{ text: frag.name, fill: COLORS.textPrimary }];
   if (frag.params.length > 0) {
-    const paramsText = frag.params.map(p => textArgsToText(p)).join(', ');
-    titleText += `[${paramsText}]`;
+    titleParts.push({ text: '[', fill: COLORS.textPrimary });
+    frag.params.forEach((param, i) => {
+      if (i > 0) titleParts.push({ text: ', ', fill: COLORS.textPrimary });
+      const isIndex = param.kind === 'time-index' || param.kind === 'other-index';
+      titleParts.push({ text: textArgsToText(param), fill: isIndex ? COLORS.variable : COLORS.textPrimary });
+    });
+    titleParts.push({ text: ']', fill: COLORS.textPrimary });
   }
 
-  // Render fragment name first
-  const titleWidth = measureText(titleText, fontSize);
-  elements.push(svgText(x, currentY + fontSize, titleText, {
-    fill: COLORS.textPrimary,
-    fontSize,
-    fontWeight: '700',
-  }));
-
-  // Render [SF] badge to the right
-  const badgeText = 'SF';
+  // Title box: same grey box as a prompt title (.frag-def-title in styles.css),
+  // spanning the container width, holding "Name[params]" and the [StrFrag] badge.
+  const badgeText = 'StrFrag';
   const badgeTextWidth = measureText(badgeText, badgeFontSize);
   const badgePadding = 4;
   const badgeWidth = badgeTextWidth + badgePadding * 2;
   const badgeHeight = badgeFontSize + badgePadding;
-  const badgeX = x + titleWidth + 8;
-  const badgeY = currentY + (fontSize - badgeHeight) / 2 + 2;
+  const titleWidth = titleParts.reduce((sum, part) => sum + measureText(part.text, fontSize, true), 0);
+  const boxHeight = fontSize + 6;
+  const boxWidth = Math.max(8 + titleWidth + 8 + badgeWidth + 8, maxWidth || 400);
 
-  // Badge background
+  elements.push(svgRect(x, currentY, boxWidth, boxHeight, {
+    fill: COLORS.bgSecondary,
+    stroke: COLORS.borderMedium,
+    strokeWidth: 1,
+    rx: 3,
+  }));
+
+  // Fragment name and parameters
+  let partX = x + 8;
+  for (const part of titleParts) {
+    elements.push(svgText(partX, currentY + (fontSize + 6) / 2 + fontSize * 0.365, part.text, {
+      fill: part.fill,
+      fontSize,
+      fontWeight: '700',
+    }));
+    partX += measureText(part.text, fontSize, true);
+  }
+
+  // [StrFrag] badge to the right of the name, vertically centred in the box
+  const badgeX = x + 8 + titleWidth + 8;
+  const badgeY = currentY + (boxHeight - badgeHeight) / 2;
   elements.push(svgRect(badgeX, badgeY, badgeWidth, badgeHeight, {
     fill: COLORS.badgeBg,
     rx: 3,
     ry: 3,
   }));
-
-  // Badge text
-  elements.push(svgText(badgeX + badgePadding, badgeY + badgeFontSize - 1, badgeText, {
+  elements.push(svgText(badgeX + badgePadding, badgeY + badgeHeight / 2 + badgeFontSize * 0.365, badgeText, {
     fill: COLORS.badgeText,
     fontSize: badgeFontSize,
     fontWeight: '600',
   }));
 
-  const titleHeight = fontSize + SPACING.blockGap;
+  const titleHeight = boxHeight + SPACING.blockGap;
   currentY += titleHeight;
 
   // Left border starts from bottom of title
@@ -1705,52 +1793,69 @@ function renderStrFragDefSvg(frag: StrFragDef, x: number, y: number, maxWidth?: 
 }
 
 // Render a RolesFragDef (Roles Fragment Definition) as SVG
-// Similar structure to a prompt container with badge approach: "Name[params] [RF]"
+// Similar structure to a prompt container with badge approach: "Name[params] [RolesFrag]"
 function renderRolesFragDefSvg(frag: RolesFragDef, x: number, y: number, maxWidth?: number): RenderResult {
   const elements: string[] = [];
   const fontSize = FONT_SIZES.title;
   const badgeFontSize = 8;
   let currentY = y;
 
-  // Build title text: "Name[params]"
-  let titleText = frag.name;
+  // Title parts: "Name[params]" with index parameters in blue, like prompt titles.
+  const titleParts: Array<{ text: string; fill: string }> = [{ text: frag.name, fill: COLORS.textPrimary }];
   if (frag.params.length > 0) {
-    const paramsText = frag.params.map(p => textArgsToText(p)).join(', ');
-    titleText += `[${paramsText}]`;
+    titleParts.push({ text: '[', fill: COLORS.textPrimary });
+    frag.params.forEach((param, i) => {
+      if (i > 0) titleParts.push({ text: ', ', fill: COLORS.textPrimary });
+      const isIndex = param.kind === 'time-index' || param.kind === 'other-index';
+      titleParts.push({ text: textArgsToText(param), fill: isIndex ? COLORS.variable : COLORS.textPrimary });
+    });
+    titleParts.push({ text: ']', fill: COLORS.textPrimary });
   }
 
-  // Render fragment name first
-  const titleWidth = measureText(titleText, fontSize);
-  elements.push(svgText(x, currentY + fontSize, titleText, {
-    fill: COLORS.textPrimary,
-    fontSize,
-    fontWeight: '700',
-  }));
-
-  // Render [RF] badge to the right
-  const badgeText = 'RF';
+  // Title box: same grey box as a prompt title (.frag-def-title in styles.css),
+  // spanning the container width, holding "Name[params]" and the [RolesFrag] badge.
+  const badgeText = 'RolesFrag';
   const badgeTextWidth = measureText(badgeText, badgeFontSize);
   const badgePadding = 4;
   const badgeWidth = badgeTextWidth + badgePadding * 2;
   const badgeHeight = badgeFontSize + badgePadding;
-  const badgeX = x + titleWidth + 8;
-  const badgeY = currentY + (fontSize - badgeHeight) / 2 + 2;
+  const titleWidth = titleParts.reduce((sum, part) => sum + measureText(part.text, fontSize, true), 0);
+  const boxHeight = fontSize + 6;
+  const boxWidth = Math.max(8 + titleWidth + 8 + badgeWidth + 8, maxWidth || 400);
 
-  // Badge background
+  elements.push(svgRect(x, currentY, boxWidth, boxHeight, {
+    fill: COLORS.bgSecondary,
+    stroke: COLORS.borderMedium,
+    strokeWidth: 1,
+    rx: 3,
+  }));
+
+  // Fragment name and parameters
+  let partX = x + 8;
+  for (const part of titleParts) {
+    elements.push(svgText(partX, currentY + (fontSize + 6) / 2 + fontSize * 0.365, part.text, {
+      fill: part.fill,
+      fontSize,
+      fontWeight: '700',
+    }));
+    partX += measureText(part.text, fontSize, true);
+  }
+
+  // [RolesFrag] badge to the right of the name, vertically centred in the box
+  const badgeX = x + 8 + titleWidth + 8;
+  const badgeY = currentY + (boxHeight - badgeHeight) / 2;
   elements.push(svgRect(badgeX, badgeY, badgeWidth, badgeHeight, {
     fill: COLORS.badgeBg,
     rx: 3,
     ry: 3,
   }));
-
-  // Badge text
-  elements.push(svgText(badgeX + badgePadding, badgeY + badgeFontSize - 1, badgeText, {
+  elements.push(svgText(badgeX + badgePadding, badgeY + badgeHeight / 2 + badgeFontSize * 0.365, badgeText, {
     fill: COLORS.badgeText,
     fontSize: badgeFontSize,
     fontWeight: '600',
   }));
 
-  const titleHeight = fontSize + SPACING.blockGap;
+  const titleHeight = boxHeight + SPACING.blockGap;
   currentY += titleHeight;
 
   // Left border starts from bottom of title
@@ -1785,28 +1890,32 @@ function renderRolesFragDefSvg(frag: RolesFragDef, x: number, y: number, maxWidt
 /* ───────────────── Fragment Invocations ───────────────── */
 
 // Render a StrFragInvocation (String Fragment Invocation) as SVG
-// Renders like a function call with "Frag" keyword in pink
+// Renders like a function call with a black "Frag" keyword
 function renderStrFragInvocation(block: StrFragInvocation, x: number, y: number, _maxWidth?: number): RenderResult {
   const elements: string[] = [];
   let currentX = x;
   const fontSize = FONT_SIZES.normal;
   const padding = SPACING.blockPadding;
 
-  // Build the full text to measure for the box
-  let fullText = `Frag ${block.name}`;
+  // Pre-render the arguments with their own colouring (indices blue, context
+  // vars boxed, nested functions...), exactly like function-block arguments,
+  // and size the box from the rendered widths.
+  const argResults = block.arguments.map(arg => renderTextArgsElement(arg, 0, 0, true));
+  const sepWidth = measureText(', ', fontSize);
+  let argsWidth = 0;
   if (block.arguments.length > 0) {
-    const argsText = block.arguments.map(arg => textArgsToText(arg)).join(', ');
-    fullText += `[${argsText}]`;
+    argsWidth = measureText('[', fontSize) + measureText(']', fontSize)
+      + argResults.reduce((sum, r) => sum + r.width, 0)
+      + sepWidth * (block.arguments.length - 1);
   }
-
-  const textWidth = measureText(fullText, fontSize);
+  const textWidth = measureText('Frag', fontSize) + 4 + measureText(block.name, fontSize) + argsWidth;
   const boxWidth = textWidth + padding * 2 + 4;
   const boxHeight = fontSize + padding * 2;
 
   // Draw box with purple styling (like functions)
   elements.push(svgRect(currentX, y, boxWidth, boxHeight, {
-    fill: COLORS.funcBg,
-    stroke: COLORS.func,
+    fill: COLORS.fragBg,
+    stroke: COLORS.frag,
     strokeWidth: 1,
     rx: 3,
   }));
@@ -1814,17 +1923,17 @@ function renderStrFragInvocation(block: StrFragInvocation, x: number, y: number,
   const textY = y + padding + fontSize * 0.85;
   let textX = currentX + padding + 2;
 
-  // "Frag" keyword in pink
+  // "Frag" keyword in black, like the HTML renderer's .frag-keyword
   elements.push(svgText(textX, textY, 'Frag', {
-    fill: COLORS.nameRef,
+    fill: COLORS.textPrimary,
     fontSize,
     fontWeight: '600',
   }));
   textX += measureText('Frag', fontSize) + 4;
 
-  // Fragment name in purple
+  // Fragment name in orange
   elements.push(svgText(textX, textY, block.name, {
-    fill: COLORS.func,
+    fill: COLORS.frag,
     fontSize,
     fontWeight: '600',
   }));
@@ -1833,7 +1942,7 @@ function renderStrFragInvocation(block: StrFragInvocation, x: number, y: number,
   // Arguments
   if (block.arguments.length > 0) {
     elements.push(svgText(textX, textY, '[', {
-      fill: COLORS.func,
+      fill: COLORS.frag,
       fontSize,
       fontWeight: '500',
     }));
@@ -1842,21 +1951,19 @@ function renderStrFragInvocation(block: StrFragInvocation, x: number, y: number,
     for (let i = 0; i < block.arguments.length; i++) {
       if (i > 0) {
         elements.push(svgText(textX, textY, ', ', {
-          fill: COLORS.func,
+          fill: COLORS.frag,
           fontSize,
         }));
-        textX += measureText(', ', fontSize);
+        textX += sepWidth;
       }
-      const argText = textArgsToText(block.arguments[i]);
-      elements.push(svgText(textX, textY, argText, {
-        fill: COLORS.func,
-        fontSize,
-      }));
-      textX += measureText(argText, fontSize);
+      // Nested elements are drawn at (0,0) with 2px padding; shift them so
+      // their baseline lands on textY (same trick as renderFuncBlock).
+      elements.push(`<g transform="translate(${textX}, ${y + (padding - 2)})">${argResults[i].svg}</g>`);
+      textX += argResults[i].width;
     }
 
     elements.push(svgText(textX, textY, ']', {
-      fill: COLORS.func,
+      fill: COLORS.frag,
       fontSize,
       fontWeight: '500',
     }));
@@ -1870,28 +1977,32 @@ function renderStrFragInvocation(block: StrFragInvocation, x: number, y: number,
 }
 
 // Render a RolesFragInvocation (Roles Fragment Invocation) as SVG
-// Renders like a function call with "Frag" keyword in pink
+// Renders like a function call with a black "Frag" keyword
 function renderRolesFragInvocation(block: RolesFragInvocation, x: number, y: number, _maxWidth?: number): RenderResult {
   const elements: string[] = [];
   let currentX = x;
   const fontSize = FONT_SIZES.normal;
   const padding = SPACING.blockPadding;
 
-  // Build the full text to measure for the box
-  let fullText = `Frag ${block.name}`;
+  // Pre-render the arguments with their own colouring (indices blue, context
+  // vars boxed, nested functions...), exactly like function-block arguments,
+  // and size the box from the rendered widths.
+  const argResults = block.arguments.map(arg => renderTextArgsElement(arg, 0, 0, true));
+  const sepWidth = measureText(', ', fontSize);
+  let argsWidth = 0;
   if (block.arguments.length > 0) {
-    const argsText = block.arguments.map(arg => textArgsToText(arg)).join(', ');
-    fullText += `[${argsText}]`;
+    argsWidth = measureText('[', fontSize) + measureText(']', fontSize)
+      + argResults.reduce((sum, r) => sum + r.width, 0)
+      + sepWidth * (block.arguments.length - 1);
   }
-
-  const textWidth = measureText(fullText, fontSize);
+  const textWidth = measureText('Frag', fontSize) + 4 + measureText(block.name, fontSize) + argsWidth;
   const boxWidth = textWidth + padding * 2 + 4;
   const boxHeight = fontSize + padding * 2;
 
   // Draw box with purple styling (like functions)
   elements.push(svgRect(currentX, y, boxWidth, boxHeight, {
-    fill: COLORS.funcBg,
-    stroke: COLORS.func,
+    fill: COLORS.fragBg,
+    stroke: COLORS.frag,
     strokeWidth: 1,
     rx: 3,
   }));
@@ -1899,17 +2010,17 @@ function renderRolesFragInvocation(block: RolesFragInvocation, x: number, y: num
   const textY = y + padding + fontSize * 0.85;
   let textX = currentX + padding + 2;
 
-  // "Frag" keyword in pink
+  // "Frag" keyword in black, like the HTML renderer's .frag-keyword
   elements.push(svgText(textX, textY, 'Frag', {
-    fill: COLORS.nameRef,
+    fill: COLORS.textPrimary,
     fontSize,
     fontWeight: '600',
   }));
   textX += measureText('Frag', fontSize) + 4;
 
-  // Fragment name in purple
+  // Fragment name in orange
   elements.push(svgText(textX, textY, block.name, {
-    fill: COLORS.func,
+    fill: COLORS.frag,
     fontSize,
     fontWeight: '600',
   }));
@@ -1918,7 +2029,7 @@ function renderRolesFragInvocation(block: RolesFragInvocation, x: number, y: num
   // Arguments
   if (block.arguments.length > 0) {
     elements.push(svgText(textX, textY, '[', {
-      fill: COLORS.func,
+      fill: COLORS.frag,
       fontSize,
       fontWeight: '500',
     }));
@@ -1927,21 +2038,19 @@ function renderRolesFragInvocation(block: RolesFragInvocation, x: number, y: num
     for (let i = 0; i < block.arguments.length; i++) {
       if (i > 0) {
         elements.push(svgText(textX, textY, ', ', {
-          fill: COLORS.func,
+          fill: COLORS.frag,
           fontSize,
         }));
-        textX += measureText(', ', fontSize);
+        textX += sepWidth;
       }
-      const argText = textArgsToText(block.arguments[i]);
-      elements.push(svgText(textX, textY, argText, {
-        fill: COLORS.func,
-        fontSize,
-      }));
-      textX += measureText(argText, fontSize);
+      // Nested elements are drawn at (0,0) with 2px padding; shift them so
+      // their baseline lands on textY (same trick as renderFuncBlock).
+      elements.push(`<g transform="translate(${textX}, ${y + (padding - 2)})">${argResults[i].svg}</g>`);
+      textX += argResults[i].width;
     }
 
     elements.push(svgText(textX, textY, ']', {
-      fill: COLORS.func,
+      fill: COLORS.frag,
       fontSize,
       fontWeight: '500',
     }));
@@ -2201,7 +2310,7 @@ function renderExpressionTokensOneLine(
         ['env', 'sys', 'resp', 'prompt'].includes(tok.value) &&
         i + 1 < tokens.length &&
         tokens[i + 1].type === 'SYMBOL' &&
-        tokens[i + 1].value === '.') {
+        (tokens[i + 1].value === '.' || tokens[i + 1].value === '[')) {
 
       // Collect all tokens that form the context var path
       let contextVarText = tok.value;
@@ -2298,15 +2407,24 @@ function renderExpressionTokensOneLine(
       // - Indices (@T, @i, @t.i, @T.0) are blue
       // - Variables ($C, $var) are pink - $ is NOT stored/displayed
       // - @$var splits into @ (blue) + varname (pink)
-      const ctxSegments: Array<{ text: string; type: 'index' | 'variable' | 'regular' }> = [];
+      const ctxSegments: Array<{ text: string; type: 'index' | 'variable' | 'regular' | 'msgRef' }> = [];
       let pos = 0;
+      let bracketLevel = 0; // >0 while inside [...]: plain text there is an index (blue)
       while (pos < contextVarText.length) {
         const ch = contextVarText[pos];
 
         // Handle brackets
         if (ch === '[' || ch === ']') {
+          bracketLevel += ch === '[' ? 1 : -1;
           ctxSegments.push({ text: ch, type: 'regular' });
           pos++;
+          continue;
+        }
+
+        // Handle #msg (current message number) - orange, displayed as #current_message
+        if (ch === '#' && contextVarText.slice(pos, pos + MSG_SOURCE.length).toLowerCase() === MSG_SOURCE) {
+          ctxSegments.push({ text: MSG_DISPLAY, type: 'msgRef' });
+          pos += MSG_SOURCE.length;
           continue;
         }
 
@@ -2365,12 +2483,12 @@ function renderExpressionTokensOneLine(
 
         // Collect regular text until next special character
         let regularText = '';
-        while (pos < contextVarText.length && !/[@\[\]$]/.test(contextVarText[pos])) {
+        while (pos < contextVarText.length && !/[@\[\]$#]/.test(contextVarText[pos])) {
           regularText += contextVarText[pos];
           pos++;
         }
         if (regularText) {
-          ctxSegments.push({ text: regularText, type: 'regular' });
+          ctxSegments.push({ text: regularText, type: bracketLevel > 0 ? 'index' : 'regular' });
         }
       }
 
@@ -2406,6 +2524,7 @@ function renderExpressionTokensOneLine(
         let fill = COLORS.context; // default green
         if (seg.type === 'index') fill = COLORS.variable; // blue
         if (seg.type === 'variable') fill = COLORS.nameRef; // pink
+        if (seg.type === 'msgRef') fill = COLORS.msgRef; // orange
         elements.push(svgText(segX, currentTextY, displayText, {
           fill,
           fontSize,
@@ -2522,36 +2641,66 @@ function renderExpressionTokensOneLine(
         i++;
       }
 
-      // Render the function call
-      // Special handling for min/max - render without special coloring
+      // Render the function call.
+      // min/max are plain text (as in func blocks elsewhere); anything else gets
+      // the same purple box as a func-block in a role body.
       const isBuiltinMath = funcName === 'min' || funcName === 'max';
-      const funcColor = isBuiltinMath ? COLORS.textPrimary : COLORS.func;
+      if (isBuiltinMath) {
+        elements.push(svgText(currentX, currentTextY, funcName + '(', {
+          fill: COLORS.textPrimary,
+          fontSize,
+          fontWeight: '600',
+        }));
+        currentX += measureText(funcName + '(', fontSize, true);
+        const plainArgs = renderExpressionTokensSvg(argTokens, currentX, currentTextY, fontSize);
+        elements.push(...plainArgs.elements);
+        currentX += plainArgs.width;
+        elements.push(svgText(currentX, currentTextY, ')', {
+          fill: COLORS.textPrimary,
+          fontSize,
+          fontWeight: '600',
+        }));
+        currentX += measureText(')', fontSize, true);
+        continue;
+      }
 
-      elements.push(svgText(currentX, currentTextY, funcName, {
-        fill: funcColor,
+      const fnPad = 2;
+      const fnBoxX = currentX;
+      const fnBoxY = currentTextY - fontSize - fnPad + 1;
+      let fnX = fnBoxX + fnPad;
+      const fnParts: string[] = [];
+      fnParts.push(svgText(fnX, currentTextY, funcName, {
+        fill: COLORS.func,
         fontSize,
         fontWeight: '600',
       }));
-      currentX += measureText(funcName, fontSize, true);
-
-      elements.push(svgText(currentX, currentTextY, '(', {
-        fill: funcColor,
+      fnX += measureText(funcName, fontSize, true);
+      fnParts.push(svgText(fnX, currentTextY, '(', {
+        fill: COLORS.func,
         fontSize,
         fontWeight: '600',
       }));
-      currentX += measureText('(', fontSize, true);
-
-      // Render arguments recursively
-      const argsResult = renderExpressionTokensSvg(argTokens, currentX, currentTextY, fontSize);
-      elements.push(...argsResult.elements);
-      currentX += argsResult.width;
-
-      elements.push(svgText(currentX, currentTextY, ')', {
-        fill: funcColor,
+      fnX += measureText('(', fontSize, true);
+      // Arguments keep their own colouring (context vars, indices, strings...)
+      const argsResult = renderExpressionTokensSvg(argTokens, fnX, currentTextY, fontSize);
+      fnParts.push(...argsResult.elements);
+      fnX += argsResult.width;
+      fnParts.push(svgText(fnX, currentTextY, ')', {
+        fill: COLORS.func,
         fontSize,
         fontWeight: '600',
       }));
-      currentX += measureText(')', fontSize, true);
+      fnX += measureText(')', fontSize, true);
+      const fnBoxWidth = fnX - fnBoxX + fnPad;
+      // Box first so the text sits on top of it.
+      elements.push(svgRect(fnBoxX, fnBoxY, fnBoxWidth, fontSize + fnPad * 2, {
+        fill: COLORS.funcBg,
+        stroke: COLORS.func,
+        strokeWidth: 1,
+        rx: 3,
+      }));
+      elements.push(...fnParts);
+      currentX = fnBoxX + fnBoxWidth;
       continue;
     }
 
@@ -2676,9 +2825,9 @@ function renderExpressionTokensOneLine(
       continue;
     }
 
-    // Handle arithmetic operators - % needs spacing like comparison ops
+    // Handle arithmetic operators - spaced like comparison ops
     if (tok.type === 'ARITH_OP') {
-      const needsSpacing = tok.value === '%';
+      const needsSpacing = true;
       if (needsSpacing && !tok.spaceBefore && currentX > startX) {
         currentX += smallSpace;
       }
@@ -2703,6 +2852,18 @@ function renderExpressionTokensOneLine(
         fontWeight: '600',
       }));
       currentX += measureText(tok.value, fontSize, false); // semi-bold uses regular measurement
+      i++;
+      continue;
+    }
+
+    // Handle #msg - the current message number, orange
+    if (tok.type === 'MSG') {
+      elements.push(svgText(currentX, currentTextY, MSG_DISPLAY, {
+        fill: COLORS.msgRef,
+        fontSize,
+        fontWeight: '700',
+      }));
+      currentX += measureText(MSG_DISPLAY, fontSize, true);
       i++;
       continue;
     }
@@ -2780,6 +2941,39 @@ function renderExpressionTokensOneLine(
         i++;
         continue;
       }
+      // Bracketed index outside a context var (e.g. x[i]): "[" + blue index + "]"
+      if (tok.value === '[') {
+        const openText = svgText(currentX, currentTextY, '[', {
+          fill: COLORS.textPrimary,
+          fontSize,
+          fontWeight: '600',
+        });
+        elements.push(openText);
+        currentX += measureText('[', fontSize, false);
+        i++;
+        const innerTokens: ExpressionToken[] = [];
+        let bDepth = 1;
+        while (i < tokens.length) {
+          const t = tokens[i];
+          if (t.value === '[') bDepth++;
+          if (t.value === ']') { bDepth--; if (bDepth === 0) break; }
+          innerTokens.push(t);
+          i++;
+        }
+        const inner = renderPlainTokens(innerTokens, currentX, currentTextY, fontSize, COLORS.variable);
+        elements.push(...inner.elements);
+        currentX += inner.width;
+        if (i < tokens.length && tokens[i].value === ']') {
+          elements.push(svgText(currentX, currentTextY, ']', {
+            fill: COLORS.textPrimary,
+            fontSize,
+            fontWeight: '600',
+          }));
+          currentX += measureText(']', fontSize, false);
+          i++;
+        }
+        continue;
+      }
 
       elements.push(svgText(currentX, currentTextY, tok.value, {
         fill: COLORS.textPrimary,
@@ -2852,6 +3046,27 @@ function renderExpressionTokensWithBreaks(
   };
 }
 
+// Render expression tokens as a single bold text run in one colour.
+function renderPlainTokens(
+  tokens: ExpressionToken[],
+  startX: number,
+  textY: number,
+  fontSize: number,
+  fill: string
+): { elements: string[]; width: number; height?: number; lastLineY?: number; lastLineWidth?: number } {
+  const noSpaceBefore = ['.', '(', ')', '[', ']', ',', ':'];
+  const text = tokens
+    .map((t, i) =>
+      (i > 0 && t.spaceBefore && !noSpaceBefore.includes(t.value) ? ' ' : '') +
+      (t.type === 'STRING' ? `"${t.value}"` : t.value))
+    .join('');
+  if (!text) return { elements: [], width: 0 };
+  return {
+    elements: [svgText(startX, textY, text, { fill, fontSize, fontWeight: '700' })],
+    width: measureText(text, fontSize, true),
+  };
+}
+
 function renderControlFlowHeader(
   keyword: string,
   symbol: string,
@@ -2859,7 +3074,8 @@ function renderControlFlowHeader(
   suffix: string,
   x: number,
   y: number,
-  maxWidth?: number
+  maxWidth?: number,
+  plainTokenFill?: string
 ): RenderResult {
   const elements: string[] = [];
   // Use larger font size for keywords
@@ -2867,12 +3083,15 @@ function renderControlFlowHeader(
   const symbolFontSize = 11; // Larger symbol
   let currentX = x + 5; // Add padding inside box
   let currentY = y;
-  const textY = y + keywordFontSize + 1;
+  // Baseline placed so the keyword's caps (~0.73em tall) are centred in the
+  // (keywordFontSize + 6)px banner.
+  const textY = y + (keywordFontSize + 6) / 2 + keywordFontSize * 0.365;
   let maxRenderedWidth = 0;
 
-  // Symbol (larger)
+  // Symbol (larger). Its baseline is lowered a little so the glyph's centre
+  // lines up with the keyword's caps rather than floating above them.
   if (symbol) {
-    elements.push(svgText(currentX, textY, symbol, {
+    elements.push(svgText(currentX, textY + 0.7, symbol, {
       fill: COLORS.controlBorder,
       fontSize: symbolFontSize,
       fontWeight: '600',
@@ -2897,14 +3116,18 @@ function renderControlFlowHeader(
   const tokenStartX = currentX;
   const tokensMaxWidth = maxWidth ? maxWidth - (currentX - x) - 8 : undefined;
 
-  const tokenResult = renderExpressionTokensSvg(
-    tokens,
-    tokenStartX,
-    textY,
-    keywordFontSize,
-    tokensMaxWidth,
-    maxWidth ? y : undefined
-  );
+  // With plainTokenFill the expression is drawn as one bold run in that colour
+  // (used for Case matches, which are plain values), otherwise token by token.
+  const tokenResult = plainTokenFill
+    ? renderPlainTokens(tokens, tokenStartX, textY, keywordFontSize, plainTokenFill)
+    : renderExpressionTokensSvg(
+        tokens,
+        tokenStartX,
+        textY,
+        keywordFontSize,
+        tokensMaxWidth,
+        maxWidth ? y : undefined
+      );
   elements.push(...tokenResult.elements);
 
   // Lines render starting at tokenStartX, so the widest line's right edge is
@@ -2923,7 +3146,9 @@ function renderControlFlowHeader(
   // a variable box; the banner (driven by maxRenderedWidth) then extends past it.
   if (suffix) {
     const suffixWidth = measureText(suffix, keywordFontSize, true);
-    const suffixX = multiLine ? tokensRight + 6 : tokensRight;
+    // With no expression ("Else:") the colon hugs the keyword instead of
+    // inheriting the gap reserved for tokens.
+    const suffixX = multiLine ? tokensRight + 6 : tokens.length === 0 ? tokensRight - 4 : tokensRight;
     const lastLineY = tokenResult.lastLineY !== undefined ? tokenResult.lastLineY : textY;
     const suffixY = multiLine ? (textY + lastLineY) / 2 : textY;
     elements.push(svgText(suffixX, suffixY, suffix, {
@@ -2983,7 +3208,9 @@ function renderLoopHeader(
   const symbolFontSize = 11; // Larger symbol
   const fontSize = keywordFontSize; // Same size for expressions
   let currentX = x + 5; // Add padding inside box
-  const textY = y + keywordFontSize + 1;
+  // Baseline placed so the keyword's caps (~0.73em tall) are centred in the
+  // (keywordFontSize + 6)px banner.
+  const textY = y + (keywordFontSize + 6) / 2 + keywordFontSize * 0.365;
 
   // Symbol (larger)
   elements.push(svgText(currentX, textY, '↻', {
@@ -3149,6 +3376,12 @@ function renderConditionalOutsideRole(block: ConditionalBlockOutsideRole, x: num
 
   // ElseIf blocks
   for (let i = 0; i < block.elseif.length; i++) {
+    const eiComments = renderBranchComments(block.elseifComments?.[i], childX, currentY, maxWidthParam);
+    if (eiComments.height) {
+      elements.push(eiComments.svg);
+      contentRight = Math.max(contentRight, headerX + eiComments.width);
+      currentY += eiComments.height + 2;
+    }
     const elseifHeader = renderControlFlowHeader('ElseIf', '◇', block.elseif[i], ':', headerX, currentY, maxWidthParam);
     banners.push({ y: currentY, height: elseifHeader.height, hw: elseifHeader.width });
     elements.push(elseifHeader.svg);
@@ -3165,6 +3398,12 @@ function renderConditionalOutsideRole(block: ConditionalBlockOutsideRole, x: num
 
   // Else block
   if (block.elseBody && block.elseBody.length > 0) {
+    const eComments = renderBranchComments(block.elseComments, childX, currentY, maxWidthParam);
+    if (eComments.height) {
+      elements.push(eComments.svg);
+      contentRight = Math.max(contentRight, headerX + eComments.width);
+      currentY += eComments.height + 2;
+    }
     const elseHeader = renderControlFlowHeader('Else', '◇', [], ':', headerX, currentY, maxWidthParam);
     banners.push({ y: currentY, height: elseHeader.height, hw: elseHeader.width });
     elements.push(elseHeader.svg);
@@ -3227,6 +3466,12 @@ function renderConditionalInsideRole(block: ConditionalBlockInsideRole, x: numbe
 
   // ElseIf blocks
   for (let i = 0; i < block.elseif.length; i++) {
+    const eiComments = renderBranchComments(block.elseifComments?.[i], childX, currentY, maxWidthParam);
+    if (eiComments.height) {
+      elements.push(eiComments.svg);
+      contentRight = Math.max(contentRight, headerX + eiComments.width);
+      currentY += eiComments.height + 2;
+    }
     const elseifHeader = renderControlFlowHeader('ElseIf', '◇', block.elseif[i], ':', headerX, currentY, maxWidthParam);
     banners.push({ y: currentY, height: elseifHeader.height, hw: elseifHeader.width });
     elements.push(elseifHeader.svg);
@@ -3243,6 +3488,12 @@ function renderConditionalInsideRole(block: ConditionalBlockInsideRole, x: numbe
 
   // Else block
   if (block.elseBody && block.elseBody.length > 0) {
+    const eComments = renderBranchComments(block.elseComments, childX, currentY, maxWidthParam);
+    if (eComments.height) {
+      elements.push(eComments.svg);
+      contentRight = Math.max(contentRight, headerX + eComments.width);
+      currentY += eComments.height + 2;
+    }
     const elseHeader = renderControlFlowHeader('Else', '◇', [], ':', headerX, currentY, maxWidthParam);
     banners.push({ y: currentY, height: elseHeader.height, hw: elseHeader.width });
     elements.push(elseHeader.svg);
@@ -3289,25 +3540,27 @@ function renderSwitchOutsideRole(block: SwitchBlockOutsideRole, x: number, y: nu
   let contentRight = 0;
   const childMaxWidth = maxWidthParam ? maxWidthParam - SPACING.indentSize * 2 - 8 : undefined;
 
-  // Switch header - wrap expression in parens
-  const switchTokens: ExpressionToken[] = [
-    { type: 'SYMBOL', value: '(' },
-    ...block.expression,
-    { type: 'SYMBOL', value: ')' },
-  ];
-  const switchHeader = renderControlFlowHeader('Switch', '⎇', switchTokens, ':', switchHeaderX, currentY, maxWidthParam);
+  // Switch header: "Switch <expression>:"
+  const switchHeader = renderControlFlowHeader('Switch', '⎇', block.expression, ':', switchHeaderX, currentY, maxWidthParam);
   const switchBanner = { y: currentY, height: switchHeader.height, hw: switchHeader.width };
   elements.push(switchHeader.svg);
   contentRight = Math.max(contentRight, switchHeaderX + switchHeader.width);
   currentY += switchHeader.height + 4;
 
   // Cases (and default) — each gets a banner spanning only its own content.
-  const renderCase = (match: ExpressionToken[], keyword: string, body: PromptBlock[]) => {
+  const renderCase = (match: ExpressionToken[], keyword: string, body: PromptBlock[], comments?: string[]) => {
     const caseMaxWidth = maxWidthParam ? maxWidthParam - SPACING.indentSize : undefined;
-    const caseHeader = renderControlFlowHeader(keyword, '', match, keyword === 'Default' ? ':' : '', caseHeaderX, currentY, caseMaxWidth);
+    const caseComments = renderBranchComments(comments, caseHeaderX, currentY, caseMaxWidth);
+    let caseRight = caseHeaderX;
+    if (caseComments.height) {
+      elements.push(caseComments.svg);
+      caseRight = caseHeaderX + caseComments.width;
+      currentY += caseComments.height + 2;
+    }
+    const caseHeader = renderControlFlowHeader(keyword, '', match, ':', caseHeaderX, currentY, caseMaxWidth, COLORS.variable);
     const banner = { y: currentY, height: caseHeader.height, hw: caseHeader.width };
     elements.push(caseHeader.svg);
-    let caseRight = caseHeaderX + caseHeader.width;
+    caseRight = Math.max(caseRight, caseHeaderX + caseHeader.width);
     currentY += caseHeader.height + 5;
 
     for (const child of body) {
@@ -3321,10 +3574,10 @@ function renderSwitchOutsideRole(block: SwitchBlockOutsideRole, x: number, y: nu
   };
 
   for (const c of block.cases) {
-    renderCase(c.match, 'Case', c.body);
+    renderCase(c.match, 'Case', c.body, c.comments);
   }
   if (block.defaultCase) {
-    renderCase([], 'Default', block.defaultCase.body);
+    renderCase([], 'Default', block.defaultCase.body, block.defaultCase.comments);
   }
 
   const totalHeight = currentY - y;
@@ -3359,25 +3612,27 @@ function renderSwitchInsideRole(block: SwitchBlockInsideRole, x: number, y: numb
   const caseBodyX = x + SPACING.indentSize * 2 + 8;
   let contentRight = 0;
 
-  // Switch header - wrap expression in parens
-  const switchTokens: ExpressionToken[] = [
-    { type: 'SYMBOL', value: '(' },
-    ...block.expression,
-    { type: 'SYMBOL', value: ')' },
-  ];
-  const switchHeader = renderControlFlowHeader('Switch', '⎇', switchTokens, ':', switchHeaderX, currentY, maxWidthParam);
+  // Switch header: "Switch <expression>:"
+  const switchHeader = renderControlFlowHeader('Switch', '⎇', block.expression, ':', switchHeaderX, currentY, maxWidthParam);
   const switchBanner = { y: currentY, height: switchHeader.height, hw: switchHeader.width };
   elements.push(switchHeader.svg);
   contentRight = Math.max(contentRight, switchHeaderX + switchHeader.width);
   currentY += switchHeader.height + 4;
 
   // Cases (and default) — each gets a banner spanning only its own content.
-  const renderCase = (match: ExpressionToken[], keyword: string, body: RoleBuildingBlock[]) => {
+  const renderCase = (match: ExpressionToken[], keyword: string, body: RoleBuildingBlock[], comments?: string[]) => {
     const caseMaxWidth = maxWidthParam ? maxWidthParam - SPACING.indentSize : undefined;
-    const caseHeader = renderControlFlowHeader(keyword, '', match, keyword === 'Default' ? ':' : '', caseHeaderX, currentY, caseMaxWidth);
+    const caseComments = renderBranchComments(comments, caseHeaderX, currentY, caseMaxWidth);
+    let caseRight = caseHeaderX;
+    if (caseComments.height) {
+      elements.push(caseComments.svg);
+      caseRight = caseHeaderX + caseComments.width;
+      currentY += caseComments.height + 2;
+    }
+    const caseHeader = renderControlFlowHeader(keyword, '', match, ':', caseHeaderX, currentY, caseMaxWidth, COLORS.variable);
     const banner = { y: currentY, height: caseHeader.height, hw: caseHeader.width };
     elements.push(caseHeader.svg);
-    let caseRight = caseHeaderX + caseHeader.width;
+    caseRight = Math.max(caseRight, caseHeaderX + caseHeader.width);
     currentY += caseHeader.height + 5;
 
     const caseBodyMaxWidth = maxWidthParam ? maxWidthParam - SPACING.indentSize * 2 - 8 : undefined;
@@ -3392,10 +3647,10 @@ function renderSwitchInsideRole(block: SwitchBlockInsideRole, x: number, y: numb
   };
 
   for (const c of block.cases) {
-    renderCase(c.match, 'Case', c.body);
+    renderCase(c.match, 'Case', c.body, c.comments);
   }
   if (block.defaultCase) {
-    renderCase([], 'Default', block.defaultCase.body);
+    renderCase([], 'Default', block.defaultCase.body, block.defaultCase.comments);
   }
 
   const totalHeight = currentY - y;
@@ -3626,7 +3881,7 @@ function renderPromptTitle(title: PromptTitle, x: number, y: number, containerWi
 
   // Title text
   let textX = x + 8;
-  const textY = y + FONT_SIZES.title + 2;
+  const textY = y + (FONT_SIZES.title + 6) / 2 + FONT_SIZES.title * 0.365;
 
   // Name part
   elements.push(svgText(textX, textY, title.name, {

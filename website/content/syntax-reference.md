@@ -325,6 +325,23 @@ PromptName2[idx1, idx2, ...]: {
 
       <p>Multiple indices are comma-separated: <code>env.bomb_location[@t, bomb]</code> addresses a specific bomb at a specific time step. Standard arithmetic operators (<code>+</code>, <code>-</code>, <code>*</code>, <code>/</code>, <code>%</code>) are permitted in all index positions, enabling expressions such as <code>@t-1</code>, <code>@t+1</code>, <code>t-k</code>, or <code>@t % 25</code>.</p>
 
+      <h3>The Current Message Number</h3>
+      <p><code>#msg</code> is the position of the message being assembled in the message array: 1 for the first message the model will see, 2 for the second, and so on. It is a value, not content, so it goes wherever a number would&mdash;as an argument of a function or template, or as an index of a context variable, alone or in arithmetic. The renderer prints it as <code>#current_message</code>, in orange.</p>
+
+      <div class="code-and-render" style="grid-template-columns: 3fr 2fr;">
+        <pre><span class="context">sys.history</span>[#msg]
+<span class="context">sys.history</span>[#msg-1].text
+<span class="template">MESSAGE_HEADER</span>(#msg)</pre>
+        <div class="rendered-output">
+          <div class="render-label">Rendered Output</div>
+          <div><span class="ctx">sys.history[<span style="color:#f97316;font-weight:700;">#current_message</span>]</span></div>
+          <div><span class="ctx">sys.history[<span style="color:#f97316;font-weight:700;">#current_message</span>-1].text</span></div>
+          <div><span class="tpl">MESSAGE_HEADER(<span style="color:#f97316;font-weight:700;">#current_message</span>)</span></div>
+        </div>
+      </div>
+
+      <p>Because it counts messages, <code>#msg</code> only means something inside one: it may appear inside a role message, inside an <code>N:</code> message, or in a <code>StrFrag</code> body. Anywhere else&mdash;a top-level <code>ForEach</code> bound, a top-level <code>Name</code>, a <code>RolesFrag</code> argument, the spec title&mdash;it is an error. Note that <code>#</code> otherwise opens a comment; <code>#msg</code> on its own is the one exception.</p>
+
       <!-- TEMPLATES -->
       <h2 id="templates">Templates</h2>
       <p>Templates are <code>ALL_CAPS</code> placeholders representing text blocks whose content is specified at instantiation time. They describe the semantic purpose of a text section without fixing its wording, separating prompt architecture from prompt prose. Words within a template name are separated by underscores: <code>TASK_INTRO</code>, <code>MAP_DESCRIPTION</code>.</p>

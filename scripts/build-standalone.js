@@ -93,6 +93,10 @@ export { Scanner } from './scanner';
 export { Parser } from './parser';
 export { renderPrompt, renderPrompts } from './renderPrompt';
 export { renderPromptsSvg } from './renderPromptSvg';
+export {
+  BLOCKS_CSS, DEFAULT_WRAP_WIDTH, clampWrapWidth, escapeHtml, listRenderableBlocks,
+  pageFontFaceCss, renderBlockSvg, renderBlocksHtml, svgSize,
+} from './render-blocks';
 `;
 
   const tempEntryPath = path.join(rootDir, 'src', '_standalone_entry.ts');
@@ -253,7 +257,7 @@ export { EditorView };
  *    standalone bootstrap that uses the bundled parser/editor + embedded prompts
  *
  * The large inline <script> in src/index.html that follows the module script
- * (resize, width, and PNG/PDF export + trim logic) is intentionally left
+ * (resize, width slider, and SVG-based PNG/PDF export) is intentionally left
  * UNTOUCHED and carried through verbatim. That block is the single source of
  * truth for export behaviour, so the standalone/website visualizer always
  * matches what `npm run dev` produces and can no longer drift out of sync.
@@ -289,14 +293,14 @@ function transformHTML(html, bundledJS, editorJS, cssContent, prompts, fonts) {
   // visualizer that differs from `npm run dev` — fail loudly rather than
   // silently shipping a stale/wrong export.
   const exportMarkers = [
-    'async function captureAllContent',
-    'drawImage(fullCanvas',
-    'const constrainedWidth = Math.min(currentWidth',
+    'async function rasterizeBlocks',
+    'function stitchItems',
+    'window.ACDLSetWrapWidth(w)',
   ];
   const missing = exportMarkers.filter((m) => !html.includes(m));
   if (missing.length > 0) {
     throw new Error(
-      'build-standalone: the up-to-date PNG export/trim logic was not found ' +
+      'build-standalone: the up-to-date SVG export / width logic was not found ' +
         'in the standalone output (missing: ' +
         missing.join(', ') +
         '). The inline export <script> in src/index.html may have been ' +
@@ -347,95 +351,82 @@ ${getStandaloneUILogic()}
  * file-drop / render-button handlers (the equivalent of main-ui.ts +
  * src/index.html's <script type="module">).
  *
- * The resize / width / PNG+PDF export + trim logic is NOT duplicated here. It
+ * The resize / width / PNG+PDF export logic is NOT duplicated here. It
  * is carried through verbatim from src/index.html's inline export <script>, so
  * `npm run dev` and the built website visualizer always behave identically.
- * The window.ACDL* globals and the detectOverflow() no-op below are the contract
- * that retained script depends on.
+ * The window.ACDL* globals below are the contract that retained script depends on.
  */
 function getStandaloneUILogic() {
-  return `// Extract Parser and renderPrompts/renderPromptsSvg from the bundle
-const { Parser, renderPrompts, renderPromptsSvg } = ACDL;
+  return `// Extract what we need from the bundle
+const {
+  BLOCKS_CSS, DEFAULT_WRAP_WIDTH, clampWrapWidth, escapeHtml, listRenderableBlocks,
+  pageFontFaceCss, renderBlockSvg, renderBlocksHtml, svgSize,
+} = ACDL;
 const { createEditor } = ACDLEditor;
 
 let editorView = null;
+let wrapWidth = DEFAULT_WRAP_WIDTH;
+let renderedBlocks = [];
 
-// --- Contract with the export <script> carried over from src/index.html ---
-// Its PDF export reads these globals; its width slider calls detectOverflow().
-window.ACDLParser = Parser;
-window.ACDLRenderSvg = renderPromptsSvg;
+// --- Contract with the export / width <script> carried over from src/index.html ---
 window.ACDLGetEditorView = function () { return editorView; };
+window.ACDLGetRenderedBlocks = function () { return renderedBlocks; };
+window.ACDLGetWrapWidth = function () { return wrapWidth; };
+window.ACDLSetWrapWidth = function (width) {
+  const w = clampWrapWidth(width);
+  if (w === wrapWidth) return;
+  wrapWidth = w;
+  doRender();
+};
+window.ACDLRenderBlockSvg = renderBlockSvg;
+window.ACDLSvgSize = svgSize;
 
-// Overflow detection is a no-op in the dev build too (see main-ui.ts); defined
-// here as a global so the retained width-slider handler does not throw.
-function detectOverflow() {}
-
-function escapeHtml(text) {
-  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+// Page-level block styles + one @font-face pair for the inlined SVGs, from the
+// base64 fonts embedded at build time (same as main-ui.ts installBlockStyles).
+function installBlockStyles() {
+  if (document.getElementById("acdl-block-styles")) return;
+  const fonts = window.__ACDL_FONTS__ || {};
+  const regular = fonts.regular ? "data:font/truetype;base64," + fonts.regular : "/fonts/JetBrainsMono-Regular.ttf";
+  const bold = fonts.bold ? "data:font/truetype;base64," + fonts.bold : "/fonts/JetBrainsMono-Bold.ttf";
+  const style = document.createElement("style");
+  style.id = "acdl-block-styles";
+  style.textContent = pageFontFaceCss(regular, bold) + BLOCKS_CSS;
+  document.head.appendChild(style);
 }
 
-function enableCollapsibleBlocks() {
-  const headers = document.querySelectorAll(
-    ".role-message-header, " +
-    ".loop-block-outside-role-header, .loop-block-inside-role-header, " +
-    ".switch-block-outside-role-header, .switch-block-inside-role-header, " +
-    ".conditional-section-header"
-  );
-  headers.forEach((header) => {
-    const container = header.parentElement;
-    if (!container) return;
-    header.classList.add("collapsible-header");
-    const newHeader = header.cloneNode(true);
-    header.parentNode.replaceChild(newHeader, header);
-    newHeader.addEventListener("click", () => { container.classList.toggle("collapsed"); });
-  });
-}
-
-function detectWrappedComments(container) {
-  const blockWithComments = container.querySelectorAll('.block-with-comment');
-  blockWithComments.forEach(el => {
-    const comment = el.querySelector('.inline-comment, .comment');
-    if (comment) {
-      const lineHeight = parseFloat(getComputedStyle(comment).lineHeight) || 16;
-      if (comment.offsetHeight > lineHeight * 1.5) {
-        el.classList.add('comment-wrapped');
-      } else {
-        el.classList.remove('comment-wrapped');
-      }
-    }
-  });
-}
-
+// Every block is rendered with the SVG renderer at the wrap width and stacked
+// in file order: the same rendering as the VSCode extension's preview pane.
 function doRender() {
   if (!editorView) return;
   const input = editorView.state.doc.toString();
   const output = document.getElementById("output");
   if (!input.trim()) {
+    renderedBlocks = [];
     output.innerHTML = '<div class="info-msg">Enter ACDL code and click "Render Visualization"</div>';
     return;
   }
   try {
-    const parser = new Parser(input);
-    const ast = parser.parseFile();
-    const html = renderPrompts(ast);
-    output.innerHTML = html;
-    enableCollapsibleBlocks();
-    detectWrappedComments(output);
+    const blocks = listRenderableBlocks(input);
+    if (blocks.length === 0) throw new Error("No prompts or fragments found in file");
+    renderedBlocks = blocks;
+    output.innerHTML = renderBlocksHtml(blocks, wrapWidth);
   } catch (err) {
-    output.innerHTML = '<div class="error-msg">' + escapeHtml(err.message) + '</div>';
+    renderedBlocks = [];
+    output.innerHTML = '<div class="error-msg"><strong>Parsing Error:</strong> ' + escapeHtml(err.message || String(err)) + '</div>';
   }
 }
 
 document.addEventListener("DOMContentLoaded", () => {
   // NOTE: resize / collapse / width / export elements are handled by the
-  // export <script> carried over verbatim from src/index.html. This bootstrap
-  // only owns the editor, file input, example dropdown and render button.
+  // <script> carried over verbatim from src/index.html. This bootstrap only
+  // owns the editor, file input, example dropdown and render button.
   const promptSelect = document.getElementById("prompt-select");
   const editorContainer = document.getElementById("acdl-editor-container");
   const renderBtn = document.getElementById("render-btn");
-  const output = document.getElementById("output");
   const dropZone = document.getElementById("drop-zone");
   const fileInput = document.getElementById("acdl-upload");
+
+  installBlockStyles();
 
   // Initialize CodeMirror editor
   editorView = createEditor(editorContainer, "");
@@ -499,12 +490,6 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   renderBtn.addEventListener("click", doRender);
-
-  // ---------------------------------------------------------------------
-  // Resize, width-slider and PNG/PDF export are intentionally NOT wired up
-  // here. They live in the inline export <script> carried over verbatim
-  // from src/index.html so the standalone matches the dev build exactly.
-  // ---------------------------------------------------------------------
 
   // URL parameter handling for loading examples from links
   // Map example page parameter names to PROMPTS keys

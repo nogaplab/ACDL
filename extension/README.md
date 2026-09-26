@@ -8,7 +8,7 @@ ACDL is a domain-specific language for describing and visualizing agentic prompt
 
 - **Syntax Highlighting** - Full syntax highlighting for ACDL files (`.acdl`)
 - **Diagnostics** - Real-time error checking and validation as you type
-- **Preview Panel** - Visualize your ACDL prompts with the preview command
+- **Preview Panel** - Visualize your ACDL prompts with the preview command (rendered exactly like the website's Live Editor, with block navigation and PDF / PNG export)
 - **Structural Diff** - Compare two `.acdl` files with `ACDL: Diff…`, or right-click two files in the Explorer. Reports changes at the level you read ACDL (roles, indices, loops, added/removed blocks) instead of noisy text differences.
 - **Go-to-Definition** - Jump to label and template definitions
 
@@ -49,6 +49,8 @@ MyPrompt[@T]: {
 | Command | Description |
 |---------|-------------|
 | `ACDL: Show Preview` | Open a preview panel for the current ACDL file |
+| `ACDL: Save Preview as PDF / PNG…` | Save the current block, all blocks, or a selection as PDF or PNG, into one file or one file per block (`Ctrl/Cmd+Alt+S`) |
+| `ACDL: Preview Next Block` / `ACDL: Preview Previous Block` | Jump the preview to the next / previous prompt in a multi-block file (`Ctrl/Cmd+Alt+→` / `←`, or ← / → inside the preview) |
 
 ## Requirements
 

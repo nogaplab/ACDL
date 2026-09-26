@@ -18,6 +18,7 @@ const acdlHighlightStyle = HighlightStyle.define([
   { tag: tags.operator,     color: "#000000" },
   { tag: tags.variableName, color: "#000000" },                      // identifiers / context paths
   { tag: tags.meta,         color: "#8250df" },                      // range ...
+  { tag: tags.atom,         color: "#f97316", fontWeight: "bold" },  // #msg (current message number)
   { tag: tags.bracket,      color: "#0a58ce" },
   { tag: tags.punctuation,  color: "#000000" },
 ]);

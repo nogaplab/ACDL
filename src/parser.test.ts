@@ -168,6 +168,54 @@ test('# and block comments are comments', () => {
     sameAst(canonical, `P[@T]: {\n /* a note */\n S: INSTRUCTIONS\n}`);
 });
 
+test('comments above Case, Default, ElseIf and Else headers stay on their branch', () => {
+    const spec = onlyPrompt(`P[@T]: {
+ Switch env.a[@T] {
+  // first case
+  Case "x" {
+   U: env.q[@T]
+  }
+  // the fallback
+  // (two lines)
+  Default {
+   U: env.r[@T]
+  }
+ }
+ If env.b[@T] {
+  U: env.s[@T]
+ }
+ // before elseif
+ ElseIf env.c[@T] {
+  U: env.t[@T]
+ }
+ // before else
+ Else {
+  U: env.u[@T]
+ }
+}`);
+    const [sw, cond] = (spec.body as AST.ChatPromptBody).body as [AST.SwitchBlockOutsideRole, AST.ConditionalBlockOutsideRole];
+    expect(sw.kind).toBe('switch-block-outside-role');
+    expect(sw.cases[0].comments).toEqual(['first case']);
+    expect(sw.defaultCase?.comments).toEqual(['the fallback', '(two lines)']);
+    expect(cond.kind).toBe('conditional-block-outside-role');
+    expect(cond.elseifComments).toEqual([['before elseif']]);
+    expect(cond.elseComments).toEqual(['before else']);
+});
+
+test('a comment after the last Case is kept inside the Switch', () => {
+    const spec = onlyPrompt(`P[@T]: {
+ Switch env.a[@T] {
+  Case "x" {
+   U: env.q[@T]
+  }
+  // trailing note
+ }
+}`);
+    const sw = (spec.body as AST.ChatPromptBody).body[0] as AST.SwitchBlockOutsideRole;
+    const tail = sw.cases[0].body[sw.cases[0].body.length - 1] as AST.CommentBlock;
+    expect(tail).toEqual({ kind: 'comment-block', text: 'trailing note' });
+});
+
 test('typographic operators mean what their ASCII originals mean', () => {
     sameAst(`P[@T]: {\n ForEach(t: range(1, @T-1)) {\n  U: env.q[@t]\n }\n}`,
             `P[@T]: {\n ForEach(t: range(1, @T–1)) {\n  U: env.q[@t]\n }\n}`);
@@ -181,6 +229,65 @@ test('an unfamiliar symbol is a parse problem, not a lexical crash', () => {
     // The scanner hands `~` to the parser as a symbol; the error that comes back
     // names a position in the grammar rather than a codepoint.
     expect(() => parse(`P[@T]: {\n ~\n}`)).toThrow(/global scope/);
+});
+
+// ------------------------------------------------------------------ #msg
+
+/** The single-message body of a one-role spec. */
+function roleBody(src: string): AST.RoleBuildingBlock[] {
+    const spec = onlyPrompt(src);
+    const msg = (spec.body as AST.ChatPromptBody).body[0] as AST.RoleMessage;
+    expect(msg.kind).toBe('role-message');
+    return msg.body;
+}
+
+test('#msg is an argument of functions and templates', () => {
+    const [fn] = roleBody(`P[@T]: {\n U: summarize(env.history[@T], #msg)\n}`) as AST.Func[];
+    expect(fn.kind).toBe('function');
+    expect(fn.arguments[1]).toEqual({ kind: 'msg-ref' });
+
+    const [tpl] = roleBody(`P[@T]: {\n S: HEADER(#msg)\n}`) as AST.Template[];
+    expect(tpl.kind).toBe('template');
+    expect(tpl.arguments).toEqual([{ kind: 'msg-ref' }]);
+});
+
+test('#msg is an index of a context variable, alone or in arithmetic', () => {
+    const [cv] = roleBody(`P[@T]: {\n U: sys.history[#msg]\n}`) as AST.ContextVar[];
+    expect(cv.kind).toBe('context-var');
+    expect(cv.path!.indices[0].value).toEqual({ kind: 'msg-ref' });
+
+    const [prev] = roleBody(`P[@T]: {\n U: sys.history[@T][#msg-1].text\n}`) as AST.ContextVar[];
+    const arith = prev.path!.indices[1].value as AST.ArithmeticExpr;
+    expect(arith.kind).toBe('arithmetic');
+    expect(arith.left).toEqual({ kind: 'msg-ref' });
+});
+
+test('#msg is spelled case-insensitively, but #msgs is still a comment', () => {
+    sameAst(`P[@T]: {\n U: sys.history[#msg]\n}`, `P[@T]: {\n U: sys.history[#MSG]\n}`);
+    // A trailing comment attaches to the element before it, so compare against `//`.
+    sameAst(`P[@T]: {\n U: env.q[@T] // msgs are counted\n}`, `P[@T]: {\n U: env.q[@T] #msgs are counted\n}`);
+    sameAst(`P[@T]: {\n U: env.q[@T] // msg\n}`, `P[@T]: {\n U: env.q[@T] # msg\n}`);
+});
+
+test('#msg is allowed in a StrFrag body and in a completion prompt', () => {
+    expect(() => parse(`StrFrag Turn[]: {\n sys.history[#msg]\n}`)).not.toThrow();
+    expect(() => parse(`P[@T]: {\n N: PREAMBLE(#msg)\n}`)).not.toThrow();
+});
+
+test('#msg outside a role message is an error', () => {
+    // As a top-level loop bound, a top-level Name, a RolesFrag argument, and a title index.
+    expect(() => parse(`P[@T]: {\n ForEach(t: range(1, #msg)) {\n  U: env.q[@t]\n }\n}`))
+        .toThrow(/#msg .*only appear inside a role message/);
+    expect(() => parse(`P[@T]: {\n Name h := pick(#msg)\n U: $h\n}`))
+        .toThrow(/#msg .*only appear inside a role message/);
+    expect(() => parse(`P[@T]: {\n Frag Turn[#msg]\n}`))
+        .toThrow(/#msg .*only appear inside a role message/);
+    expect(() => parse(`P[#msg]: {\n S: INSTRUCTIONS\n}`))
+        .toThrow(/#msg .*only appear inside a role message/);
+});
+
+test('#msg on its own is not content', () => {
+    expect(() => parse(`P[@T]: {\n U: {\n  #msg\n }\n}`)).toThrow(/argument or an index/);
 });
 
 // ------------------------------------------------------------- still errors

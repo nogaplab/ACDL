@@ -4,6 +4,9 @@
   "scopeName": "source.acdl",
   "patterns": [
     {
+      "include": "#msg-reference"
+    },
+    {
       "include": "#comment"
     },
     {
@@ -56,6 +59,11 @@
     }
   ],
   "repository": {
+    "msg-reference": {
+      "comment": "#msg is the current message number; it must be matched before the # comment rule",
+      "match": "(?i)#msg(?![\\p{L}\\p{N}_])",
+      "name": "variable.language.current-message.acdl"
+    },
     "comment": {
       "patterns": [
         {

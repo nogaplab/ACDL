@@ -2,6 +2,37 @@
 
 All notable changes to the ACDL Language Support extension will be documented in this file.
 
+## [0.2.3] - 2026-09-26
+
+### Added
+
+- **All blocks in one preview**: a multi-block file now renders every prompt and
+  fragment stacked in file order, so you can scroll through the whole file in the
+  preview. The block under the editor cursor is highlighted and scrolled into view.
+- **Preview navigation**: jump between blocks directly from the preview pane, without
+  moving the editor cursor. Use the ← / → buttons in the preview's status bar, press
+  ← / → (or PageUp / PageDown) while the preview has focus, or `Ctrl/Cmd+Alt+←` / `→`
+  from the editor. The counter follows whichever block you scroll to.
+- **Save dialog** (toolbar `Save…`, `Ctrl/Cmd+Alt+S`, or `ACDL: Save Preview as PDF / PNG`):
+  save the current block, all blocks, or a hand-picked set as **PDF** or **PNG**.
+  Several blocks can go into one file (PDF: one page per block or a single tall page;
+  PNG: stacked into one image) or into separate files, one per block, in a folder
+  you choose. PDF pages are sized like the website visualizer's PDF export.
+- **Width control** in the preview toolbar: the wrap width (default 800px, like the
+  visualizer's slider) applies to the preview and to every export, and is remembered
+  per workspace.
+
+### Changed
+
+- **The preview now uses the SVG renderer**, the same pipeline as the website
+  visualizer's PDF export, so the pane always shows exactly what Copy / Save / Export
+  produce. html2canvas and its capture workarounds are gone.
+- **Copy image** copies the highlighted block only, as before. **Save** now opens the
+  dialog above instead of saving a single PNG straight away.
+- **Fragments**: `Frag` invocations are drawn in orange instead of purple, and fragment
+  definitions carry a `StrFrag` / `RolesFrag` badge instead of `SF` / `RF` (in both the
+  HTML and the SVG/PDF renderers).
+
 ## [0.2.2] - 2026-09-03
 
 ### Fixed

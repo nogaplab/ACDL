@@ -472,6 +472,8 @@ function ser(n: any): string {
       return `${ser(n.left)}${n.operator.join("")}${ser(n.right)}`;
     case "name-ref":
       return `$${n.name}${serIndices(n.indices)}${serPathChain(n.path)}`;
+    case "msg-ref":
+      return "#msg";
     case "name-def":
       return `name ${n.name} := ${ser(n.value)}`;
     case "function":
