@@ -25,6 +25,7 @@ import {
   CommentBlock,
   MarkBlock,
   MarkBlockInsideRole,
+  BranchMark,
   ExpressionToken,
   Iterable,
   RangeExpr,
@@ -1413,7 +1414,7 @@ function renderRoleBuildingBlock(block: RoleBuildingBlock, x: number, y: number,
     case 'name-ref':
       return renderNameRefBlock(block, x, y);
     case 'comment-block':
-      return renderComment(block.text, x, y, false, maxWidth);
+      return renderComment(block.text, x, y, true, maxWidth);
     case 'name-def':
       return renderNameDef(block, x, y, maxWidth);
     case 'other-index':
@@ -1725,7 +1726,7 @@ function renderStrFragDefSvg(frag: StrFragDef, x: number, y: number, maxWidth?: 
   const badgeHeight = badgeFontSize + badgePadding;
   const titleWidth = titleParts.reduce((sum, part) => sum + measureText(part.text, fontSize, true), 0);
   const boxHeight = fontSize + 6;
-  const boxWidth = Math.max(8 + titleWidth + 8 + badgeWidth + 8, maxWidth || 400);
+  const boxWidth = Math.max(8 + titleWidth + 8 + badgeWidth + 8, maxWidth || 0);
 
   elements.push(svgRect(x, currentY, boxWidth, boxHeight, {
     fill: COLORS.bgSecondary,
@@ -1769,9 +1770,12 @@ function renderStrFragDefSvg(frag: StrFragDef, x: number, y: number, maxWidth?: 
   const bodyX = x + SPACING.indentSize;
   let bodyHeight = 0;
 
+  let bodyWidth = 0;
+
   for (const block of frag.body) {
     const result = renderRoleBuildingBlock(block, bodyX, currentY, maxWidth ? maxWidth - SPACING.indentSize : undefined);
     elements.push(result.svg);
+    bodyWidth = Math.max(bodyWidth, SPACING.indentSize + result.width);
     currentY += result.height + SPACING.elementGap;
     bodyHeight += result.height + SPACING.elementGap;
   }
@@ -1783,7 +1787,9 @@ function renderStrFragDefSvg(frag: StrFragDef, x: number, y: number, maxWidth?: 
   }));
 
   const totalHeight = titleHeight + bodyHeight;
-  const totalWidth = maxWidth || 400;
+  // Unconstrained (measuring pass in renderPromptsSvg): report the natural
+  // width so the canvas grows with the content, as it does for prompts.
+  const totalWidth = maxWidth || Math.max(boxWidth, bodyWidth);
 
   return {
     svg: elements.join('\n'),
@@ -1821,7 +1827,7 @@ function renderRolesFragDefSvg(frag: RolesFragDef, x: number, y: number, maxWidt
   const badgeHeight = badgeFontSize + badgePadding;
   const titleWidth = titleParts.reduce((sum, part) => sum + measureText(part.text, fontSize, true), 0);
   const boxHeight = fontSize + 6;
-  const boxWidth = Math.max(8 + titleWidth + 8 + badgeWidth + 8, maxWidth || 400);
+  const boxWidth = Math.max(8 + titleWidth + 8 + badgeWidth + 8, maxWidth || 0);
 
   elements.push(svgRect(x, currentY, boxWidth, boxHeight, {
     fill: COLORS.bgSecondary,
@@ -1864,9 +1870,12 @@ function renderRolesFragDefSvg(frag: RolesFragDef, x: number, y: number, maxWidt
   // Render body (PromptBlocks - role messages, etc.)
   let bodyHeight = 0;
 
+  let bodyWidth = 0;
+
   for (const block of frag.body) {
     const result = renderTopLevelBlock(block, x, currentY, maxWidth);
     elements.push(result.svg);
+    bodyWidth = Math.max(bodyWidth, result.width);
     currentY += result.height + SPACING.blockGap;
     bodyHeight += result.height + SPACING.blockGap;
   }
@@ -1878,7 +1887,9 @@ function renderRolesFragDefSvg(frag: RolesFragDef, x: number, y: number, maxWidt
   }));
 
   const totalHeight = titleHeight + bodyHeight;
-  const totalWidth = maxWidth || 400;
+  // Unconstrained (measuring pass in renderPromptsSvg): report the natural
+  // width so the canvas grows with the content, as it does for prompts.
+  const totalWidth = maxWidth || Math.max(boxWidth, bodyWidth);
 
   return {
     svg: elements.join('\n'),
@@ -2319,6 +2330,8 @@ function renderExpressionTokensOneLine(
       // Track bracket/paren depth to handle nested structures
       let parenDepth = 0;
       let bracketDepth = 0;
+      // True after `.`, `@` or `$`, where a name segment is expected next.
+      let expectSegment = false;
 
       while (i < tokens.length) {
         const t = tokens[i];
@@ -2374,13 +2387,17 @@ function renderExpressionTokensOneLine(
         // Dot continues the path
         if (t.value === '.') {
           contextVarText += t.value;
+          expectSegment = true;
           i++;
           continue;
         }
 
-        // Identifier or keyword continues the path (path segments can be keywords like "name")
-        if (t.type === 'IDENT' || t.type === 'KEYWORD' || t.type === 'NUMBER') {
+        // Identifier or keyword continues the path (path segments can be keywords like "name"),
+        // but only right after a joiner. Otherwise it is the next operand or operator:
+        // in `sys.a and not tc.b` the `and` must not be swallowed into the path.
+        if (expectSegment && (t.type === 'IDENT' || t.type === 'KEYWORD' || t.type === 'NUMBER')) {
           contextVarText += t.value;
+          expectSegment = false;
           i++;
           continue;
         }
@@ -2388,6 +2405,7 @@ function renderExpressionTokensOneLine(
         // @ continues the path
         if (t.value === '@') {
           contextVarText += t.value;
+          expectSegment = true;
           i++;
           continue;
         }
@@ -2395,6 +2413,7 @@ function renderExpressionTokensOneLine(
         // $ continues the path (for variable references like $C)
         if (t.value === '$') {
           contextVarText += t.value;
+          expectSegment = true;
           i++;
           continue;
         }
@@ -3358,9 +3377,13 @@ function renderConditionalOutsideRole(block: ConditionalBlockOutsideRole, x: num
   const headerX = x + 8;
   const childX = x + SPACING.indentSize + 8;
   let contentRight = 0;
+  const marked = !!block.branchMarks?.length;
+  const spans: { top: number; bottom: number }[] = [];
+  if (marked && maxWidthParam) maxWidthParam -= MARK_BRACKET_WIDTH;
   const childMaxWidth = maxWidthParam ? maxWidthParam - SPACING.indentSize - 8 : undefined;
 
   // If block
+  const ifTop = currentY;
   const ifHeader = renderControlFlowHeader('If', '◇', block.Ifcondition, ':', headerX, currentY, maxWidthParam);
   banners.push({ y: currentY, height: ifHeader.height, hw: ifHeader.width });
   elements.push(ifHeader.svg);
@@ -3373,9 +3396,11 @@ function renderConditionalOutsideRole(block: ConditionalBlockOutsideRole, x: num
     contentRight = Math.max(contentRight, childX + childResult.width);
     currentY += childResult.height + SPACING.blockGap;
   }
+  spans.push({ top: ifTop, bottom: currentY - (block.IfBody.length ? SPACING.blockGap : 0) });
 
   // ElseIf blocks
   for (let i = 0; i < block.elseif.length; i++) {
+    const branchTop = currentY;
     const eiComments = renderBranchComments(block.elseifComments?.[i], childX, currentY, maxWidthParam);
     if (eiComments.height) {
       elements.push(eiComments.svg);
@@ -3394,10 +3419,12 @@ function renderConditionalOutsideRole(block: ConditionalBlockOutsideRole, x: num
       contentRight = Math.max(contentRight, childX + childResult.width);
       currentY += childResult.height + SPACING.blockGap;
     }
+    spans.push({ top: branchTop, bottom: currentY - (block.elseifBody[i].length ? SPACING.blockGap : 0) });
   }
 
   // Else block
   if (block.elseBody && block.elseBody.length > 0) {
+    const branchTop = currentY;
     const eComments = renderBranchComments(block.elseComments, childX, currentY, maxWidthParam);
     if (eComments.height) {
       elements.push(eComments.svg);
@@ -3416,9 +3443,12 @@ function renderConditionalOutsideRole(block: ConditionalBlockOutsideRole, x: num
       contentRight = Math.max(contentRight, childX + childResult.width);
       currentY += childResult.height + SPACING.blockGap;
     }
+    spans.push({ top: branchTop, bottom: currentY - SPACING.blockGap });
   }
 
   const totalHeight = currentY - y;
+
+  elements.push(branchMarksSvg(block.branchMarks, spans, contentRight + 8));
 
   // Left border
   elements.push(svgLine(headerX, y, headerX, y + totalHeight, {
@@ -3433,7 +3463,7 @@ function renderConditionalOutsideRole(block: ConditionalBlockOutsideRole, x: num
 
   return {
     svg: bannerSvg + '\n' + elements.join('\n'),
-    width: contentRight - x,
+    width: contentRight - x + (marked ? MARK_BRACKET_WIDTH : 0),
     height: totalHeight,
   };
 }
@@ -3446,8 +3476,13 @@ function renderConditionalInsideRole(block: ConditionalBlockInsideRole, x: numbe
   const headerX = x + 8;
   const childX = x + SPACING.indentSize + 8;
   let contentRight = 0;
+  const marked = !!block.branchMarks?.length;
+  const spans: { top: number; bottom: number }[] = [];
+
+  if (marked && maxWidthParam) maxWidthParam -= MARK_BRACKET_WIDTH;
 
   // If block
+  const ifTop = currentY;
   const ifHeader = renderControlFlowHeader('If', '◇', block.Ifcondition, ':', headerX, currentY, maxWidthParam);
   banners.push({ y: currentY, height: ifHeader.height, hw: ifHeader.width });
   elements.push(ifHeader.svg);
@@ -3463,9 +3498,11 @@ function renderConditionalInsideRole(block: ConditionalBlockInsideRole, x: numbe
     contentRight = Math.max(contentRight, childX + childResult.width);
     currentY += childResult.height + SPACING.elementGap;
   }
+  spans.push({ top: ifTop, bottom: currentY - (block.IfBody.length ? SPACING.elementGap : 0) });
 
   // ElseIf blocks
   for (let i = 0; i < block.elseif.length; i++) {
+    const branchTop = currentY;
     const eiComments = renderBranchComments(block.elseifComments?.[i], childX, currentY, maxWidthParam);
     if (eiComments.height) {
       elements.push(eiComments.svg);
@@ -3484,10 +3521,12 @@ function renderConditionalInsideRole(block: ConditionalBlockInsideRole, x: numbe
       contentRight = Math.max(contentRight, childX + childResult.width);
       currentY += childResult.height + SPACING.elementGap;
     }
+    spans.push({ top: branchTop, bottom: currentY - (block.elseifBody[i].length ? SPACING.elementGap : 0) });
   }
 
   // Else block
   if (block.elseBody && block.elseBody.length > 0) {
+    const branchTop = currentY;
     const eComments = renderBranchComments(block.elseComments, childX, currentY, maxWidthParam);
     if (eComments.height) {
       elements.push(eComments.svg);
@@ -3506,9 +3545,12 @@ function renderConditionalInsideRole(block: ConditionalBlockInsideRole, x: numbe
       contentRight = Math.max(contentRight, childX + childResult.width);
       currentY += childResult.height + SPACING.elementGap;
     }
+    spans.push({ top: branchTop, bottom: currentY - SPACING.elementGap });
   }
 
   const totalHeight = currentY - y;
+
+  elements.push(branchMarksSvg(block.branchMarks, spans, contentRight + 8));
 
   // Left border
   elements.push(svgLine(headerX, y, headerX, y + totalHeight, {
@@ -3523,7 +3565,7 @@ function renderConditionalInsideRole(block: ConditionalBlockInsideRole, x: numbe
 
   return {
     svg: bannerSvg + '\n' + elements.join('\n'),
-    width: contentRight - x,
+    width: contentRight - x + (marked ? MARK_BRACKET_WIDTH : 0),
     height: totalHeight,
   };
 }
@@ -3674,6 +3716,34 @@ function renderSwitchInsideRole(block: SwitchBlockInsideRole, x: number, y: numb
   };
 }
 
+// Room a Mark's bracket and number take to the right of what it marks.
+const MARK_BRACKET_WIDTH = 25;
+
+// A Mark's right-hand bracket spanning [top, top + height], with its number.
+function markBracketSvg(bracketX: number, top: number, height: number, markNum: number): string {
+  return [
+    svgLine(bracketX, top, bracketX + 5, top, { stroke: '#000000', strokeWidth: 2 }),
+    svgLine(bracketX + 5, top, bracketX + 5, top + height, { stroke: '#000000', strokeWidth: 2 }),
+    svgLine(bracketX, top + height, bracketX + 5, top + height, { stroke: '#000000', strokeWidth: 2 }),
+    svgText(bracketX + 10, top + height / 2 + FONT_SIZES.normal / 3, String(markNum), {
+      fill: '#000000',
+      fontSize: FONT_SIZES.normal,
+      fontWeight: '700',
+    }),
+  ].join('\n');
+}
+
+// Brackets for Marks wrapped around branches of an If chain,
+// drawn to the right of the whole chain. `spans` holds each branch's vertical
+// extent, indexed as in BranchMark (the If, the ElseIfs, then the Else).
+function branchMarksSvg(marks: BranchMark[] | undefined, spans: { top: number; bottom: number }[], bracketX: number): string {
+  if (!marks) return '';
+  return marks
+    .filter((m) => spans[m.from] && spans[m.to])
+    .map((m) => markBracketSvg(bracketX, spans[m.from].top, spans[m.to].bottom - spans[m.from].top, m.markNumber))
+    .join('\n');
+}
+
 // Render mark block (with bracket on right)
 function renderMarkBlock(block: MarkBlock, x: number, y: number, maxWidthParam?: number): RenderResult {
   const elements: string[] = [];
@@ -3695,17 +3765,7 @@ function renderMarkBlock(block: MarkBlock, x: number, y: number, maxWidthParam?:
   const bracketX = x + resultMaxWidth + 8;
   const markNum = block.markNumber !== undefined && !isNaN(block.markNumber) ? block.markNumber : 0;
 
-  // Bracket line (right side)
-  elements.push(svgLine(bracketX, y, bracketX + 5, y, { stroke: '#000000', strokeWidth: 2 }));
-  elements.push(svgLine(bracketX + 5, y, bracketX + 5, y + totalHeight, { stroke: '#000000', strokeWidth: 2 }));
-  elements.push(svgLine(bracketX, y + totalHeight, bracketX + 5, y + totalHeight, { stroke: '#000000', strokeWidth: 2 }));
-
-  // Mark number
-  elements.push(svgText(bracketX + 10, y + totalHeight / 2 + FONT_SIZES.normal / 3, String(markNum), {
-    fill: '#000000',
-    fontSize: FONT_SIZES.normal,
-    fontWeight: '700',
-  }));
+  elements.push(markBracketSvg(bracketX, y, totalHeight, markNum));
 
   return {
     svg: elements.join('\n'),
@@ -3737,17 +3797,7 @@ function renderMarkBlockInsideRole(block: MarkBlockInsideRole, x: number, y: num
   const bracketX = x + maxWidth + 8;
   const markNum = block.markNumber !== undefined && !isNaN(block.markNumber) ? block.markNumber : 0;
 
-  // Bracket line
-  elements.push(svgLine(bracketX, y, bracketX + 5, y, { stroke: '#000000', strokeWidth: 2 }));
-  elements.push(svgLine(bracketX + 5, y, bracketX + 5, y + totalHeight, { stroke: '#000000', strokeWidth: 2 }));
-  elements.push(svgLine(bracketX, y + totalHeight, bracketX + 5, y + totalHeight, { stroke: '#000000', strokeWidth: 2 }));
-
-  // Mark number
-  elements.push(svgText(bracketX + 10, y + totalHeight / 2 + FONT_SIZES.normal / 3, String(markNum), {
-    fill: '#000000',
-    fontSize: FONT_SIZES.normal,
-    fontWeight: '700',
-  }));
+  elements.push(markBracketSvg(bracketX, y, totalHeight, markNum));
 
   return {
     svg: elements.join('\n'),

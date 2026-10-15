@@ -645,6 +645,61 @@ PromptName2[idx1, idx2, ...]: {
 
       <p>Here, mark <code>]1</code> highlights the system setup, <code>]2</code> marks the current query.</p>
 
+      <h3 id="marks-in-if-chains">Marks between If branches</h3>
+      <p>A mark is the one construct allowed between the branches of an <code>If</code> / <code>ElseIf</code> / <code>Else</code> chain. It may wrap one or more consecutive branches, including the leading <code>If</code>, and the chain carries on after it. The bracket is drawn beside just those branches. Such a mark may contain only branches and comments, and no branch may follow the <code>Else</code>:</p>
+
+      <div class="code-and-render" style="grid-template-columns: 3fr 2fr;">
+        <pre><span class="keyword">Mark</span> 1 {
+    <span class="keyword">If</span> <span class="context">tc</span>.success {
+        <span class="role">T</span>: <span class="context">tc</span>.result
+    }
+}
+<span class="keyword">ElseIf</span> <span class="context">tc</span>.timed_out {
+    <span class="role">T</span>: <span class="template">TIMEOUT_NOTICE</span>
+}
+<span class="keyword">Mark</span> 2 {
+    <span class="keyword">Else</span> {
+        <span class="role">T</span>: <span class="template">TOOL_ERROR</span>(<span class="context">tc</span>.error)
+    }
+}</pre>
+        <div class="rendered-output">
+          <div class="render-label">Rendered Output</div>
+          <div class="mark-block">
+            <div class="ctrl-block">
+              <div class="ctrl-header cond">If <span class="ctx">tc.success</span></div>
+              <div class="role-msg tool">
+                <span class="role-badge">Role: Tool</span>
+                <div class="role-body"><span class="ctx">tc.result</span></div>
+              </div>
+            </div>
+            <div class="mark-bracket">
+              <div class="mark-line"></div>
+              <span class="mark-num">1</span>
+            </div>
+          </div>
+          <div class="ctrl-block">
+            <div class="ctrl-header cond">ElseIf <span class="ctx">tc.timed_out</span></div>
+            <div class="role-msg tool">
+              <span class="role-badge">Role: Tool</span>
+              <div class="role-body"><span class="tpl">TIMEOUT_NOTICE</span></div>
+            </div>
+          </div>
+          <div class="mark-block">
+            <div class="ctrl-block">
+              <div class="ctrl-header cond">Else</div>
+              <div class="role-msg tool">
+                <span class="role-badge">Role: Tool</span>
+                <div class="role-body"><span class="tpl">TOOL_ERROR</span>(<span class="ctx">tc.error</span>)</div>
+              </div>
+            </div>
+            <div class="mark-bracket">
+              <div class="mark-line"></div>
+              <span class="mark-num">2</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- NAME DEFINITIONS -->
       <h2 id="name-definitions">Name Definitions</h2>
       <p>A name definition binds a symbolic name to an expression, allowing complex or frequently repeated expressions to be written once and referenced concisely throughout the specification. The definition syntax is:</p>

@@ -34,7 +34,8 @@ Enumerate what you find. A codebase usually has **more than one** prompt:
 Decide which of these are in scope. The main agent always is. Each additional
 prompt with a materially different structure becomes its **own specification** in
 the same `.acdl` file (`MainAgent[@T]`, `Summarizer[@T]`, `SubAgent[@T, task]`).
-Note explicitly, in a comment, any prompt you found but chose not to specify.
+List any prompt you found but chose not to specify in the extraction report,
+not in the spec.
 
 ## Phase 2 — Determine the time model
 
@@ -62,8 +63,7 @@ or rewritten after the fact, tool results trimmed).
 code, not from convention.** "`@T` = one call to `run_conversation()`" is a
 definition. "A turn is one user message, some tool rounds, and one answer" is an
 assumption, and nothing in that definition implies it. Before writing the history
-loop, answer each of these by reading the loop body and the persistence path, and
-record the answers in the header comment:
+loop, answer each of these by reading the loop body and the persistence path:
 
 - Can a turn contain **more than one user-role row**? (A continuation prompt after
   an output cap; a mid-turn correction; a nudge the loop writes to itself.)
@@ -77,6 +77,10 @@ record the answers in the header comment:
   under `@t == @T`.
 - Is the **closing row** always present, and is it always the model's answer, or
   can the system write it (an interruption placeholder, a guardrail notice)?
+
+The turn definition itself — one line — is the one comment that belongs above the
+history loop. The answers go in the extraction report; in the spec they are
+expressed as structure, not recorded as prose.
 
 Then build the history loop from *those* answers. If a turn can hold several
 user rows, the sub-step loop needs a case for each kind; if it can end with no
@@ -130,6 +134,10 @@ Translate what you traced, using these mappings:
 | a local variable holding a reused expression | `Name x := ...`, referenced `$x` |
 | an early `return messages` | `PromptEndsHere when (...)` |
 
+**Logical connectives are the words `and`, `or`, `not`.** The parser accepts `&`
+and `|` as aliases, but they are not the canonical spelling and the renderer
+prints them as written. Never write `&` or `|` in a condition.
+
 **Choosing the namespace** — this trips people up, so decide deliberately:
 - `env.*` — came from outside the system: user input, observations, world state.
 - `sys.*` — came from the agent's own machinery: state, memory, tool definitions,
@@ -160,9 +168,9 @@ the code reads:
 ```acdl
 Name lastHeadRole  := sys.role_of_last_protected_head_row[@$C]
 Name firstTailRole := sys.role_of_first_surviving_tail_row[@$C]
-If $lastHeadRole == assistant | $lastHeadRole == tool | $lastHeadRole == none {
-    If $firstTailRole != user { U: sys.conversation_summary[@$C] }     // preferred role, no collision
-    ElseIf $lastHeadRole == tool { A: sys.conversation_summary[@$C] }  // flipped; still alternates with the head
+If $lastHeadRole == assistant or $lastHeadRole == tool or $lastHeadRole == none {
+    If $firstTailRole != user { U: sys.conversation_summary[@$C] }
+    ElseIf $lastHeadRole == tool { A: sys.conversation_summary[@$C] }
     // otherwise no row is emitted: the summary is merged into the first tail row (see Mark 4)
 }
 Else {
@@ -177,7 +185,7 @@ The same rule applies to every conditional that governs shape or content:
 
 - A gated rewrite (pruning, truncation, image stripping) is written on the
   setting that enables it and the position or size test that selects the row —
-  `If $summarizeOldToolResults == true & tc.count_of_messages_more_recent_than_this >= $mostRecentMessagesKeptInFull`
+  `If $summarizeOldToolResults == true and tc.count_of_messages_more_recent_than_this >= $mostRecentMessagesKeptInFull`
   — never on a per-row `kind` / `form` / `state` that merely records that it
   was rewritten.
 - A row that exists only under some condition is written under that condition
@@ -233,11 +241,20 @@ sub-steps of the current turn that have already run (`@T.i` for `i < I`) did
 produce assistant messages and tool results, and those do belong in the prompt.
 Only the current sub-step `@T.I` is unwritten.
 
-**Use fragments only for content that repeats.** `StrFrag` / `RolesFrag` earn
-their place when the same block appears in two or more places — across specs in
-the file, or in two branches of the same spec. If a chunk of ACDL appears exactly
-once, write it inline; a single-use fragment just makes the reader jump around
-and clutters the rendered diagram.
+**Use fragments to keep the outline visible.** A `StrFrag` / `RolesFrag` earns
+its place in two situations: the same block appears in two or more places —
+across specs in the file, or in two branches of the same spec — or a block has
+grown deep enough that the main idea of how the context is built no longer
+surfaces from reading the enclosing spec top to bottom. The top-level spec
+should read as an outline of the context — setup, replayed history, compaction,
+current turn — with each region's internals behind a `Frag` whose name says what
+it contributes (`HistoryStep`, `TurnClosingReply`, `CompactionSummary`). Apply
+the same rule recursively: when a fragment's own body becomes too complex to
+take in at a glance, split its inner blocks into fragments of their own. The
+test at every level is whether a reader can follow the shape of the context
+without holding another level in their head. A small, self-contained block that
+appears once stays inline; a three-line fragment is an indirection, not an
+abstraction.
 
 **Template vs. context variable:** if the text is fixed at authoring time (it lives
 in the source or a prompt file), it is a template. If it is filled from runtime
@@ -276,15 +293,28 @@ code must be able to read the condition as a sentence — "summarising old tool
 results is on, and at least n messages are more recent than this one" — using
 the names alone.
 
-**Granularity:** aim for a spec that fits on one page. Collapse detail that does
-not change the structure (three consecutive literal paragraphs concatenated into
-the system message can be one template, or three, depending on whether they are
+**Granularity:** aim for a top-level spec that fits on one page, and push detail
+down into fragments rather than dropping it. Collapse detail that does not change
+the structure (three consecutive literal paragraphs concatenated into the system
+message can be one template, or three, depending on whether they are
 independently toggled — if any of them is conditional, split it out). Do not
 collapse anything that is conditional, looped, or reordered at runtime.
 
 Use `Mark n { ... }` to bracket the meaningful regions of the context — setup,
 history, compaction, tool loop, current turn — so the rendered diagram reads well.
-Use `//` comments to record what each template contains and why a branch exists.
+
+**Comments are a last resort.** The spec lines are what tell the reader how the
+context is built; a comment is an admission that a line could not carry its own
+meaning. Before writing one, try to make it unnecessary: rename the variable,
+template, or fragment so the line reads as a sentence; write the alternative
+outcome as a branch; move the reasoning into the extraction report. Keep a
+comment only where the spec cannot express the fact — the turn definition above
+the history loop, the numeric reality behind a setting written as a switch, an
+empty branch that emits nothing, the back-reference of an outcome variable, and
+`// UNVERIFIED:`. Do not say what a template contains, restate what a branch
+does, or narrate the code; that belongs in the report. Source citations (`// <-`,
+next) are not comments in this sense: they carry provenance and no explanation,
+and the reader copy strips them.
 
 **Cite the source inline, above every line you write.** Each role message, control
 flow header, template, and context variable gets a comment on the line *above* it
@@ -336,8 +366,11 @@ Go back through the source and check, in both directions:
    any `A:` or `T:` line indexed `@T`; each one must either be a completed
    sub-step (`@T.i`, `i < I`) or be deleted. The prompt must end with input the
    model has not answered.
-7. **Every fragment is invoked more than once.** If one is used a single time,
-   inline it.
+7. **Every fragment earns its place.** Each one is either invoked more than
+   once or hides a block that would otherwise bury the outline of the spec or
+   fragment that contains it. A small single-use fragment is inlined; a
+   top-level spec or a fragment that no longer reads as an outline has its
+   regions split out.
 8. **No condition is a tautology.** For every `Switch` and every `If` on a
    `sys.*` variable — especially names ending in `_kind`, `_role`, `_form`,
    `_outcome`, `_state`, `_ending` — find the code that produces that value.
@@ -354,6 +387,11 @@ Go back through the source and check, in both directions:
     live-only rows, a system-written closer — point at the line of the spec that
     expresses it. An answer with no corresponding line means the loop was written
     from the conventional shape, not from this system.
+11. **Every comment is necessary.** For each `//` line that is not a citation,
+    ask whether a better name, an extra branch, or the report could replace it.
+    If so, do that and delete the comment.
+12. **No `&` or `|`.** Grep the spec; every logical connective is `and`, `or`,
+    or `not`.
 
 If the ACDL toolchain is available in the working environment, validate the file:
 `npm run cli -- out.html your-spec.acdl` (or `node scripts/diff.mjs` against a
@@ -367,8 +405,9 @@ Produce three things.
 
 ### 1. The specification — a single `.acdl` file
 
-Well-commented, one spec per distinct prompt, marks on the meaningful regions, and a
-`// <-` source citation above every line you write.
+One spec per distinct prompt, marks on the meaningful regions, fragments wherever
+a block would otherwise hide the outline, comments only where the spec cannot carry
+the fact, and a `// <-` source citation above every line you write.
 
 ### 2. An extraction report — markdown
 
@@ -422,7 +461,12 @@ The annotated `.acdl` remains the file of record. Both files must parse.
 ## Rules
 
 - Never include the actual prose of prompts in the spec. Templates are opaque by
-  design; put a short summary in a `//` comment instead.
+  design; the name says what the text is for, and the extraction report says
+  what it contains.
+- Never write `&` or `|`. The connectives are `and`, `or`, `not`.
+- Never write a comment that a better name, an extra branch, or the report could
+  replace. The spec lines tell the reader how the context is built; comments do
+  not.
 - Never invent structure that is not in the code — no "agents usually also do X".
 - Never put a decision behind a name. A condition must be on the facts the code
   reads, not on a variable that means "what the code decided". True is not enough;
@@ -433,7 +477,9 @@ The annotated `.acdl` remains the file of record. Both files must parse.
   can contain from the code, and build the history loop from those answers.
 - Never put a model output at `@T`. The current turn is input only; the prompt
   stops where the model starts writing.
-- Never define a fragment for a chunk that appears only once.
+- Never let a spec or a fragment grow so long that its outline disappears;
+  split the detail into fragments, at every level of nesting. Never define a
+  fragment for a small block that appears only once.
 - Prefer a smaller, correct spec over a larger, speculative one.
 - Read the actual source. Do not extract from README files, docs, or blog posts
   describing the agent; they describe intent, and the spec must describe the code.

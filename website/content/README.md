@@ -14,6 +14,25 @@ npm run build:content      # regenerate website/src/*.html from content/*.md
 for a normal deploy you don't need to run it by hand — but it's handy for a quick
 local check after editing.
 
+## Blog posts
+
+Blog posts are not in this folder. Each post is a Markdown file in `blog/` at the
+repo root, and `scripts/build-blog.js` (`npm run build:blog`, also run by
+`npm run build:website`) turns them into `dist/website/blog/`. To publish a post,
+add `blog/<name>.md` starting with
+
+```
+---
+title: Hermes
+date: 2026-10-10
+---
+```
+
+The title appears in the side ledger and as the page heading; the ledger is
+ordered by date. Add `draft: true` to keep a post out of the build. The shell of
+the blog pages is `website/templates/blog/post.html`, and the comments backend is
+described in `website/comments-backend/README.md`.
+
 ## How a page is assembled
 
 ```

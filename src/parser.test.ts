@@ -290,6 +290,59 @@ test('#msg on its own is not content', () => {
     expect(() => parse(`P[@T]: {\n U: {\n  #msg\n }\n}`)).toThrow(/argument or an index/);
 });
 
+// ------------------------------------------------------ Marks inside an If chain
+
+/** The first block of the first role message, or of the prompt body. */
+function firstCond(src: string) {
+    const body = onlyPrompt(src).body as any;
+    const first = body.body[0];
+    return (first.kind === 'role-message' ? first.body[0] : first) as
+        AST.ConditionalBlockInsideRole | AST.ConditionalBlockOutsideRole;
+}
+
+test('a Mark may wrap ElseIf / Else branches without breaking the chain', () => {
+    const cond = firstCond(`P[@T]: { S: {
+        If a { x }
+        Mark 2 { ElseIf b { y } ElseIf c { z } }
+        Mark 4 { Else { w } }
+    } }`);
+    expect(cond.kind).toBe('conditional-block-inside-role');
+    expect(cond.elseif).toHaveLength(2);
+    expect(cond.elseBody).toHaveLength(1);
+    expect(cond.branchMarks).toEqual([
+        { markNumber: 2, from: 1, to: 2 },
+        { markNumber: 4, from: 3, to: 3 },
+    ]);
+});
+
+test('a Mark may wrap the leading If, and the chain carries on after it', () => {
+    const cond = firstCond(`P[@T]: {
+        Mark 1 { If a { S: { x } } }
+        ElseIf b { S: { y } }
+        Else { S: { z } }
+    }`);
+    expect(cond.kind).toBe('conditional-block-outside-role');
+    expect(cond.elseif).toHaveLength(1);
+    expect(cond.elseBody).toHaveLength(1);
+    expect(cond.branchMarks).toEqual([{ markNumber: 1, from: 0, to: 0 }]);
+});
+
+test('without branch Marks the AST is unchanged', () => {
+    expect(firstCond(`P[@T]: { S: { If a { x } Else { y } } }`).branchMarks).toBeUndefined();
+});
+
+test('a Mark after an If that does not hold a branch is an ordinary Mark', () => {
+    const role = (onlyPrompt(`P[@T]: { S: { If a { x } Mark 3 { y } } }`).body as any).body[0];
+    expect(role.body.map((b: any) => b.kind)).toEqual(['conditional-block-inside-role', 'mark-block-inside-role']);
+});
+
+test('only branches may go inside a Mark between branches', () => {
+    expect(() => parse(`P[@T]: { S: { If a { x } Mark 4 { ElseIf b { y } z } } }`))
+        .toThrow(/may hold only ElseIf and Else branches/);
+    expect(() => parse(`P[@T]: { S: { If a { x } Mark 4 { Else { y } ElseIf b { z } } } }`))
+        .toThrow(/cannot continue past its Else/);
+});
+
 // ------------------------------------------------------------- still errors
 
 test('a missing closing brace names the line the block opened on', () => {

@@ -14,6 +14,8 @@
     "build:extension": " npm run sync-css && cd extension && npm run package",
     "build:standalone": "node scripts/build-standalone.js",
     "build:content": "node scripts/build-content.js",
+    "build:blog": "node scripts/build-blog.js",
+    "build:post-standalone": "node scripts/build-post-standalone.js",
     "build:website": "node scripts/build-website.js",
     "deploy": "node scripts/deploy-website.js",
     "check": "bun run src/acdl-check.ts",

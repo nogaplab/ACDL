@@ -35507,7 +35507,7 @@ var Parser = class _Parser {
       blocks.push(innerBlock);
     }
     this.consumeBlockClose(openLine, `Mark ${markNumber}`);
-    return markBlock({ markNumber, body: blocks });
+    return this.continueMarkedIf(markNumber, blocks, "conditional-block-outside-role", () => this.parseTopLevelBlock()) ?? markBlock({ markNumber, body: blocks });
   }
   /**
    * Parse a MarkBlockInsideRole: MARK number { RoleBuildingBlock+ }
@@ -35533,7 +35533,38 @@ var Parser = class _Parser {
       blocks.push(innerBlock);
     }
     this.consumeBlockClose(openLine, `Mark ${markNumber}`);
-    return markBlockInsideRole({ markNumber, body: blocks });
+    return this.continueMarkedIf(markNumber, blocks, "conditional-block-inside-role", () => this.parseRoleBuildingBlock()) ?? markBlockInsideRole({ markNumber, body: blocks });
+  }
+  /**
+   * `Mark n { If ... { } }` followed by an ElseIf / Else: the Mark sits between
+   * the chain's branches, so the chain carries on after it and the Mark becomes a
+   * BranchMark over the branches it holds. Returns undefined for an ordinary Mark,
+   * including one whose body is anything more than the If chain itself.
+   */
+  continueMarkedIf(markNumber, body, kind, parseBodyBlock) {
+    const cond = body[0];
+    if (body.length !== 1 || cond.kind !== kind || cond.elseBody)
+      return void 0;
+    if (!this.atElseBranch() && !this.atMarkedElseBranch())
+      return void 0;
+    const more = this.parseElseChain(parseBodyBlock);
+    const n = cond.elseif.length;
+    const pad = (c, len) => c ?? Array.from({ length: len }, () => []);
+    const elseifComments = [...pad(cond.elseifComments, n), ...pad(more.elseifComments, more.elseif.length)];
+    return {
+      ...cond,
+      elseif: [...cond.elseif, ...more.elseif],
+      elseifBody: [...cond.elseifBody, ...more.elseifBody],
+      elseBody: more.elseBody,
+      ...elseifComments.some((c) => c.length) ? { elseifComments } : {},
+      ...more.elseComments ? { elseComments: more.elseComments } : {},
+      branchMarks: [
+        { markNumber, from: 0, to: n },
+        ...cond.branchMarks ?? [],
+        // The continuation numbered its ElseIfs from 1; here they follow the n above.
+        ...(more.branchMarks ?? []).map((m) => ({ ...m, from: m.from + n, to: m.to + n }))
+      ]
+    };
   }
   /**
    * A mark's number is purely presentational, so an omitted one is not worth an
@@ -36145,57 +36176,130 @@ var Parser = class _Parser {
       ifBody.push(this.parseTopLevelBlock());
     }
     this.consumeBlockClose(openLine, `If body (line ${ifTok.line})`);
-    const elseIfConditions = [];
-    const elseIfBodies = [];
-    const elseIfComments = [];
-    let elseBody = void 0;
-    let elseComments = void 0;
-    while (this.peekSkippingComments()?.type === "KEYWORD" && (this.peekSkippingComments().value === "ElseIf" || this.peekSkippingComments().value === "Else")) {
-      const branchComments = this.collectComments();
-      const branch = this.consume();
-      const type = this.resolveElseBranch(branch.value);
-      if (type === "ElseIf") {
-        const eiCondTokens = this.parseConditionHeader("ElseIf");
-        openLine = this.peek().line;
-        this.consume("SYMBOL", "{");
-        const eiBody = [];
-        while (!this.atBlockEnd()) {
-          this.skipSeparators();
-          if (this.atBlockEnd())
-            break;
-          eiBody.push(this.parseTopLevelBlock());
-        }
-        this.consumeBlockClose(openLine, `ElseIf body (line ${branch.line})`);
-        elseIfConditions.push(eiCondTokens);
-        elseIfBodies.push(eiBody);
-        elseIfComments.push(branchComments);
-      } else if (type === "Else") {
-        this.matchOptionalColon();
-        openLine = this.peek().line;
-        this.consume("SYMBOL", "{");
-        const eBody = [];
-        while (!this.atBlockEnd()) {
-          this.skipSeparators();
-          if (this.atBlockEnd())
-            break;
-          eBody.push(this.parseTopLevelBlock());
-        }
-        this.consumeBlockClose(openLine, `Else body (line ${branch.line})`);
-        elseBody = eBody;
-        if (branchComments.length)
-          elseComments = branchComments;
-        break;
-      }
-    }
     return conditionalBlockOutsideRole({
       Ifcondition: ifCondTokens,
       IfBody: ifBody,
-      elseif: elseIfConditions,
-      elseifBody: elseIfBodies,
-      elseBody,
-      ...elseIfComments.some((c) => c.length) ? { elseifComments: elseIfComments } : {},
-      ...elseComments ? { elseComments } : {}
+      ...this.parseElseChain(() => this.parseTopLevelBlock())
     });
+  }
+  /** Is the next non-comment token an ElseIf / Else that continues the chain? */
+  atElseBranch() {
+    const tok = this.peekSkippingComments();
+    return tok?.type === "KEYWORD" && (tok.value === "ElseIf" || tok.value === "Else");
+  }
+  /**
+   * Is the next non-comment construct `Mark n { ElseIf ... }` or `Mark n { Else ... }`?
+   * Only then is the Mark part of the chain; any other Mark ends it.
+   */
+  atMarkedElseBranch() {
+    let i = this.pos;
+    const skipComments = () => {
+      while (this.tokens[i]?.type === "COMMENT")
+        i++;
+    };
+    skipComments();
+    if (this.tokens[i]?.type !== "KEYWORD" || this.tokens[i].value !== "Mark")
+      return false;
+    i++;
+    if (this.tokens[i]?.type === "NUMBER")
+      i++;
+    if (this.tokens[i]?.value === ":")
+      i++;
+    if (this.tokens[i]?.value !== "{")
+      return false;
+    i++;
+    skipComments();
+    const tok = this.tokens[i];
+    return tok?.type === "KEYWORD" && (tok.value === "ElseIf" || tok.value === "Else");
+  }
+  /**
+   * The ElseIf / Else branches after an If body, shared by both scopes.
+   *
+   * A Mark is the one construct allowed between a chain's branches: `Mark n { ... }`
+   * may wrap one or more consecutive branches, and the chain carries on after it.
+   * Such a Mark may hold nothing but branches and comments.
+   *
+   * Comments between the closing brace and the next keyword are looked past, but
+   * only consumed once a branch is confirmed — otherwise a trailing comment
+   * belonging to the following block would be swallowed here.
+   */
+  parseElseChain(parseBodyBlock) {
+    const elseif = [];
+    const elseifBody = [];
+    const elseifComments = [];
+    let elseBody = void 0;
+    let elseComments = void 0;
+    const branchMarks = [];
+    let ended = false;
+    const parseBranch = (leadingComments = []) => {
+      const branchComments = [...leadingComments, ...this.collectComments()];
+      const branch = this.consume();
+      const type = this.resolveElseBranch(branch.value);
+      const condition = type === "ElseIf" ? this.parseConditionHeader("ElseIf") : void 0;
+      if (type === "Else")
+        this.matchOptionalColon();
+      const openLine = this.peek().line;
+      this.consume("SYMBOL", "{");
+      const body = [];
+      while (!this.atBlockEnd()) {
+        this.skipSeparators();
+        if (this.atBlockEnd())
+          break;
+        body.push(parseBodyBlock());
+      }
+      this.consumeBlockClose(openLine, `${type} body (line ${branch.line})`);
+      if (condition) {
+        elseif.push(condition);
+        elseifBody.push(body);
+        elseifComments.push(branchComments);
+      } else {
+        elseBody = body;
+        if (branchComments.length)
+          elseComments = branchComments;
+        ended = true;
+      }
+    };
+    while (!ended) {
+      if (this.atElseBranch()) {
+        parseBranch();
+        continue;
+      }
+      if (!this.atMarkedElseBranch())
+        break;
+      const leadingComments = this.collectComments();
+      const markTok = this.consume("KEYWORD", "Mark");
+      const markNumber = this.parseMarkNumber();
+      this.matchOptionalColon();
+      const openLine = this.peek().line;
+      this.consume("SYMBOL", "{");
+      const from = elseif.length + 1;
+      parseBranch(leadingComments);
+      while (!this.atBlockEnd()) {
+        this.skipSeparators();
+        if (this.peekSkippingComments()?.value === "}") {
+          this.skipComments();
+          break;
+        }
+        if (ended || !this.atElseBranch()) {
+          this.skipComments();
+          const tok = this.peek();
+          throw new Error(
+            `[${tok.line}:${tok.col}] A Mark between the branches of an If chain (Mark at line ${markTok.line}) ` + (ended ? "cannot continue past its Else: Else is the last branch of the chain." : `may hold only ElseIf and Else branches, but found "${tok.value}".`)
+          );
+        }
+        parseBranch();
+      }
+      this.consumeBlockClose(openLine, `Mark ${markNumber}`);
+      branchMarks.push({ markNumber, from, to: ended ? elseif.length + 1 : elseif.length });
+    }
+    return {
+      elseif,
+      elseifBody,
+      elseBody,
+      ...elseifComments.some((c) => c.length) ? { elseifComments } : {},
+      ...elseComments ? { elseComments } : {},
+      ...branchMarks.length ? { branchMarks } : {}
+    };
   }
   /**
    * Capture a condition, which runs from after the keyword to the `{` that opens
@@ -36259,56 +36363,10 @@ var Parser = class _Parser {
       ifBody.push(this.parseRoleBuildingBlock());
     }
     this.consumeBlockClose(openLine, `If body (line ${ifTok.line})`);
-    const elseIfConditions = [];
-    const elseIfBodies = [];
-    const elseIfComments = [];
-    let elseBody = void 0;
-    let elseComments = void 0;
-    while (this.peekSkippingComments()?.type === "KEYWORD" && (this.peekSkippingComments().value === "ElseIf" || this.peekSkippingComments().value === "Else")) {
-      const branchComments = this.collectComments();
-      const branch = this.consume();
-      const type = this.resolveElseBranch(branch.value);
-      if (type === "ElseIf") {
-        const eiCondTokens = this.parseConditionHeader("ElseIf");
-        openLine = this.peek().line;
-        this.consume("SYMBOL", "{");
-        const eiBody = [];
-        while (!this.atBlockEnd()) {
-          this.skipSeparators();
-          if (this.atBlockEnd())
-            break;
-          eiBody.push(this.parseRoleBuildingBlock());
-        }
-        this.consumeBlockClose(openLine, `ElseIf body (line ${branch.line})`);
-        elseIfConditions.push(eiCondTokens);
-        elseIfBodies.push(eiBody);
-        elseIfComments.push(branchComments);
-      } else if (type === "Else") {
-        this.matchOptionalColon();
-        openLine = this.peek().line;
-        this.consume("SYMBOL", "{");
-        const eBody = [];
-        while (!this.atBlockEnd()) {
-          this.skipSeparators();
-          if (this.atBlockEnd())
-            break;
-          eBody.push(this.parseRoleBuildingBlock());
-        }
-        this.consumeBlockClose(openLine, `Else body (line ${branch.line})`);
-        elseBody = eBody;
-        if (branchComments.length)
-          elseComments = branchComments;
-        break;
-      }
-    }
     return conditionalBlockInsideRole({
       Ifcondition: ifCondTokens,
       IfBody: ifBody,
-      elseif: elseIfConditions,
-      elseifBody: elseIfBodies,
-      elseBody,
-      ...elseIfComments.some((c) => c.length) ? { elseifComments: elseIfComments } : {},
-      ...elseComments ? { elseComments } : {}
+      ...this.parseElseChain(() => this.parseRoleBuildingBlock())
     });
   }
   // parseSwitchOutside and parseSwitchInside would follow the same scoping pattern.
@@ -37691,7 +37749,7 @@ function renderRoleBuildingBlock(block, x, y, maxWidth) {
     case "name-ref":
       return renderNameRefBlock(block, x, y);
     case "comment-block":
-      return renderComment(block.text, x, y, false, maxWidth);
+      return renderComment(block.text, x, y, true, maxWidth);
     case "name-def":
       return renderNameDef(block, x, y, maxWidth);
     case "other-index":
@@ -37922,7 +37980,7 @@ function renderStrFragDefSvg(frag, x, y, maxWidth) {
   const badgeHeight = badgeFontSize + badgePadding;
   const titleWidth = titleParts.reduce((sum, part) => sum + measureText(part.text, fontSize, true), 0);
   const boxHeight = fontSize + 6;
-  const boxWidth = Math.max(8 + titleWidth + 8 + badgeWidth + 8, maxWidth || 400);
+  const boxWidth = Math.max(8 + titleWidth + 8 + badgeWidth + 8, maxWidth || 0);
   elements.push(svgRect(x, currentY, boxWidth, boxHeight, {
     fill: COLORS.bgSecondary,
     stroke: COLORS.borderMedium,
@@ -37955,9 +38013,11 @@ function renderStrFragDefSvg(frag, x, y, maxWidth) {
   const borderStartY = currentY;
   const bodyX = x + SPACING.indentSize;
   let bodyHeight = 0;
+  let bodyWidth = 0;
   for (const block of frag.body) {
     const result = renderRoleBuildingBlock(block, bodyX, currentY, maxWidth ? maxWidth - SPACING.indentSize : void 0);
     elements.push(result.svg);
+    bodyWidth = Math.max(bodyWidth, SPACING.indentSize + result.width);
     currentY += result.height + SPACING.elementGap;
     bodyHeight += result.height + SPACING.elementGap;
   }
@@ -37966,7 +38026,7 @@ function renderStrFragDefSvg(frag, x, y, maxWidth) {
     strokeWidth: 1
   }));
   const totalHeight = titleHeight + bodyHeight;
-  const totalWidth = maxWidth || 400;
+  const totalWidth = maxWidth || Math.max(boxWidth, bodyWidth);
   return {
     svg: elements.join("\n"),
     width: totalWidth,
@@ -37996,7 +38056,7 @@ function renderRolesFragDefSvg(frag, x, y, maxWidth) {
   const badgeHeight = badgeFontSize + badgePadding;
   const titleWidth = titleParts.reduce((sum, part) => sum + measureText(part.text, fontSize, true), 0);
   const boxHeight = fontSize + 6;
-  const boxWidth = Math.max(8 + titleWidth + 8 + badgeWidth + 8, maxWidth || 400);
+  const boxWidth = Math.max(8 + titleWidth + 8 + badgeWidth + 8, maxWidth || 0);
   elements.push(svgRect(x, currentY, boxWidth, boxHeight, {
     fill: COLORS.bgSecondary,
     stroke: COLORS.borderMedium,
@@ -38028,9 +38088,11 @@ function renderRolesFragDefSvg(frag, x, y, maxWidth) {
   currentY += titleHeight;
   const borderStartY = currentY;
   let bodyHeight = 0;
+  let bodyWidth = 0;
   for (const block of frag.body) {
     const result = renderTopLevelBlock(block, x, currentY, maxWidth);
     elements.push(result.svg);
+    bodyWidth = Math.max(bodyWidth, result.width);
     currentY += result.height + SPACING.blockGap;
     bodyHeight += result.height + SPACING.blockGap;
   }
@@ -38039,7 +38101,7 @@ function renderRolesFragDefSvg(frag, x, y, maxWidth) {
     strokeWidth: 1
   }));
   const totalHeight = titleHeight + bodyHeight;
-  const totalWidth = maxWidth || 400;
+  const totalWidth = maxWidth || Math.max(boxWidth, bodyWidth);
   return {
     svg: elements.join("\n"),
     width: totalWidth,
@@ -38330,6 +38392,7 @@ function renderExpressionTokensOneLine(tokens, startX, textY, fontSize) {
       i++;
       let parenDepth = 0;
       let bracketDepth = 0;
+      let expectSegment = false;
       while (i < tokens.length) {
         const t = tokens[i];
         if (t.value === "[") {
@@ -38375,21 +38438,25 @@ function renderExpressionTokensOneLine(tokens, startX, textY, fontSize) {
         }
         if (t.value === ".") {
           contextVarText += t.value;
+          expectSegment = true;
           i++;
           continue;
         }
-        if (t.type === "IDENT" || t.type === "KEYWORD" || t.type === "NUMBER") {
+        if (expectSegment && (t.type === "IDENT" || t.type === "KEYWORD" || t.type === "NUMBER")) {
           contextVarText += t.value;
+          expectSegment = false;
           i++;
           continue;
         }
         if (t.value === "@") {
           contextVarText += t.value;
+          expectSegment = true;
           i++;
           continue;
         }
         if (t.value === "$") {
           contextVarText += t.value;
+          expectSegment = true;
           i++;
           continue;
         }
@@ -39116,7 +39183,12 @@ function renderConditionalOutsideRole(block, x, y, maxWidthParam) {
   const headerX = x + 8;
   const childX = x + SPACING.indentSize + 8;
   let contentRight = 0;
+  const marked = !!block.branchMarks?.length;
+  const spans = [];
+  if (marked && maxWidthParam)
+    maxWidthParam -= MARK_BRACKET_WIDTH;
   const childMaxWidth = maxWidthParam ? maxWidthParam - SPACING.indentSize - 8 : void 0;
+  const ifTop = currentY;
   const ifHeader = renderControlFlowHeader("If", "\u25C7", block.Ifcondition, ":", headerX, currentY, maxWidthParam);
   banners.push({ y: currentY, height: ifHeader.height, hw: ifHeader.width });
   elements.push(ifHeader.svg);
@@ -39128,7 +39200,9 @@ function renderConditionalOutsideRole(block, x, y, maxWidthParam) {
     contentRight = Math.max(contentRight, childX + childResult.width);
     currentY += childResult.height + SPACING.blockGap;
   }
+  spans.push({ top: ifTop, bottom: currentY - (block.IfBody.length ? SPACING.blockGap : 0) });
   for (let i = 0; i < block.elseif.length; i++) {
+    const branchTop = currentY;
     const eiComments = renderBranchComments(block.elseifComments?.[i], childX, currentY, maxWidthParam);
     if (eiComments.height) {
       elements.push(eiComments.svg);
@@ -39146,8 +39220,10 @@ function renderConditionalOutsideRole(block, x, y, maxWidthParam) {
       contentRight = Math.max(contentRight, childX + childResult.width);
       currentY += childResult.height + SPACING.blockGap;
     }
+    spans.push({ top: branchTop, bottom: currentY - (block.elseifBody[i].length ? SPACING.blockGap : 0) });
   }
   if (block.elseBody && block.elseBody.length > 0) {
+    const branchTop = currentY;
     const eComments = renderBranchComments(block.elseComments, childX, currentY, maxWidthParam);
     if (eComments.height) {
       elements.push(eComments.svg);
@@ -39165,8 +39241,10 @@ function renderConditionalOutsideRole(block, x, y, maxWidthParam) {
       contentRight = Math.max(contentRight, childX + childResult.width);
       currentY += childResult.height + SPACING.blockGap;
     }
+    spans.push({ top: branchTop, bottom: currentY - SPACING.blockGap });
   }
   const totalHeight = currentY - y;
+  elements.push(branchMarksSvg(block.branchMarks, spans, contentRight + 8));
   elements.push(svgLine(headerX, y, headerX, y + totalHeight, {
     stroke: COLORS.controlBorder,
     strokeWidth: 1
@@ -39174,7 +39252,7 @@ function renderConditionalOutsideRole(block, x, y, maxWidthParam) {
   const bannerSvg = banners.map((b) => controlHeaderBanner(headerX, b.y, contentRight, b.height, b.hw)).join("\n");
   return {
     svg: bannerSvg + "\n" + elements.join("\n"),
-    width: contentRight - x,
+    width: contentRight - x + (marked ? MARK_BRACKET_WIDTH : 0),
     height: totalHeight
   };
 }
@@ -39185,6 +39263,11 @@ function renderConditionalInsideRole(block, x, y, maxWidthParam) {
   const headerX = x + 8;
   const childX = x + SPACING.indentSize + 8;
   let contentRight = 0;
+  const marked = !!block.branchMarks?.length;
+  const spans = [];
+  if (marked && maxWidthParam)
+    maxWidthParam -= MARK_BRACKET_WIDTH;
+  const ifTop = currentY;
   const ifHeader = renderControlFlowHeader("If", "\u25C7", block.Ifcondition, ":", headerX, currentY, maxWidthParam);
   banners.push({ y: currentY, height: ifHeader.height, hw: ifHeader.width });
   elements.push(ifHeader.svg);
@@ -39197,7 +39280,9 @@ function renderConditionalInsideRole(block, x, y, maxWidthParam) {
     contentRight = Math.max(contentRight, childX + childResult.width);
     currentY += childResult.height + SPACING.elementGap;
   }
+  spans.push({ top: ifTop, bottom: currentY - (block.IfBody.length ? SPACING.elementGap : 0) });
   for (let i = 0; i < block.elseif.length; i++) {
+    const branchTop = currentY;
     const eiComments = renderBranchComments(block.elseifComments?.[i], childX, currentY, maxWidthParam);
     if (eiComments.height) {
       elements.push(eiComments.svg);
@@ -39215,8 +39300,10 @@ function renderConditionalInsideRole(block, x, y, maxWidthParam) {
       contentRight = Math.max(contentRight, childX + childResult.width);
       currentY += childResult.height + SPACING.elementGap;
     }
+    spans.push({ top: branchTop, bottom: currentY - (block.elseifBody[i].length ? SPACING.elementGap : 0) });
   }
   if (block.elseBody && block.elseBody.length > 0) {
+    const branchTop = currentY;
     const eComments = renderBranchComments(block.elseComments, childX, currentY, maxWidthParam);
     if (eComments.height) {
       elements.push(eComments.svg);
@@ -39234,8 +39321,10 @@ function renderConditionalInsideRole(block, x, y, maxWidthParam) {
       contentRight = Math.max(contentRight, childX + childResult.width);
       currentY += childResult.height + SPACING.elementGap;
     }
+    spans.push({ top: branchTop, bottom: currentY - SPACING.elementGap });
   }
   const totalHeight = currentY - y;
+  elements.push(branchMarksSvg(block.branchMarks, spans, contentRight + 8));
   elements.push(svgLine(headerX, y, headerX, y + totalHeight, {
     stroke: COLORS.controlBorder,
     strokeWidth: 1
@@ -39243,7 +39332,7 @@ function renderConditionalInsideRole(block, x, y, maxWidthParam) {
   const bannerSvg = banners.map((b) => controlHeaderBanner(headerX, b.y, contentRight, b.height, b.hw)).join("\n");
   return {
     svg: bannerSvg + "\n" + elements.join("\n"),
-    width: contentRight - x,
+    width: contentRight - x + (marked ? MARK_BRACKET_WIDTH : 0),
     height: totalHeight
   };
 }
@@ -39363,6 +39452,24 @@ function renderSwitchInsideRole(block, x, y, maxWidthParam) {
     height: totalHeight
   };
 }
+var MARK_BRACKET_WIDTH = 25;
+function markBracketSvg(bracketX, top, height, markNum) {
+  return [
+    svgLine(bracketX, top, bracketX + 5, top, { stroke: "#000000", strokeWidth: 2 }),
+    svgLine(bracketX + 5, top, bracketX + 5, top + height, { stroke: "#000000", strokeWidth: 2 }),
+    svgLine(bracketX, top + height, bracketX + 5, top + height, { stroke: "#000000", strokeWidth: 2 }),
+    svgText(bracketX + 10, top + height / 2 + FONT_SIZES.normal / 3, String(markNum), {
+      fill: "#000000",
+      fontSize: FONT_SIZES.normal,
+      fontWeight: "700"
+    })
+  ].join("\n");
+}
+function branchMarksSvg(marks, spans, bracketX) {
+  if (!marks)
+    return "";
+  return marks.filter((m) => spans[m.from] && spans[m.to]).map((m) => markBracketSvg(bracketX, spans[m.from].top, spans[m.to].bottom - spans[m.from].top, m.markNumber)).join("\n");
+}
 function renderMarkBlock(block, x, y, maxWidthParam) {
   const elements = [];
   let currentY = y;
@@ -39377,14 +39484,7 @@ function renderMarkBlock(block, x, y, maxWidthParam) {
   const totalHeight = currentY - y;
   const bracketX = x + resultMaxWidth + 8;
   const markNum = block.markNumber !== void 0 && !isNaN(block.markNumber) ? block.markNumber : 0;
-  elements.push(svgLine(bracketX, y, bracketX + 5, y, { stroke: "#000000", strokeWidth: 2 }));
-  elements.push(svgLine(bracketX + 5, y, bracketX + 5, y + totalHeight, { stroke: "#000000", strokeWidth: 2 }));
-  elements.push(svgLine(bracketX, y + totalHeight, bracketX + 5, y + totalHeight, { stroke: "#000000", strokeWidth: 2 }));
-  elements.push(svgText(bracketX + 10, y + totalHeight / 2 + FONT_SIZES.normal / 3, String(markNum), {
-    fill: "#000000",
-    fontSize: FONT_SIZES.normal,
-    fontWeight: "700"
-  }));
+  elements.push(markBracketSvg(bracketX, y, totalHeight, markNum));
   return {
     svg: elements.join("\n"),
     width: resultMaxWidth + 25,
@@ -39405,14 +39505,7 @@ function renderMarkBlockInsideRole(block, x, y, maxWidthParam) {
   const totalHeight = currentY - y;
   const bracketX = x + maxWidth + 8;
   const markNum = block.markNumber !== void 0 && !isNaN(block.markNumber) ? block.markNumber : 0;
-  elements.push(svgLine(bracketX, y, bracketX + 5, y, { stroke: "#000000", strokeWidth: 2 }));
-  elements.push(svgLine(bracketX + 5, y, bracketX + 5, y + totalHeight, { stroke: "#000000", strokeWidth: 2 }));
-  elements.push(svgLine(bracketX, y + totalHeight, bracketX + 5, y + totalHeight, { stroke: "#000000", strokeWidth: 2 }));
-  elements.push(svgText(bracketX + 10, y + totalHeight / 2 + FONT_SIZES.normal / 3, String(markNum), {
-    fill: "#000000",
-    fontSize: FONT_SIZES.normal,
-    fontWeight: "700"
-  }));
+  elements.push(markBracketSvg(bracketX, y, totalHeight, markNum));
   return {
     svg: elements.join("\n"),
     width: maxWidth + 25,
@@ -39609,7 +39702,7 @@ function renderPromptsSvg(blocks, maxWidth) {
 // ../src/render-blocks.ts
 var DEFAULT_WRAP_WIDTH = 800;
 var MIN_WRAP_WIDTH = 200;
-var MAX_WRAP_WIDTH = 1e3;
+var MAX_WRAP_WIDTH = 4e3;
 var BLOCK_GAP = 24;
 function clampWrapWidth(width) {
   const w = Number(width);
@@ -40352,7 +40445,7 @@ function updatePreview(panel, doc, wrapWidth, context) {
 
       <h3>Width and zoom</h3>
       <ul>
-        <li><b>Width</b> is the wrap width in pixels (200 to 1000). Content wider than this wraps. It applies to the preview and to every export, and is remembered per workspace.</li>
+        <li><b>Width</b> is the wrap width in pixels, from 200 up to the width of the preview window. Content wider than this wraps. It applies to the preview and to every export, and is remembered per workspace.</li>
         <li><b>Zoom</b> only changes how big the preview looks on screen; exports are unaffected.</li>
       </ul>
 
@@ -40455,6 +40548,7 @@ function getWebviewScript() {
     function applyZoom() {
       host.style.transform = 'scale(' + zoom + ')';
       label.textContent = Math.round(zoom * 100) + '%';
+      updateWidthMax();
       saveState();
     }
     function setZoom(z) {
@@ -40495,6 +40589,19 @@ function getWebviewScript() {
     widthSlider.addEventListener('input', () => { widthNum.value = widthSlider.value; });
     widthSlider.addEventListener('change', () => commitWidth(widthSlider.value));
     widthNum.addEventListener('change', () => { widthSlider.value = widthNum.value; commitWidth(widthNum.value); });
+
+    // The slider goes up to what fits in the preview at the current zoom: the
+    // scroller's width minus its 20px padding each side and the 10px focus
+    // outline each side. Recomputed whenever the panel resizes or zoom changes.
+    function updateWidthMax() {
+      const scroller = document.getElementById('acdl-scroll');
+      const avail = Math.floor((scroller.clientWidth - 60) / zoom / 10) * 10;
+      const max = Math.min(${MAX_WRAP_WIDTH}, Math.max(${MIN_WRAP_WIDTH}, avail));
+      widthSlider.max = String(max);
+      widthNum.max = String(max);
+    }
+    new ResizeObserver(updateWidthMax).observe(document.getElementById('acdl-scroll'));
+    updateWidthMax();
 
     // ---- Keyboard -----------------------------------------------------------
     window.addEventListener('keydown', (e) => {
@@ -40937,7 +41044,11 @@ function diffPair(a, b, depth, out) {
       diffContainer(`Mark ${a.markNumber}`, `Mark ${b.markNumber}`, a.body, b.body, depth, out);
       return;
     case "conditional-block-outside-role":
-    case "conditional-block-inside-role":
+    case "conditional-block-inside-role": {
+      const tail = [];
+      changeIfDiff(serElse(a), serElse(b), depth + 1, tail);
+      changeIfDiff(serBranchMarks(a), serBranchMarks(b), depth + 1, tail);
+      const start = out.length;
       diffContainer(
         `If(${serFlat(a.Ifcondition)})`,
         `If(${serFlat(b.Ifcondition)})`,
@@ -40946,8 +41057,11 @@ function diffPair(a, b, depth, out) {
         depth,
         out
       );
-      changeIfDiff(serElse(a), serElse(b), depth + 1, out);
+      if (tail.length && out.length === start)
+        out.push(header(`If(${serFlat(a.Ifcondition)})`, depth, false));
+      out.push(...tail);
       return;
+    }
     case "switch-block-outside-role":
     case "switch-block-inside-role":
       diffContainer(
@@ -41068,6 +41182,17 @@ function serElse(cond) {
   if (cond.elseBody)
     parts.push(`else{${cond.elseBody.map(ser).join("; ")}}`);
   return parts.join(" ");
+}
+function serBranchMarks(cond) {
+  const elseifs = cond.elseif ?? [];
+  const branch = (i) => i === 0 ? "If" : i <= elseifs.length ? `ElseIf(${serFlat(elseifs[i - 1])})` : "Else";
+  const marks = (cond.branchMarks ?? []).map((m) => {
+    const names = [];
+    for (let i = m.from; i <= m.to; i++)
+      names.push(branch(i));
+    return `Mark ${m.markNumber} {${names.join(" ")}}`;
+  });
+  return `branch marks: ${marks.length ? marks.join(" ") : "none"}`;
 }
 function escapeHtml2(s) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");

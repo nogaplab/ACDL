@@ -103,6 +103,18 @@ const sharedDest = path.join(DIST_WEBSITE, 'shared');
 ensureDir(sharedDest);
 copyFile(path.join(WEBSITE_SHARED, 'styles.css'), path.join(sharedDest, 'styles.css'));
 
+// Build the blog (blog/*.md -> dist/website/blog/)
+console.log('\nBuilding blog...\n');
+try {
+  execSync('node scripts/build-blog.js', {
+    cwd: path.join(__dirname, '..'),
+    stdio: 'inherit',
+  });
+} catch (error) {
+  console.error('Failed to build blog:', error.message);
+  process.exit(1);
+}
+
 console.log('\nWebsite pages complete!\n');
 
 // Build the standalone visualizer

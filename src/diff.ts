@@ -116,15 +116,24 @@ function diffPair(a: any, b: any, depth: number, out: DiffLine[]): void {
       return;
 
     case "conditional-block-outside-role":
-    case "conditional-block-inside-role":
+    case "conditional-block-inside-role": {
+      const tail: DiffLine[] = [];
+      // else / elseif shifts are rare; fall back to a whole-line change on those.
+      changeIfDiff(serElse(a), serElse(b), depth + 1, tail);
+      // Marks around branches (Mark 1 { If … } ElseIf …) sit beside the bodies, not in them.
+      changeIfDiff(serBranchMarks(a), serBranchMarks(b), depth + 1, tail);
+
+      const start = out.length;
       diffContainer(
         `If(${serFlat(a.Ifcondition)})`,
         `If(${serFlat(b.Ifcondition)})`,
         a.IfBody, b.IfBody, depth, out
       );
-      // else / elseif shifts are rare; fall back to a whole-line change on those.
-      changeIfDiff(serElse(a), serElse(b), depth + 1, out);
+      // Changes below the If still need it as their context line.
+      if (tail.length && out.length === start) out.push(header(`If(${serFlat(a.Ifcondition)})`, depth, false));
+      out.push(...tail);
       return;
+    }
 
     case "switch-block-outside-role":
     case "switch-block-inside-role":
@@ -258,6 +267,18 @@ function serElse(cond: any): string {
   });
   if (cond.elseBody) parts.push(`else{${cond.elseBody.map(ser).join("; ")}}`);
   return parts.join(" ");
+}
+
+function serBranchMarks(cond: any): string {
+  const elseifs: any[][] = cond.elseif ?? [];
+  const branch = (i: number) =>
+    i === 0 ? "If" : i <= elseifs.length ? `ElseIf(${serFlat(elseifs[i - 1])})` : "Else";
+  const marks = (cond.branchMarks ?? []).map((m: AST.BranchMark) => {
+    const names: string[] = [];
+    for (let i = m.from; i <= m.to; i++) names.push(branch(i));
+    return `Mark ${m.markNumber} {${names.join(" ")}}`;
+  });
+  return `branch marks: ${marks.length ? marks.join(" ") : "none"}`;
 }
 
 /* ───────────────────────── Reporting ───────────────────────── */

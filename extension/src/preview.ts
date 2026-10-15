@@ -585,7 +585,7 @@ function updatePreview(
 
       <h3>Width and zoom</h3>
       <ul>
-        <li><b>Width</b> is the wrap width in pixels (200 to 1000). Content wider than this wraps. It applies to the preview and to every export, and is remembered per workspace.</li>
+        <li><b>Width</b> is the wrap width in pixels, from 200 up to the width of the preview window. Content wider than this wraps. It applies to the preview and to every export, and is remembered per workspace.</li>
         <li><b>Zoom</b> only changes how big the preview looks on screen; exports are unaffected.</li>
       </ul>
 
@@ -690,6 +690,7 @@ function getWebviewScript(): string {
     function applyZoom() {
       host.style.transform = 'scale(' + zoom + ')';
       label.textContent = Math.round(zoom * 100) + '%';
+      updateWidthMax();
       saveState();
     }
     function setZoom(z) {
@@ -730,6 +731,19 @@ function getWebviewScript(): string {
     widthSlider.addEventListener('input', () => { widthNum.value = widthSlider.value; });
     widthSlider.addEventListener('change', () => commitWidth(widthSlider.value));
     widthNum.addEventListener('change', () => { widthSlider.value = widthNum.value; commitWidth(widthNum.value); });
+
+    // The slider goes up to what fits in the preview at the current zoom: the
+    // scroller's width minus its 20px padding each side and the 10px focus
+    // outline each side. Recomputed whenever the panel resizes or zoom changes.
+    function updateWidthMax() {
+      const scroller = document.getElementById('acdl-scroll');
+      const avail = Math.floor((scroller.clientWidth - 60) / zoom / 10) * 10;
+      const max = Math.min(${MAX_WRAP_WIDTH}, Math.max(${MIN_WRAP_WIDTH}, avail));
+      widthSlider.max = String(max);
+      widthNum.max = String(max);
+    }
+    new ResizeObserver(updateWidthMax).observe(document.getElementById('acdl-scroll'));
+    updateWidthMax();
 
     // ---- Keyboard -----------------------------------------------------------
     window.addEventListener('keydown', (e) => {

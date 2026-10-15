@@ -527,7 +527,7 @@ export class Parser {
    * Parse a MarkBlock: MARK number { PromptBlock+ }
    * Mark blocks are like label blocks but rendered with a bracket on the right.
    */
-  private parseMarkBlock(): AST.MarkBlock {
+  private parseMarkBlock(): AST.MarkBlock | AST.ConditionalBlockOutsideRole {
     this.consume("KEYWORD", "Mark");
     const markNumber = this.parseMarkNumber();
 
@@ -556,14 +556,15 @@ export class Parser {
 
     this.consumeBlockClose(openLine, `Mark ${markNumber}`);
 
-    return Create.markBlock({ markNumber, body: blocks });
+    return this.continueMarkedIf<AST.ConditionalBlockOutsideRole>(markNumber, blocks, "conditional-block-outside-role", () => this.parseTopLevelBlock())
+      ?? Create.markBlock({ markNumber, body: blocks });
   }
 
   /**
    * Parse a MarkBlockInsideRole: MARK number { RoleBuildingBlock+ }
    * Mark blocks inside roles contain role building blocks.
    */
-  private parseMarkBlockInside(): AST.MarkBlockInsideRole {
+  private parseMarkBlockInside(): AST.MarkBlockInsideRole | AST.ConditionalBlockInsideRole {
     this.consume("KEYWORD", "Mark");
     const markNumber = this.parseMarkNumber();
 
@@ -592,7 +593,44 @@ export class Parser {
 
     this.consumeBlockClose(openLine, `Mark ${markNumber}`);
 
-    return Create.markBlockInsideRole({ markNumber, body: blocks });
+    return this.continueMarkedIf<AST.ConditionalBlockInsideRole>(markNumber, blocks, "conditional-block-inside-role", () => this.parseRoleBuildingBlock())
+      ?? Create.markBlockInsideRole({ markNumber, body: blocks });
+  }
+
+  /**
+   * `Mark n { If ... { } }` followed by an ElseIf / Else: the Mark sits between
+   * the chain's branches, so the chain carries on after it and the Mark becomes a
+   * BranchMark over the branches it holds. Returns undefined for an ordinary Mark,
+   * including one whose body is anything more than the If chain itself.
+   */
+  private continueMarkedIf<C extends AST.ConditionalBlockOutsideRole | AST.ConditionalBlockInsideRole>(
+    markNumber: number,
+    body: Array<{ kind: string }>,
+    kind: C["kind"],
+    parseBodyBlock: () => C["IfBody"][number],
+  ): C | undefined {
+    const cond = body[0] as C;
+    if (body.length !== 1 || cond.kind !== kind || cond.elseBody) return undefined;
+    if (!this.atElseBranch() && !this.atMarkedElseBranch()) return undefined;
+
+    const more = this.parseElseChain(parseBodyBlock);
+    const n = cond.elseif.length; // the Mark covers the If and these ElseIfs
+    const pad = (c: string[][] | undefined, len: number) => c ?? Array.from({ length: len }, (): string[] => []);
+    const elseifComments = [...pad(cond.elseifComments, n), ...pad(more.elseifComments, more.elseif.length)];
+    return {
+      ...cond,
+      elseif: [...cond.elseif, ...more.elseif],
+      elseifBody: [...cond.elseifBody, ...more.elseifBody],
+      elseBody: more.elseBody,
+      ...(elseifComments.some(c => c.length) ? { elseifComments } : {}),
+      ...(more.elseComments ? { elseComments: more.elseComments } : {}),
+      branchMarks: [
+        { markNumber, from: 0, to: n },
+        ...(cond.branchMarks ?? []),
+        // The continuation numbered its ElseIfs from 1; here they follow the n above.
+        ...(more.branchMarks ?? []).map(m => ({ ...m, from: m.from + n, to: m.to + n })),
+      ],
+    } as C;
   }
 
   /**
@@ -1379,68 +1417,136 @@ export class Parser {
     }
     this.consumeBlockClose(openLine, `If body (line ${ifTok.line})`);
 
-    const elseIfConditions: AST.ExpressionToken[][] = [];
-    const elseIfBodies: AST.PromptBlock[][] = [];
-    const elseIfComments: string[][] = [];
-    let elseBody: AST.PromptBlock[] | undefined = undefined;
-    let elseComments: string[] | undefined = undefined;
-
     // 3. Handle ElseIf and Else chains.
-    // Look past any comments between the closing brace and the next keyword, but
-    // only consume them once an ElseIf/Else is confirmed — otherwise a trailing
-    // comment belonging to the following block would be swallowed here.
-    while (
-      this.peekSkippingComments()?.type === "KEYWORD" &&
-      (this.peekSkippingComments().value === "ElseIf" || this.peekSkippingComments().value === "Else")
-    ) {
-        const branchComments = this.collectComments();
-        const branch = this.consume();
-        const type = this.resolveElseBranch(branch.value as string);
-
-        if (type === "ElseIf") {
-            const eiCondTokens = this.parseConditionHeader("ElseIf");
-
-            openLine = this.peek().line;
-            this.consume("SYMBOL", "{");
-
-            const eiBody: AST.PromptBlock[] = [];
-            while (!this.atBlockEnd()) {
-                this.skipSeparators();
-                if (this.atBlockEnd()) break;
-                eiBody.push(this.parseTopLevelBlock());
-            }
-            this.consumeBlockClose(openLine, `ElseIf body (line ${branch.line})`);
-
-            elseIfConditions.push(eiCondTokens);
-            elseIfBodies.push(eiBody);
-            elseIfComments.push(branchComments);
-        }
-        else if (type === "Else") {
-            this.matchOptionalColon();
-            openLine = this.peek().line;
-            this.consume("SYMBOL", "{");
-            const eBody: AST.PromptBlock[] = [];
-            while (!this.atBlockEnd()) {
-                this.skipSeparators();
-                if (this.atBlockEnd()) break;
-                eBody.push(this.parseTopLevelBlock());
-            }
-            this.consumeBlockClose(openLine, `Else body (line ${branch.line})`);
-            elseBody = eBody;
-            if (branchComments.length) elseComments = branchComments;
-            break; // 'Else' must be the end of the chain
-        }
-    }
-
     return Create.conditionalBlockOutsideRole({
         Ifcondition: ifCondTokens,
         IfBody: ifBody,
-        elseif: elseIfConditions,
-        elseifBody: elseIfBodies,
-        elseBody: elseBody,
-        ...(elseIfComments.some(c => c.length) ? { elseifComments: elseIfComments } : {}),
-        ...(elseComments ? { elseComments } : {}),
+        ...this.parseElseChain(() => this.parseTopLevelBlock()),
     });
+  }
+
+  /** Is the next non-comment token an ElseIf / Else that continues the chain? */
+  private atElseBranch(): boolean {
+    const tok = this.peekSkippingComments();
+    return tok?.type === "KEYWORD" && (tok.value === "ElseIf" || tok.value === "Else");
+  }
+
+  /**
+   * Is the next non-comment construct `Mark n { ElseIf ... }` or `Mark n { Else ... }`?
+   * Only then is the Mark part of the chain; any other Mark ends it.
+   */
+  private atMarkedElseBranch(): boolean {
+    let i = this.pos;
+    const skipComments = () => { while (this.tokens[i]?.type === "COMMENT") i++; };
+    skipComments();
+    if (this.tokens[i]?.type !== "KEYWORD" || this.tokens[i].value !== "Mark") return false;
+    i++;
+    if (this.tokens[i]?.type === "NUMBER") i++;
+    if (this.tokens[i]?.value === ":") i++;
+    if (this.tokens[i]?.value !== "{") return false;
+    i++;
+    skipComments();
+    const tok = this.tokens[i];
+    return tok?.type === "KEYWORD" && (tok.value === "ElseIf" || tok.value === "Else");
+  }
+
+  /**
+   * The ElseIf / Else branches after an If body, shared by both scopes.
+   *
+   * A Mark is the one construct allowed between a chain's branches: `Mark n { ... }`
+   * may wrap one or more consecutive branches, and the chain carries on after it.
+   * Such a Mark may hold nothing but branches and comments.
+   *
+   * Comments between the closing brace and the next keyword are looked past, but
+   * only consumed once a branch is confirmed — otherwise a trailing comment
+   * belonging to the following block would be swallowed here.
+   */
+  private parseElseChain<B>(parseBodyBlock: () => B) {
+    const elseif: AST.ExpressionToken[][] = [];
+    const elseifBody: B[][] = [];
+    const elseifComments: string[][] = [];
+    let elseBody: B[] | undefined = undefined;
+    let elseComments: string[] | undefined = undefined;
+    const branchMarks: AST.BranchMark[] = [];
+    let ended = false; // an Else ends the chain
+
+    const parseBranch = (leadingComments: string[] = []) => {
+      const branchComments = [...leadingComments, ...this.collectComments()];
+      const branch = this.consume();
+      const type = this.resolveElseBranch(branch.value as string);
+      const condition = type === "ElseIf" ? this.parseConditionHeader("ElseIf") : undefined;
+      if (type === "Else") this.matchOptionalColon();
+
+      const openLine = this.peek().line;
+      this.consume("SYMBOL", "{");
+      const body: B[] = [];
+      while (!this.atBlockEnd()) {
+        this.skipSeparators();
+        if (this.atBlockEnd()) break;
+        body.push(parseBodyBlock());
+      }
+      this.consumeBlockClose(openLine, `${type} body (line ${branch.line})`);
+
+      if (condition) {
+        elseif.push(condition);
+        elseifBody.push(body);
+        elseifComments.push(branchComments);
+      } else {
+        elseBody = body;
+        if (branchComments.length) elseComments = branchComments;
+        ended = true;
+      }
+    };
+
+    while (!ended) {
+      if (this.atElseBranch()) {
+        parseBranch();
+        continue;
+      }
+      if (!this.atMarkedElseBranch()) break;
+
+      // Mark n { ElseIf ... { } Else { } }. Comments above the Mark describe its
+      // first branch.
+      const leadingComments = this.collectComments();
+      const markTok = this.consume("KEYWORD", "Mark");
+      const markNumber = this.parseMarkNumber();
+      this.matchOptionalColon();
+      const openLine = this.peek().line;
+      this.consume("SYMBOL", "{");
+      const from = elseif.length + 1;
+
+      parseBranch(leadingComments);
+      while (!this.atBlockEnd()) {
+        this.skipSeparators();
+        if (this.peekSkippingComments()?.value === "}") {
+          this.skipComments();
+          break;
+        }
+        if (ended || !this.atElseBranch()) {
+          this.skipComments();
+          const tok = this.peek();
+          throw new Error(
+            `[${tok.line}:${tok.col}] A Mark between the branches of an If chain (Mark at line ${markTok.line}) ` +
+            (ended
+              ? "cannot continue past its Else: Else is the last branch of the chain."
+              : `may hold only ElseIf and Else branches, but found "${tok.value}".`)
+          );
+        }
+        parseBranch();
+      }
+      this.consumeBlockClose(openLine, `Mark ${markNumber}`);
+
+      branchMarks.push({ markNumber, from, to: ended ? elseif.length + 1 : elseif.length });
+    }
+
+    return {
+      elseif,
+      elseifBody,
+      elseBody,
+      ...(elseifComments.some(c => c.length) ? { elseifComments } : {}),
+      ...(elseComments ? { elseComments } : {}),
+      ...(branchMarks.length ? { branchMarks } : {}),
+    };
   }
 
   /**
@@ -1515,65 +1621,11 @@ export class Parser {
       }
       this.consumeBlockClose(openLine, `If body (line ${ifTok.line})`);
 
-      const elseIfConditions: AST.ExpressionToken[][] = [];
-      const elseIfBodies: AST.RoleBuildingBlock[][] = [];
-      const elseIfComments: string[][] = [];
-      let elseBody: AST.RoleBuildingBlock[] | undefined = undefined;
-      let elseComments: string[] | undefined = undefined;
-
-      // 3. Handle ElseIf and Else chains (see parseConditionalOutside: look past
-      // comments, but only consume them once the keyword is confirmed).
-      while (
-        this.peekSkippingComments()?.type === "KEYWORD" &&
-        (this.peekSkippingComments().value === "ElseIf" || this.peekSkippingComments().value === "Else")
-      ) {
-          const branchComments = this.collectComments();
-          const branch = this.consume();
-          const type = this.resolveElseBranch(branch.value as string);
-
-          if (type === "ElseIf") {
-              const eiCondTokens = this.parseConditionHeader("ElseIf");
-
-              openLine = this.peek().line;
-              this.consume("SYMBOL", "{");
-
-              const eiBody: AST.RoleBuildingBlock[] = [];
-              while (!this.atBlockEnd()) {
-                  this.skipSeparators();
-                  if (this.atBlockEnd()) break;
-                  eiBody.push(this.parseRoleBuildingBlock());
-              }
-              this.consumeBlockClose(openLine, `ElseIf body (line ${branch.line})`);
-
-              elseIfConditions.push(eiCondTokens);
-              elseIfBodies.push(eiBody);
-              elseIfComments.push(branchComments);
-          }
-          else if (type === "Else") {
-              this.matchOptionalColon();
-              openLine = this.peek().line;
-              this.consume("SYMBOL", "{");
-              const eBody: AST.RoleBuildingBlock[] = [];
-              while (!this.atBlockEnd()) {
-                  this.skipSeparators();
-                  if (this.atBlockEnd()) break;
-                  eBody.push(this.parseRoleBuildingBlock());
-              }
-              this.consumeBlockClose(openLine, `Else body (line ${branch.line})`);
-              elseBody = eBody;
-              if (branchComments.length) elseComments = branchComments;
-              break; // 'Else' must be the end of the chain
-          }
-      }
-
+      // 3. Handle ElseIf and Else chains (see parseElseChain).
       return Create.conditionalBlockInsideRole({
           Ifcondition: ifCondTokens,
           IfBody: ifBody,
-          elseif: elseIfConditions,
-          elseifBody: elseIfBodies,
-          elseBody: elseBody,
-          ...(elseIfComments.some(c => c.length) ? { elseifComments: elseIfComments } : {}),
-          ...(elseComments ? { elseComments } : {}),
+          ...this.parseElseChain(() => this.parseRoleBuildingBlock()),
       });
   }
 

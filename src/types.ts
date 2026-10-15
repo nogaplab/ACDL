@@ -172,6 +172,18 @@ export type RoleMessage = {
   body: Array<RoleBuildingBlock>; 
 }
 
+/**
+ * A Mark wrapped around one or more consecutive branches of an If chain — the
+ * one construct allowed between a chain's branches. Branches are numbered 0 for
+ * the If, 1..elseif.length for the ElseIfs and elseif.length + 1 for the Else;
+ * the Mark covers branches `from` through `to` inclusive.
+ */
+export type BranchMark = {
+  markNumber: number;
+  from: number;
+  to: number;
+};
+
 export type ConditionalBlockOutsideRole = {
   kind: "conditional-block-outside-role";
   Ifcondition: ExpressionToken[];
@@ -182,6 +194,7 @@ export type ConditionalBlockOutsideRole = {
   /** Comments on their own lines just above each ElseIf / the Else header. */
   elseifComments?: Array<string[]>;
   elseComments?: string[];
+  branchMarks?: BranchMark[];
 };
 
 export type SwitchBlockOutsideRole = {
@@ -245,6 +258,7 @@ export type ConditionalBlockInsideRole = {
   /** Comments on their own lines just above each ElseIf / the Else header. */
   elseifComments?: Array<string[]>;
   elseComments?: string[];
+  branchMarks?: BranchMark[];
 };
 
 export type SwitchBlockInsideRole = {

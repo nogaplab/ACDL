@@ -363,7 +363,9 @@ U: {
 
 ### If / ElseIf / Else
 
-Comparison operators `==`, `!=`, `<`, `>`; logical connectives `&`, `|`.
+Comparison operators `==`, `!=`, `<`, `>`; logical connectives `and`, `or`,
+`not`. The parser also accepts `&` and `|`, but they are not canonical and the
+renderer prints them as written — always write the words.
 
 ```acdl
 If sys.tool[@t] == clarify {
@@ -411,7 +413,7 @@ Switch sys.action_type[@t] {
 A condition exists to show what the structure depends on. Write it on the
 inputs the agent reads — a setting, a role, a count, a size — not on a
 variable that records the result. `Switch sys.summary_role` says only that a
-role was chosen; `If $lastHeadRole == user & $firstTailRole != assistant`
+role was chosen; `If $lastHeadRole == user and $firstTailRole != assistant`
 says why. If a reader could not predict the branch from the variables' names,
 the condition is hiding the decision it was supposed to reveal. A `Switch` on
 genuine data — the role stored on a history row, the entries of a config
@@ -494,6 +496,21 @@ Mark 2 {
 }
 ```
 
+A Mark is the one thing allowed between the branches of an `If` chain. It may
+wrap one or more consecutive branches (including the leading `If`), and the
+chain carries on after it; the bracket is drawn beside those branches. Such a
+Mark may hold only branches and comments, and nothing may follow the `Else`.
+
+```acdl
+Mark 1 {
+    If tc.success { tc.result }
+}
+ElseIf tc.timed_out { TIMEOUT_NOTICE }
+Mark 2 {
+    Else { TOOL_ERROR(tc.error_message) }
+}
+```
+
 ---
 
 ## 11. Fragments
@@ -544,19 +561,27 @@ ChatAgent[@T]: {
 The same `Frag Name[args]` syntax invokes both; the parser resolves by position
 (inside a role block → string fragment; top level → role fragment).
 
-**Define a fragment only for a chunk that actually repeats** — the same block of
-content used in two or more places, or in two or more specs in the file. A
-fragment invoked exactly once is not an abstraction, it is an indirection: it
-splits the context into two places the reader has to hold at once, and the
-rendered diagram reads worse for it. If the block appears once, write it inline.
+**Fragments serve readability.** Define one when a block repeats — the same
+content in two or more places, or in two or more specs in the file — or when a
+block has grown deep enough that the outline of the enclosing spec no longer
+surfaces from reading it top to bottom. A top-level spec should read as an
+outline of the context, with each region's internals behind a `Frag` named for
+what it contributes; a fragment whose own body becomes too complex is split the
+same way, into fragments of its own. A small block that appears once stays
+inline: a fragment for three lines splits the context into two places the
+reader has to hold at once, and the rendered diagram reads worse for it.
 
 ---
 
 ## 12. Comments
 
 `//` to end of line. A comment on its own line renders at the current nesting
-level; a comment after a content element renders beside it. Use inline comments
-generously to say what a template contains or why a branch exists.
+level; a comment after a content element renders beside it. Use comments
+sparingly: the spec's lines are what say how the context is built, and a comment
+marks something they cannot express — a turn definition, the numeric reality
+behind a setting written as a switch, an empty branch that emits nothing. If a
+better name or an extra branch would make a comment unnecessary, write that
+instead.
 
 `#` also opens a comment, with one exception: `#msg` on its own (§5) is the
 current message number, not a comment. `#msgs`, `# msg` and any other `#` text
@@ -585,6 +610,7 @@ AST as their canonical form, and render identically:
 | `ForEach doc in env.docs { ... }` | `ForEach(doc: env.docs) { ... }` — parentheses optional, `in` for `:` |
 | `for doc in env.docs { ... }` | `ForEach` — a bare `for` in statement position is a loop |
 | `Name x = e`, `Name x : e` | `Name x := e` |
+| `a & b`, `a \| b` | `a and b`, `a or b` — accepted, but rendered as written; write the words |
 | `PromptEndsHere @t == @T` | `PromptEndsHere when (@t == @T)` — both `when` and the parentheses are optional |
 | `Mark { ... }` | an unnumbered mark is numbered in source order |
 | `# note`, `/* note */` | `// note` |
@@ -692,7 +718,7 @@ OpenClaw[@T.I]: {
             }
             }
         }
-        PromptEndsHere when (@t == @T && @T.0)
+        PromptEndsHere when (@t == @T and @T.0)
         // tool-using loop history
         ForEach(i: range(1, @t.substeps + 1)) {
             Mark 1 {
@@ -707,7 +733,7 @@ OpenClaw[@T.I]: {
                 T: { tool.id_and_response }
             }
             }
-            PromptEndsHere when (@t == @T && @T.I)
+            PromptEndsHere when (@t == @T and @T.I)
         }
         A: resp.response[@t]
     }

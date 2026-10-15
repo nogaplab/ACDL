@@ -10,7 +10,8 @@ export type BlockRange = ReturnType<Parser["parseFileWithRanges"]>[number];
 
 export const DEFAULT_WRAP_WIDTH = 800;
 export const MIN_WRAP_WIDTH = 200;
-export const MAX_WRAP_WIDTH = 1000;
+/** Hard upper bound only; the preview limits its slider to the window width. */
+export const MAX_WRAP_WIDTH = 4000;
 
 /** Gap between stacked blocks in a multi-block PNG / continuous PDF page (CSS px / pt). */
 export const BLOCK_GAP = 24;

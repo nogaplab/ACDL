@@ -27,6 +27,7 @@ import {
   CommentBlock,
   MarkBlock,
   MarkBlockInsideRole,
+  BranchMark,
   ExpressionToken,
   Iterable,
   RangeExpr,
@@ -161,6 +162,8 @@ function renderExpressionTokens(tokens: ExpressionToken[]): string {
       // Track bracket/paren depth to handle nested structures
       let parenDepth = 0;
       let bracketDepth = 0;
+      // True after `.` or `@`, where a name segment is expected next.
+      let expectSegment = false;
 
       while (i < tokens.length) {
         const t = tokens[i];
@@ -294,13 +297,13 @@ function renderExpressionTokens(tokens: ExpressionToken[]): string {
         }
 
         // Continue for path components: . ident @
-        // Note: KEYWORD is included because words like "name", "for", "in" may appear as path segments
+        // Note: KEYWORD is included because words like "name", "for", "in" may appear as path segments,
+        // but a word only continues the path right after a joiner: in `sys.a and not tc.b` the
+        // `and` is the next operator, not a segment.
         // Brackets and parens are handled above
-        if (t.value === "." ||
-            t.type === "IDENT" ||
-            t.type === "KEYWORD" ||
-            t.value === "@" ||
-            t.type === "NUMBER") {
+        const isSegment = t.type === "IDENT" || t.type === "KEYWORD" || t.type === "NUMBER";
+        if (t.value === "." || t.value === "@" || (isSegment && expectSegment)) {
+          expectSegment = !isSegment;
           // Add word break opportunity after dots at top level (depth 0)
           if (t.value === "." && parenDepth === 0 && bracketDepth === 0) {
             contextVarTokens.push(".<wbr>");
@@ -798,11 +801,20 @@ function renderNameRef(block: NameRef): string {
  * mark number displayed to the right of the bracket, vertically centered.
  */
 function renderMarkBlock(block: MarkBlock): string {
-  // Render all blocks in the body array
-  const bodyHtml = block.body.map(b => renderTopLevelBlock(b)).join("\n");
+  return markHtml(block.body.map(b => renderTopLevelBlock(b)).join("\n"), block.markNumber);
+}
 
+/**
+ * Render a MarkBlockInsideRole: same as MarkBlock but for inside role contexts.
+ */
+function renderMarkBlockInsideRole(block: MarkBlockInsideRole): string {
+  return markHtml(block.body.map(b => renderRoleBuildingBlock(b)).join("\n"), block.markNumber);
+}
+
+/** Content with a Mark's right-side bracket and number. */
+function markHtml(bodyHtml: string, markNumber: number | undefined): string {
   // Ensure markNumber is always a valid number, default to 0 if undefined
-  const markNum = block.markNumber !== undefined && !isNaN(block.markNumber) ? block.markNumber : 0;
+  const markNum = markNumber !== undefined && !isNaN(markNumber) ? markNumber : 0;
 
   return `
 <div class="mark-block">
@@ -817,25 +829,36 @@ function renderMarkBlock(block: MarkBlock): string {
 }
 
 /**
- * Render a MarkBlockInsideRole: same as MarkBlock but for inside role contexts.
+ * Join an If chain's rendered branches (the If, the ElseIfs, then the Else),
+ * wrapping each branch Mark (`Mark 1 { If … } ElseIf …`) around the branches it
+ * covers. A Mark may sit inside another one's range, e.g. a Mark around an
+ * ElseIf within a Mark around the whole chain.
  */
-function renderMarkBlockInsideRole(block: MarkBlockInsideRole): string {
-  // Render all blocks in the body array
-  const bodyHtml = block.body.map(b => renderRoleBuildingBlock(b)).join("\n");
-
-  // Ensure markNumber is always a valid number, default to 0 if undefined
-  const markNum = block.markNumber !== undefined && !isNaN(block.markNumber) ? block.markNumber : 0;
-
-  return `
-<div class="mark-block">
-  <div class="mark-block-content">
-    ${bodyHtml}
-  </div>
-  <div class="mark-block-bracket">
-    <span class="mark-bracket-line"></span>
-    <span class="mark-bracket-number">${markNum}</span>
-  </div>
-</div>`;
+function joinMarkedBranches(branches: string[], marks: BranchMark[] | undefined): string {
+  if (!marks?.length) return branches.join("");
+  const render = (lo: number, hi: number, pending: BranchMark[]): string => {
+    let out = "";
+    let i = lo;
+    while (i <= hi) {
+      // Outermost first: of the Marks starting here, the widest.
+      const m = pending
+        .filter(p => p.from === i && p.to <= hi)
+        .sort((p, q) => q.to - p.to)[0];
+      if (!m) {
+        out += branches[i] ?? "";
+        i++;
+        continue;
+      }
+      const inner = pending.filter(p => p !== m && p.from >= m.from && p.to <= m.to);
+      const body = render(m.from, m.to, inner);
+      out += body ? markHtml(body, m.markNumber) : "";
+      pending = pending.filter(p => p !== m && !inner.includes(p));
+      i = m.to + 1;
+    }
+    return out;
+  };
+  // An empty Else renders nothing but may still be inside a Mark's range.
+  return render(0, Math.max(branches.length - 1, ...marks.map(m => m.to)), marks);
 }
 
 /**
@@ -1405,19 +1428,20 @@ function renderConditionalInsideRole(block: ConditionalBlockInsideRole): string 
 
   // IF block
   const ifHeader = `<span class="keyword">If</span> <span class="condition-expr">${renderExpressionTokens(block.Ifcondition)}</span>:`;
-  let result = wrapBlock("conditional-block-inside-role", ifHeader, renderBody(block.IfBody));
+  const branches = [wrapBlock("conditional-block-inside-role", ifHeader, renderBody(block.IfBody))];
 
   // ELSEIFs
   for (let i = 0; i < block.elseif.length; i++) {
     const elseifHeader = `<span class="keyword">ElseIf</span> <span class="condition-expr">${renderExpressionTokens(block.elseif[i])}</span>:`;
-    result += renderBranchComments(block.elseifComments?.[i]) + wrapBlock("conditional-block-inside-role", elseifHeader, renderBody(block.elseifBody[i]));
+    branches.push(renderBranchComments(block.elseifComments?.[i]) + wrapBlock("conditional-block-inside-role", elseifHeader, renderBody(block.elseifBody[i])));
   }
 
   // ELSE
   if (block.elseBody && block.elseBody.length > 0) {
     const elseHeader = `<span class="keyword">Else</span>:`;
-    result += renderBranchComments(block.elseComments) + wrapBlock("conditional-block-inside-role", elseHeader, renderBody(block.elseBody));
+    branches.push(renderBranchComments(block.elseComments) + wrapBlock("conditional-block-inside-role", elseHeader, renderBody(block.elseBody)));
   }
+  const result = joinMarkedBranches(branches, block.branchMarks);
 
   // The branches are siblings, and a role body is a wrapping flex row: without a
   // wrapper the If and its Else would sit side by side whenever they both fit on
@@ -1466,21 +1490,21 @@ function renderConditionalOutsideRole(block: ConditionalBlockOutsideRole): strin
 
   // IF block
   const ifHeader = `<span class="keyword">If</span> <span class="condition-expr">${renderExpressionTokens(block.Ifcondition)}</span>:`;
-  let result = wrapBlock("conditional-block-outside-role", ifHeader, renderBody(block.IfBody));
+  const branches = [wrapBlock("conditional-block-outside-role", ifHeader, renderBody(block.IfBody))];
 
   // ELSEIFs
   for (let i = 0; i < block.elseif.length; i++) {
     const elseifHeader = `<span class="keyword">ElseIf</span> <span class="condition-expr">${renderExpressionTokens(block.elseif[i])}</span>:`;
-    result += renderBranchComments(block.elseifComments?.[i]) + wrapBlock("conditional-block-outside-role", elseifHeader, renderBody(block.elseifBody[i]));
+    branches.push(renderBranchComments(block.elseifComments?.[i]) + wrapBlock("conditional-block-outside-role", elseifHeader, renderBody(block.elseifBody[i])));
   }
 
   // ELSE
   if (block.elseBody && block.elseBody.length > 0) {
     const elseHeader = `<span class="keyword">Else</span>:`;
-    result += renderBranchComments(block.elseComments) + wrapBlock("conditional-block-outside-role", elseHeader, renderBody(block.elseBody));
+    branches.push(renderBranchComments(block.elseComments) + wrapBlock("conditional-block-outside-role", elseHeader, renderBody(block.elseBody)));
   }
 
-  return result;
+  return joinMarkedBranches(branches, block.branchMarks);
 }
 
 /* ───────────────── Fragment Definitions ───────────────── */
