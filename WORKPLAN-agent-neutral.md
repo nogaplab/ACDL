@@ -1,200 +1,147 @@
-The project is already conceptually agent-neutral; the agent-specific parts are mostly documentation, filenames, and workflows. I’d separate the repository into:
+# Workplan: make ACDL maintainable with Codex and OpenCode
 
-1. A canonical, vendor-neutral maintenance contract.
-2. Thin adapters for Claude Code, Codex, and other agents.
-3. Provider-specific extraction runners kept clearly optional.
+## Objective
 
-Recommended structure:
+Make both the ACDL repository and its extraction tool usable from Codex and
+OpenCode, while retaining the existing Claude-based workflows where useful.
 
-```text
-AGENTS.md                         # canonical instructions for coding agents
-CONTRIBUTING.md                   # human + agent contribution workflow
-docs/
-  architecture.md
-  maintenance.md
-  acdl-language.md
-  agent-guides/
-    acdl-to-code.md               # generic implementation guide
-    acdl-syntax-repair.md         # generic syntax-repair procedure
-  adapters/
-    claude-code.md
-    codex.md
-.claude/
-  agents/
-    acdl-syntax.md                # thin Claude adapter
-acdl-agent/
-  runners/
-    anthropic-sdk/
-    claude-code-cli/
-    openai-api/
-```
+The target is not merely provider-neutral wording. The repository should have
+one authoritative maintenance contract, one authoritative extraction contract,
+and small adapters for each supported agent. A Codex or OpenCode session must
+be able to discover the rules, inspect the codebase, make a scoped change, run
+the right checks, and leave an auditable result without relying on Claude-only
+metadata or commands.
 
-### 1. Create `AGENTS.md` as the canonical entry point
+## Success criteria
 
-Codex commonly discovers `AGENTS.md`; other coding agents can also read it explicitly. Put stable project rules there:
+- A fresh Codex session and a fresh OpenCode session can discover project
+  instructions from the repository itself.
+- The same maintenance task has the same safety rules, validation commands,
+  and expected report regardless of the agent used.
+- Extraction is runner-independent: the ACDL language, extraction task,
+  evidence requirements, output schema, and validation are shared.
+- Claude, Codex, and OpenCode integrations are adapters, not competing sources
+  of truth.
+- A provider or model can be changed without changing the ACDL contract or
+  report format.
+- Documentation and tests distinguish source files from generated artifacts.
 
-```md
-# Repository instructions
+## Known gaps to fix in this branch
 
-## Project purpose
+The initial inventory found these concrete gaps. They are the implementation
+backlog for this branch:
 
-ACDL describes the structure of prompts and agent contexts. It does not contain
-the actual natural-language prompt text.
+- No root `AGENTS.md` existed. A unified file must now be the canonical
+  maintenance entry point for Codex and OpenCode, with Claude-specific files
+  acting only as adapters.
+- There is no shared maintenance guide or generic ACDL-to-code guide. The
+  useful rules currently live in Claude-oriented README, skill, and agent
+  files and must be consolidated without changing their meaning.
+- The syntax-repair procedure exists only as `.claude/agents/acdl-syntax.md`.
+  Codex and OpenCode need equivalent discoverable entry points that delegate to
+  the same rules and checker.
+- `acdl-agent/acdl-agent.py`, `acdl-agent/acdl-extract.sh`, and
+  `acdl-agent/format-run.mjs` are coupled to Anthropic or Claude Code. There is
+  no runner contract, shared metadata schema, or Codex/OpenCode adapter.
+- The current extraction outputs are not standardized: existing runs use
+  target-specific filenames, and there is no required `metadata.json` or
+  provider-independent completion/error contract.
+- The Claude stream formatter has no Codex/OpenCode event fixtures or
+  deterministic cross-runner tests. Path safety, output validation, and
+  malformed-result handling are not covered by a shared test suite.
+- The extraction documentation and examples describe Claude as the default,
+  while checked-in OpenCode artifacts already exist. Documentation must reflect
+  the actual multi-runner target.
+- `acdl-tests/README.md` and `test-cases.md` describe Claude Code rather than a
+  general coding-agent conformance workflow.
+- The command documentation mixes npm and Bun even though the root scripts use
+  Bun for the CLI, checker, and tests. Commands must be verified against
+  `package.json` and documented consistently.
+- Generated and fixture boundaries are not consistently documented for
+  `extension/out/`, `acdl-agent/out/`, and generated conformance results. The
+  maintenance contract must identify what may be regenerated and what must not
+  be overwritten casually.
 
-## Before changing code
+These gaps do not authorize unrelated cleanup. Preserve existing behavior and
+record any compatibility decision in the implementation or handoff.
 
-- Read the relevant source and tests.
-- Preserve the meaning of `.acdl` specifications.
-- Run the smallest relevant test or checker.
-- Do not edit generated files directly.
+## Explicitly out of scope
 
-## Validation
+Website generation, website navigation, website content renaming, and website
+build/deploy changes are not goals of this branch. Do not add website work to
+the implementation sequence or regenerate `website/src/`. Only update website
+files if a later, separately scoped task explicitly requests it.
 
-```bash
-npm install
-npm test
-npm run check -- ACDL_examples/**/*.acdl
-```
+## 1. Establish the repository contract
 
-For a single specification:
+Keep the new root `AGENTS.md` as the canonical entry point for coding agents
+and revise it as the shared contract becomes more precise. It should cover:
 
-```bash
-npm run check -- path/to/file.acdl
-```
+- what ACDL represents and what it must not contain;
+- the source/generated-file boundary;
+- required read-before-edit behavior;
+- syntax-preserving rules for `.acdl` changes;
+- supported validation commands;
+- how to report changed files, tests, assumptions, and unresolved questions;
+- how to work safely when an agent has different tool names or permissions.
 
-## Website changes
+Keep this file short enough for automatic discovery. Put detailed procedures in
+`docs/maintenance.md`, not in provider-specific configuration.
 
-Edit `website/content/` or `website/templates/`, never generated files under
-`website/src/`.
+Add a clear OpenCode entry point if the repository needs one beyond
+`AGENTS.md` (for example, a checked-in OpenCode adapter or configuration
+snippet). It must point back to the same canonical instructions. Do not make
+`.codex/`, `.opencode/`, or `.claude/` the source of truth.
 
-## ACDL syntax repairs
+## 2. Define the maintenance workflow for all agents
 
-Syntax repair may change punctuation, braces, or spelling, but must not add,
-remove, reorder, or reinterpret the specification’s semantic content.
+Create `docs/maintenance.md` with repeatable procedures for:
 
-Always run the checker after editing.
-```
+1. locating the source of truth before editing;
+2. inspecting relevant TypeScript, Python, shell, Markdown, and generated files;
+3. changing ACDL syntax without changing semantics;
+4. changing parser, renderer, extension, or extraction code;
+5. running focused checks before the full suite;
+6. reviewing the diff for accidental provider coupling; and
+7. recording validation and evidence in the final handoff.
 
-You can add more detailed guidance under `docs/maintenance.md`, keeping `AGENTS.md` short enough to be reliably loaded into context.
+State which commands are optional when Bun, Node, Python, a provider CLI, or an
+API credential is unavailable.
 
-### 2. Rename the generic skill
+Add `docs/agent-guides/acdl-syntax-repair.md` for the narrow syntax-repair
+task. Claude, Codex, and OpenCode entry points should all delegate to this
+guide.
 
-`acdl-tests/acdl-skill.md` is useful, but its current identity is tied to Claude Code. Rename or copy it as:
+## 3. Separate generic ACDL knowledge from agent adapters
 
-```text
-docs/agent-guides/acdl-to-code.md
-```
+Move or copy the useful material in `acdl-tests/acdl-skill.md` into a generic
+guide such as `docs/agent-guides/acdl-to-code.md`. It should explain how an
+agent translates an ACDL specification into working code, including mapping
+tables, implementation patterns, and validation expectations.
 
-Change:
+Replace instructions that assume a fresh Claude session or an attachment with
+portable language: the agent must receive the guide, the relevant `.acdl`
+file, and repository instructions through whatever context mechanism it
+supports.
 
-```md
-# ACDL to Code Implementation Skill
-```
-
-to something like:
-
-```md
-# ACDL-to-Code Implementation Guide
-
-This guide is written for coding agents. It is compatible with Claude Code,
-Codex, OpenCode, Cursor, and agents using an API directly.
-```
-
-Replace instructions such as:
-
-```md
-Open a fresh Claude Code session
-Attach @acdl-skill.md
-```
-
-with:
-
-```md
-Give the agent this guide and the relevant `.acdl` specification, either by
-opening the file, attaching it, or referencing it in the agent’s context.
-```
-
-The actual mapping tables and implementation patterns are already largely generic.
-
-### 3. Keep Claude and Codex files as adapters
-
-Do not delete `.claude/agents/acdl-syntax.md`; Claude-specific agent metadata is useful. Make it a small wrapper that points to the generic procedure:
-
-```md
----
-name: acdl-syntax
-description: Repair ACDL syntax without changing its meaning.
-tools: Read, Edit, Bash, Grep, Glob
----
-
-Follow `docs/agent-guides/acdl-syntax-repair.md`.
-
-Use the repository checker:
-
-```bash
-npm run check -- path/to/file.acdl
-```
-
-Apply the smallest syntax-only edits, rerun the checker, and report the result.
-```
-
-The detailed rules should live in `docs/agent-guides/acdl-syntax-repair.md`, not only in the Claude agent definition.
-
-For Codex, the normal entry point should be `AGENTS.md`. If you want a Codex-specific helper, add:
-
-```text
-docs/adapters/codex.md
-```
-
-but avoid making `.codex/` the source of truth.
-
-### 4. Generalize the README
-
-The README currently contains several direct Claude references:
-
-- `.claude/agents/acdl-syntax.md`
-- “Ask Claude Code…”
-- `acdl-tests` described as Claude Code tests
-- the website page called “Claude Code Skill”
-
-Change the main README to say:
-
-```md
-To repair syntax automatically, give the agent
-`docs/agent-guides/acdl-syntax-repair.md` and ask it to fix a specific `.acdl`
-file. Claude Code, Codex, and other coding agents can use the same procedure.
-```
-
-Move Claude-specific usage into a separate section or document:
+Keep provider adapters only where they add real value:
 
 ```text
 docs/adapters/claude-code.md
+docs/adapters/codex.md
+docs/adapters/opencode.md
+.claude/agents/acdl-syntax.md       # Claude metadata, delegates to the guide
 ```
 
-Likewise, rename the public resource from:
+Each adapter should document discovery, tool/permission differences, the
+equivalent command to run checks, and limitations. It must not duplicate the
+language rules or maintenance policy.
 
-```text
-claude-code-skill.md
-```
+## 4. Refactor extraction around a stable runner contract
 
-to:
-
-```text
-acdl-to-code.md
-```
-
-The Claude page can remain as a compatibility redirect or provider-specific page.
-
-### 5. Separate the language from the extraction implementation
-
-`acdl-agent/` currently mixes generic ACDL concepts with Anthropic/Claude implementation details:
-
-- `acdl-agent.py` uses the Anthropic SDK.
-- `acdl-extract.sh` requires the Claude CLI.
-- The default model is `claude-opus-5`.
-- Several files describe Claude-specific tool behavior.
-
-A cleaner arrangement would be:
+The current `acdl-agent/` implementation is centered on Anthropic and the
+Claude CLI. Preserve its behavior, but split shared contract material from
+runners:
 
 ```text
 acdl-agent/
@@ -202,107 +149,137 @@ acdl-agent/
     acdl-language.md
     extraction-prompt.md
     output-schema.md
+    runner-contract.md
   runners/
     anthropic-sdk/
-      run.py
     claude-code-cli/
-      run.sh
-    openai-api/
-      run.py
+    codex-cli-or-session/
+    opencode-cli-or-session/
+  format-run.mjs
+  validate-extraction.mjs
 ```
 
-Then describe the runner contract generically:
+The exact filenames may follow the existing layout, but the boundaries must be
+explicit. Shared extraction inputs must include the ACDL language reference,
+task and phase order, read-only/evidence policy, output schema, uncertainty
+rules, and validation procedure.
 
-```md
-Every runner must provide:
+Every runner must accept the same conceptual inputs: target repository, output
+directory, model/provider metadata, and dry-run options. Every runner must
+produce the same minimum artifacts:
 
-- read-only access to the target repository;
-- the same extraction prompt;
-- the same ACDL language reference;
-- the same output files;
-- provider/model metadata in the extraction report.
+```text
+<output>/extracted.acdl
+<output>/extraction-report.md
+<output>/run.md
+<output>/metadata.json
 ```
 
-This lets Claude, Codex, OpenAI API, and local-model runners produce comparable output.
+`metadata.json` should record runner, provider, model, versions, timestamp,
+target revision when available, and exit status. Provider-specific stream
+details may be additional data, but must not change the canonical ACDL or
+report format.
 
-### 6. Make the test suite agent-neutral
+Extraction must remain read-only against the target repository. Writes belong
+in the explicit output directory. This must hold for the Python runner and for
+Codex/OpenCode session runners.
 
-Change `acdl-tests/README.md` from:
+## 5. Add Codex and OpenCode extraction paths
 
-```md
-A comprehensive test suite for evaluating Claude Code's ability...
-```
+Implement the smallest reliable integration for each agent. Prefer a shared
+launcher and formatter over duplicating the extraction prompt.
 
-to:
+For each runner, document:
 
-```md
-A conformance suite for evaluating an agent’s ability to translate ACDL into
-working Python message-building code.
-```
+- how the target repository is exposed read-only;
+- how the shared prompt and language reference are supplied;
+- how the output location is enforced;
+- how completion and failure are detected;
+- how streamed output is captured;
+- what reasoning/tool events are unavailable or redacted; and
+- how a human can reproduce the run.
 
-Add a standard test protocol:
+Do not assume Codex and OpenCode expose identical CLI flags, tool names,
+session formats, or permission controls. Keep those differences inside their
+adapters. If an agent cannot safely support direct file writes, use a captured
+response plus a deterministic host-side artifact writer.
 
-```md
-Each implementation must receive:
+Add dry-run mode and a provider-independent local validation mode so the
+workflow can be tested without credentials or a live agent.
 
-1. `docs/agent-guides/acdl-to-code.md`
-2. One test specification from `test-cases.md`
-3. The standard generation request
+## 6. Make extraction correctness testable
 
-The evaluator may use any coding agent or API provider.
-```
+Add tests for the shared contract:
 
-You can then add provider-specific result directories:
+- prompt assembly includes the same language reference and task;
+- runner arguments resolve target and output paths safely;
+- writes cannot escape the output directory;
+- metadata is complete and provider-neutral;
+- malformed or incomplete output fails validation clearly;
+- the formatter accepts representative Codex and OpenCode event fixtures;
+- equivalent fixtures yield equivalent canonical artifacts; and
+- extracted `.acdl` passes the normal ACDL checker.
+
+Extend `acdl-tests` into an agent-agnostic conformance suite. Rename its
+description and instructions so they refer to a coding agent, not Claude Code.
+Keep result directories separated by runner:
 
 ```text
 acdl-tests/results/
-  claude/
+  anthropic-sdk/
+  claude-code/
   codex/
-  openai-api/
+  opencode/
 ```
 
-### 7. Use provider-neutral terminology
+Live-provider tests should be explicitly opt-in; deterministic tests should run
+in ordinary CI.
 
-Some useful replacements:
+## 7. Repair documentation and generated-content boundaries
 
-| Current | More generic |
-|---|---|
-| Claude Code skill | ACDL implementation guide |
-| Claude agent | coding agent |
-| attach the skill | provide the guide in context |
-| Claude CLI | provider-specific CLI runner |
-| Claude model | configured model |
-| `.claude/agents` | agent adapter |
-| `acdl-extract.sh` | Claude Code extraction runner |
+Update the README, `acdl-agent/README.md`,
+`acdl-agent/how-it-works.md`, `acdl-tests/README.md`, and
+`acdl-tests/test-cases.md` to describe the shared workflow and link to the
+canonical guides.
 
-Keep the provider name when it describes a real implementation detail. The goal is not to erase Claude; it is to stop Claude from being the implicit default everywhere.
+Document `extension/out/`, extraction output, and generated conformance results
+where applicable. Do not edit or regenerate website files in this branch.
 
-### 8. Fix onboarding inconsistencies while doing this
+Resolve onboarding inconsistencies while touching the docs, especially the
+actual package manager (`bun` versus `npm`), the existence of referenced
+check scripts, and commands that work in a clean checkout.
 
-I noticed a few things that can confuse any coding agent:
+## 8. Verification and rollout order
 
-- The README says the project uses Bun, but several commands are presented as `npm run`.
-- `package.json` references `acdl-verify/pipeline.ts`, but that file does not appear to exist.
-- The README references `.claude/agents/acdl-syntax.md` as if it were the only supported maintenance path.
-- The website navigation and page are still explicitly named `claude-code-skill`.
-- Generated files under `website/src/` and `acdl-agent/out/` should be clearly labeled as generated or excluded from ordinary maintenance.
+Implement in this order:
 
-Agents work much better when the documented commands are tested literally. I would add a short CI or smoke-test section that verifies:
+1. inventory commands, generated files, and Claude-only assumptions;
+2. validate and extend `AGENTS.md`, then write the maintenance guide and generic
+   implementation guide;
+3. define and test the extraction contract and metadata schema;
+4. refactor the Python and Claude runners without changing canonical outputs;
+5. add Codex and OpenCode adapters and fixture-based formatter tests;
+6. update maintenance adapters and repository documentation, excluding the
+   website;
+7. inspect the final diff without regenerating website output; and
+8. run the complete documented verification suite.
 
-```bash
-npm test
-npm run check -- ACDL_examples/**/*.acdl
-npm run build:content
-```
+The final verification report should include the repository's actual commands,
+after checking `package.json`, plus:
 
-The highest-value change is therefore:
+- a no-credential dry run for each runner;
+- deterministic extraction validation;
+- one live Codex smoke test when Codex is available; and
+- one live OpenCode smoke test when OpenCode is available.
 
-```text
-AGENTS.md
-docs/agent-guides/acdl-to-code.md
-docs/agent-guides/acdl-syntax-repair.md
-docs/adapters/claude-code.md
-docs/adapters/codex.md
-```
+Do not leave invented commands in the documentation. Existing validation
+commands must be tested literally.
 
-Then make `.claude/agents/acdl-syntax.md`, the website page, and any future provider integrations thin wrappers around those canonical documents.
+## Definition of done
+
+A new contributor can choose Codex or OpenCode, discover the same repository
+instructions, perform a normal ACDL maintenance change, and validate it without
+Claude-specific knowledge. The same two agents can run extraction and produce
+comparable, machine-checkable ACDL, report, run, and metadata artifacts.
+Claude support may remain, but it is one adapter among several rather than the
+implicit architecture of the project.
